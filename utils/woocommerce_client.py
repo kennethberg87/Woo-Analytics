@@ -130,13 +130,22 @@ class WooCommerceClient:
                 order_date = pd.to_datetime(date_str)
 
                 # Process main order data
-                order_data.append({
+                order_info = {
                     'date': order_date,
-                    'total': float(order.get('total', 0)),  # Total including VAT
-                    'subtotal': float(order.get('subtotal', 0)),
+                    'order_id': order.get('id'),
+                    'total': float(order.get('total', 0)),  # Total including VAT and shipping
+                    'subtotal': sum(float(item.get('subtotal', 0)) for item in order.get('line_items', [])),  # Sum of line items
                     'shipping_total': float(order.get('shipping_total', 0)),
                     'tax_total': float(order.get('total_tax', 0))  # Total VAT
-                })
+                }
+
+                # Debug log for order totals
+                st.sidebar.write(f"Processing Order #{order_info['order_id']}:")
+                st.sidebar.write(f"Total (incl. VAT & shipping): {order_info['total']}")
+                st.sidebar.write(f"Shipping: {order_info['shipping_total']}")
+                st.sidebar.write(f"Tax: {order_info['tax_total']}")
+
+                order_data.append(order_info)
 
                 # Process line items (products) with cost information
                 for item in order.get('line_items', []):
