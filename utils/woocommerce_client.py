@@ -88,11 +88,13 @@ class WooCommerceClient:
 
             while True:
                 params = {
-                    "after": start_date_iso,
-                    "before": end_date_iso,
+                    "after": f"{start_date_iso}T00:00:00",
+                    "before": f"{end_date_iso}T23:59:59",
                     "per_page": 100,
                     "page": page,
-                    "status": ["completed", "processing", "on-hold"]  # Added more order statuses
+                    "status": ["completed", "processing", "on-hold", "pending"],  # Added more statuses
+                    "orderby": "date",
+                    "order": "desc"
                 }
 
                 st.sidebar.write(f"API Request Parameters: {params}")
@@ -101,18 +103,22 @@ class WooCommerceClient:
 
                 try:
                     data = response.json()
+                    if isinstance(data, dict) and 'message' in data:
+                        st.sidebar.error(f"API Error: {data['message']}")
+                        break
                 except Exception as e:
                     st.sidebar.error(f"Failed to parse JSON response: {str(e)}")
                     st.sidebar.error(f"Raw response: {response.text[:500]}")  # First 500 chars for debugging
                     raise Exception("Failed to parse API response")
 
-                if not data or not isinstance(data, list):
-                    st.sidebar.write(f"API Response: {data}")
+                if not isinstance(data, list):
+                    st.sidebar.write("No orders returned from API")
                     break
 
                 orders.extend(data)
                 st.sidebar.write(f"Found {len(data)} orders on page {page}")
 
+                # Break if we received fewer orders than the page size
                 if len(data) < 100:
                     break
 
