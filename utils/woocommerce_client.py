@@ -38,15 +38,6 @@ class WooCommerceClient:
                 error_message = error_data.get('message') if error_data else 'Unknown error'
                 raise Exception(f"API test failed with status {response.status_code}: {error_message}")
 
-            # Test orders endpoint
-            test_response = self.wcapi.get("orders", params={"per_page": 1})
-            if test_response.status_code != 200:
-                raise Exception(f"Orders endpoint test failed with status {test_response.status_code}")
-
-            test_data = test_response.json()
-            if not isinstance(test_data, list):
-                st.sidebar.error(f"Unexpected orders endpoint response format: {test_data}")
-
         except Exception as e:
             st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
             raise
@@ -62,39 +53,24 @@ class WooCommerceClient:
 
             st.sidebar.write(f"Fetching orders from {start_date_iso} to {end_date_iso}")
 
-            # Simplify the query parameters to basic WooCommerce v3 format
             params = {
                 "after": f"{start_date_iso}T00:00:00",
                 "before": f"{end_date_iso}T23:59:59",
                 "per_page": 100,
-                "status": "any"  # Try fetching all order statuses
+                "status": "any"
             }
 
             st.sidebar.write(f"API Request Parameters: {params}")
-
-            # Add detailed response logging
             response = self.wcapi.get("orders", params=params)
             st.sidebar.write(f"API Response Status: {response.status_code}")
             st.sidebar.write(f"API Response Headers: {dict(response.headers)}")
 
-            try:
-                data = response.json()
-                st.sidebar.write(f"API Response Type: {type(data)}")
-                if isinstance(data, list):
-                    st.sidebar.write(f"Number of orders returned: {len(data)}")
-                    if len(data) > 0:
-                        st.sidebar.write("First order sample:", {k: v for k, v in data[0].items() if k in ['id', 'status', 'date_created']})
-                else:
-                    st.sidebar.write(f"API Response Content: {str(data)[:500]}")
-            except Exception as e:
-                st.sidebar.error(f"Failed to parse JSON response: {str(e)}")
-                st.sidebar.error(f"Raw response: {response.text[:500]}")
-                return []
-
-            if isinstance(data, dict):
-                st.sidebar.error(f"API Error Response: {data}")
-                return []
-            elif not isinstance(data, list):
+            data = response.json()
+            if isinstance(data, list):
+                st.sidebar.write(f"Number of orders returned: {len(data)}")
+                if len(data) > 0:
+                    st.sidebar.write("First order sample:", {k: v for k, v in data[0].items() if k in ['id', 'status', 'date_created']})
+            else:
                 st.sidebar.error(f"Unexpected response format: {type(data)}")
                 return []
 
@@ -120,7 +96,7 @@ class WooCommerceClient:
         for order in orders:
             try:
                 # Try multiple date fields
-                date_str = order.get('date_modified') or order.get('date_created') or order.get('date_modified_gmt') or order.get('date_created_gmt')
+                date_str = order.get('date_created') or order.get('date_modified') or order.get('date_created_gmt')
                 if not date_str:
                     st.sidebar.warning(f"No date found in order: {order}")
                     continue
@@ -129,21 +105,25 @@ class WooCommerceClient:
                 date_str = date_str.replace('Z', '+00:00')
                 order_date = pd.to_datetime(date_str)
 
+                # Calculate line items total (excluding shipping)
+                line_items_total = sum(float(item.get('total', 0)) for item in order.get('line_items', []))
+                line_items_tax = sum(float(item.get('total_tax', 0)) for item in order.get('line_items', []))
+
                 # Process main order data
                 order_info = {
                     'date': order_date,
                     'order_id': order.get('id'),
-                    'total': float(order.get('total', 0)),  # Total including VAT and shipping
-                    'subtotal': sum(float(item.get('subtotal', 0)) for item in order.get('line_items', [])),  # Sum of line items
+                    'total': line_items_total,  # Only line items total (excl. shipping)
+                    'subtotal': sum(float(item.get('subtotal', 0)) for item in order.get('line_items', [])),
                     'shipping_total': float(order.get('shipping_total', 0)),
-                    'tax_total': float(order.get('total_tax', 0))  # Total VAT
+                    'tax_total': line_items_tax  # Only line items tax
                 }
 
                 # Debug log for order totals
-                st.sidebar.write(f"Processing Order #{order_info['order_id']}:")
-                st.sidebar.write(f"Total (incl. VAT & shipping): {order_info['total']}")
+                st.sidebar.write(f"\nProcessing Order #{order_info['order_id']}:")
+                st.sidebar.write(f"Line Items Total (incl. VAT): {line_items_total}")
+                st.sidebar.write(f"Line Items Tax: {line_items_tax}")
                 st.sidebar.write(f"Shipping: {order_info['shipping_total']}")
-                st.sidebar.write(f"Tax: {order_info['tax_total']}")
 
                 order_data.append(order_info)
 
@@ -173,7 +153,6 @@ class WooCommerceClient:
 
             except Exception as e:
                 st.sidebar.error(f"Error processing order: {str(e)}")
-                st.sidebar.error(f"Problematic order data: {order}")
                 continue
 
         # Create main orders DataFrame
@@ -198,13 +177,10 @@ class WooCommerceClient:
             'tax_total': 'sum'
         }).reset_index()
 
-        # Add debug information
-        st.sidebar.write(f"Raw order count: {len(orders)}")
-        if len(daily_metrics) > 0:
-            st.sidebar.write("Sample daily totals:")
-            st.sidebar.write(daily_metrics[['date', 'total']].to_dict('records'))
-
-        st.sidebar.success(f"Processed {len(daily_metrics)} days of order data")
-        st.sidebar.write("Processed data shape:", daily_metrics.shape)
+        # Debug totals
+        st.sidebar.write("\nFinal Totals:")
+        st.sidebar.write(f"Total Line Items (incl. VAT): {daily_metrics['total'].sum():.2f}")
+        st.sidebar.write(f"Total Tax: {daily_metrics['tax_total'].sum():.2f}")
+        st.sidebar.write(f"Total Shipping: {daily_metrics['shipping_total'].sum():.2f}")
 
         return daily_metrics, df_products
