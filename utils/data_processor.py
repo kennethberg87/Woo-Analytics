@@ -16,6 +16,9 @@ class DataProcessor:
                 'total_tax': 0
             }
 
+        # Ensure date column is datetime
+        df['date'] = pd.to_datetime(df['date'])
+
         # Group by selected time period
         if period == 'weekly':
             df['period'] = df['date'].dt.strftime('%Y-W%U')
@@ -54,6 +57,9 @@ class DataProcessor:
         """
         if df.empty:
             return None
+
+        # Ensure date column is datetime
+        df['date'] = pd.to_datetime(df['date'])
 
         # Group by selected time period
         if period == 'weekly':
@@ -99,6 +105,9 @@ class DataProcessor:
         """
         if df.empty:
             return None
+
+        # Ensure date column is datetime
+        df['date'] = pd.to_datetime(df['date'])
 
         # Group by selected time period
         if period == 'weekly':

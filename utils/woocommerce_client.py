@@ -123,11 +123,12 @@ class WooCommerceClient:
                     st.sidebar.warning(f"No date found in order: {order}")
                     continue
 
-                # Remove timezone suffix if present
+                # Remove timezone suffix if present and convert to datetime
                 date_str = date_str.replace('Z', '+00:00')
+                order_date = pd.to_datetime(date_str)
 
                 order_data.append({
-                    'date': datetime.fromisoformat(date_str).date(),
+                    'date': order_date,
                     'total': float(order.get('total', 0)),
                     'subtotal': float(order.get('subtotal', 0)),
                     'shipping_total': float(order.get('shipping_total', 0)),
@@ -138,11 +139,14 @@ class WooCommerceClient:
                 st.sidebar.error(f"Problematic order data: {order}")
                 continue
 
-        # Create DataFrame
+        # Create DataFrame with datetime index
         df = pd.DataFrame(order_data)
         if df.empty:
             st.sidebar.warning("No valid orders found after processing")
             return df
+
+        # Ensure date column is datetime
+        df['date'] = pd.to_datetime(df['date'])
 
         # Group by date and calculate daily metrics
         daily_metrics = df.groupby('date').agg({
