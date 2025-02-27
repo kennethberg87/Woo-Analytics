@@ -220,8 +220,7 @@ def main():
         st.dataframe(
             customers_df,
             column_config={
-                "First Name": "First Name",
-                "Last Name": "Last Name",
+                "Name": "Customer Name",
                 "Email": "Email Address",
                 "Total Orders": st.column_config.NumberColumn(
                     "Total Order Value",

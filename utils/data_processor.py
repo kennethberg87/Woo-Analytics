@@ -95,9 +95,10 @@ class DataProcessor:
         customer_data = []
         for _, order in df.iterrows():
             if 'billing' in order and isinstance(order['billing'], dict):
+                first_name = order['billing'].get('first_name', '')
+                last_name = order['billing'].get('last_name', '')
                 customer = {
-                    'First Name': order['billing'].get('first_name', ''),
-                    'Last Name': order['billing'].get('last_name', ''),
+                    'Name': f"{first_name} {last_name}".strip(),
                     'Email': order['billing'].get('email', ''),
                     'Total Orders': order['total']
                 }
@@ -110,7 +111,7 @@ class DataProcessor:
         customers_df = pd.DataFrame(customer_data)
 
         # Group by customer details and sum their orders
-        customers_df = customers_df.groupby(['First Name', 'Last Name', 'Email'])['Total Orders'].sum().reset_index()
+        customers_df = customers_df.groupby(['Name', 'Email'])['Total Orders'].sum().reset_index()
 
         # Sort by total orders descending
         customers_df = customers_df.sort_values('Total Orders', ascending=False)
