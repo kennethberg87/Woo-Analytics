@@ -80,7 +80,7 @@ class WooCommerceClient:
             start_date_iso = start_date.isoformat()
             end_date_iso = (end_date + timedelta(days=1)).isoformat()
 
-            st.debug(f"Fetching orders from {start_date_iso} to {end_date_iso}")
+            st.sidebar.write(f"Fetching orders from {start_date_iso} to {end_date_iso}")
 
             # Fetch orders with pagination
             page = 1
@@ -95,40 +95,40 @@ class WooCommerceClient:
                     "status": ["completed", "processing", "on-hold"]  # Added more order statuses
                 }
 
-                st.debug(f"API Request Parameters: {params}")
+                st.sidebar.write(f"API Request Parameters: {params}")
                 response = self.wcapi.get("orders", params=params)
-                st.debug(f"API Response Status: {response.status_code}")
+                st.sidebar.write(f"API Response Status: {response.status_code}")
 
                 try:
                     data = response.json()
                 except Exception as e:
-                    st.debug(f"Failed to parse JSON response: {str(e)}")
-                    st.debug(f"Raw response: {response.text[:500]}")  # First 500 chars for debugging
+                    st.sidebar.error(f"Failed to parse JSON response: {str(e)}")
+                    st.sidebar.error(f"Raw response: {response.text[:500]}")  # First 500 chars for debugging
                     raise Exception("Failed to parse API response")
 
                 if not data or not isinstance(data, list):
-                    st.debug(f"API Response: {data}")
+                    st.sidebar.write(f"API Response: {data}")
                     break
 
                 orders.extend(data)
-                st.debug(f"Found {len(data)} orders on page {page}")
+                st.sidebar.write(f"Found {len(data)} orders on page {page}")
 
                 if len(data) < 100:
                     break
 
                 page += 1
 
-            st.debug(f"Total orders fetched: {len(orders)}")
+            st.sidebar.success(f"Total orders fetched: {len(orders)}")
             return orders
 
         except SSLError as e:
-            st.error("SSL Certificate verification failed while fetching orders.")
+            st.sidebar.error("SSL Certificate verification failed while fetching orders.")
             raise Exception("SSL Certificate verification failed while fetching orders.")
         except ConnectionError as e:
-            st.error(f"Connection error while fetching orders: {str(e)}")
+            st.sidebar.error(f"Connection error while fetching orders: {str(e)}")
             raise Exception(f"Connection error while fetching orders: {str(e)}")
         except Exception as e:
-            st.error(f"Error fetching orders: {str(e)}")
+            st.sidebar.error(f"Error fetching orders: {str(e)}")
             raise Exception(f"Error fetching orders: {str(e)}")
 
     def process_orders_to_df(self, orders):
@@ -136,7 +136,7 @@ class WooCommerceClient:
         Convert orders to pandas DataFrame with daily metrics
         """
         if not orders:
-            st.debug("No orders to process")
+            st.sidebar.write("No orders to process")
             return pd.DataFrame(columns=['date', 'total', 'subtotal', 'shipping_total', 'tax_total'])
 
         # Extract relevant data from orders
@@ -151,15 +151,15 @@ class WooCommerceClient:
                     'tax_total': float(order['total_tax'])
                 })
             except (KeyError, ValueError) as e:
-                st.debug(f"Error processing order: {str(e)}")
-                st.debug(f"Problematic order data: {order}")
+                st.sidebar.error(f"Error processing order: {str(e)}")
+                st.sidebar.error(f"Problematic order data: {order}")
                 continue  # Skip malformed orders
 
         # Create DataFrame
         df = pd.DataFrame(order_data)
 
         if df.empty:
-            st.debug("No valid orders found after processing")
+            st.sidebar.warning("No valid orders found after processing")
             return df
 
         # Group by date and calculate daily metrics
@@ -170,5 +170,5 @@ class WooCommerceClient:
             'tax_total': 'sum'
         }).reset_index()
 
-        st.debug(f"Processed {len(daily_metrics)} days of order data")
+        st.sidebar.success(f"Processed {len(daily_metrics)} days of order data")
         return daily_metrics
