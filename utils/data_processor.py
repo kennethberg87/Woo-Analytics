@@ -23,7 +23,8 @@ class DataProcessor:
 
         # Calculate totals from products DataFrame
         total_cost = df_products['cost'].sum() if 'cost' in df_products.columns else 0
-        total_revenue_incl_vat = df['total'].sum()
+        total_shipping = df['shipping_total'].sum()
+        total_revenue_incl_vat = df['total'].sum() - total_shipping  # Exclude shipping from revenue
         total_tax = df['tax_total'].sum()
 
         # Calculate revenue excluding VAT
@@ -33,21 +34,23 @@ class DataProcessor:
         total_profit = total_revenue_excl_vat - total_cost
         profit_margin = (total_profit / total_revenue_excl_vat * 100) if total_revenue_excl_vat > 0 else 0
 
-        # Calculate average revenue based on period
+        # Calculate average revenue based on period (excluding shipping)
+        df['revenue_no_shipping'] = df['total'] - df['shipping_total']
         if period == 'weekly':
             df['period'] = df['date'].dt.strftime('%Y-W%U')
-            avg_revenue = df.groupby('period')['total'].sum().mean()
+            avg_revenue = df.groupby('period')['revenue_no_shipping'].sum().mean()
         elif period == 'monthly':
             df['period'] = df['date'].dt.strftime('%Y-%m')
-            avg_revenue = df.groupby('period')['total'].sum().mean()
+            avg_revenue = df.groupby('period')['revenue_no_shipping'].sum().mean()
         else:  # daily
-            avg_revenue = df.groupby('date')['total'].sum().mean()
+            avg_revenue = df.groupby('date')['revenue_no_shipping'].sum().mean()
 
         metrics = {
             'total_revenue_incl_vat': total_revenue_incl_vat,
             'total_revenue_excl_vat': total_revenue_excl_vat,
             'average_revenue': float(avg_revenue),  # Convert to float
             'total_tax': total_tax,
+            'total_shipping': total_shipping,
             'total_profit': total_profit,
             'profit_margin': profit_margin
         }

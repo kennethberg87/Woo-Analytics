@@ -133,29 +133,49 @@ def main():
     with col1:
         st.metric(
             "Total Revenue (incl. VAT)",
-            f"kr {metrics['total_revenue_incl_vat']:,.2f}"
+            f"kr {metrics['total_revenue_incl_vat']:,.2f}",
+            help="Total revenue including VAT, excluding shipping costs"
         )
     with col2:
         st.metric(
             "Total Revenue (excl. VAT)",
-            f"kr {metrics['total_revenue_excl_vat']:,.2f}"
+            f"kr {metrics['total_revenue_excl_vat']:,.2f}",
+            help="Total revenue excluding VAT and shipping costs"
         )
     with col3:
         st.metric(
             "Total Profit",
-            f"kr {metrics['total_profit']:,.2f}"
+            f"kr {metrics['total_profit']:,.2f}",
+            help="Profit calculated using revenue (excl. VAT) minus product costs"
         )
     with col4:
         st.metric(
-            "Profit Margin",
-            f"{metrics['profit_margin']:.1f}%"
+            "Total Shipping",
+            f"kr {metrics['total_shipping']:,.2f}",
+            help="Total shipping costs collected"
         )
 
-    # Add explanation about VAT calculations
+    # Add second row of metrics
+    col5, col6, col7, col8 = st.columns(4)
+    with col5:
+        st.metric(
+            "Total Tax",
+            f"kr {metrics['total_tax']:,.2f}",
+            help="Total VAT collected"
+        )
+    with col6:
+        st.metric(
+            "Profit Margin",
+            f"{metrics['profit_margin']:.1f}%",
+            help="Profit as percentage of revenue (excl. VAT)"
+        )
+
+    # Add explanation about calculations
     st.info("""
-    💡 Profit Calculation Details:
-    - Revenue (incl. VAT): Total sales including VAT
-    - Revenue (excl. VAT): Revenue after removing VAT
+    💡 Revenue and Profit Calculation Details:
+    - Revenue (incl. VAT): Total product sales including VAT, excluding shipping
+    - Revenue (excl. VAT): Product revenue after removing VAT
+    - Shipping costs are tracked separately and not included in revenue calculations
     - Profit: Revenue (excl. VAT) - Product Costs
     - Product costs are already VAT-exclusive
     """)
