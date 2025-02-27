@@ -103,6 +103,7 @@ class WooCommerceClient:
                 total = float(order.get('total', 0))
                 shipping_base = 0
                 shipping_tax = 0
+                status = order.get('status', '')  # Get order status
 
                 # Process shipping lines - now separating base and tax
                 for shipping in order.get('shipping_lines', []):
@@ -118,16 +119,18 @@ class WooCommerceClient:
 
                 # Debug information for each order
                 st.sidebar.write(f"\nOrder #{order_id} ({order_date}):")
+                st.sidebar.write(f"Status: {status}")
                 st.sidebar.write(f"Total (inc VAT): {total}")
                 st.sidebar.write(f"Shipping Base (ex VAT): {shipping_base}")
                 st.sidebar.write(f"Shipping Tax: {shipping_tax}")
                 st.sidebar.write(f"Total Shipping (inc VAT): {total_shipping}")
                 st.sidebar.write(f"Total Tax: {total_tax}")
 
-                # Create order record - now including both base and total shipping
+                # Create order record - now including status
                 order_info = {
                     'date': order_date,
                     'order_id': order_id,
+                    'status': status,
                     'total': total,
                     'subtotal': subtotal,
                     'shipping_base': shipping_base,  # Base shipping cost (ex VAT)
@@ -138,7 +141,7 @@ class WooCommerceClient:
 
                 order_data.append(order_info)
 
-                # Process line items
+                # Process line items (unchanged)
                 for item in order.get('line_items', []):
                     quantity = int(item.get('quantity', 0))
                     cost = 0
@@ -178,7 +181,8 @@ class WooCommerceClient:
             'shipping_base': 'sum',  # Base shipping ex VAT
             'shipping_total': 'sum',  # Total shipping inc VAT
             'shipping_tax': 'sum',  # Shipping VAT
-            'tax_total': 'sum'
+            'tax_total': 'sum',
+            'status': lambda x: list(x)  # Include status in aggregation
         }).reset_index()
 
         st.sidebar.write("\n=== Daily Totals ===")
@@ -188,5 +192,6 @@ class WooCommerceClient:
             st.sidebar.write(f"Shipping Base (ex VAT): {row['shipping_base']:.2f}")
             st.sidebar.write(f"Shipping Tax: {row['shipping_tax']:.2f}")
             st.sidebar.write(f"Total Tax: {row['tax_total']:.2f}")
+            st.sidebar.write(f"Order Statuses: {row['status']}")
 
         return daily_metrics, df_products

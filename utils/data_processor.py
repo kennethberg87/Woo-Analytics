@@ -30,7 +30,10 @@ class DataProcessor:
         total_tax = df['tax_total'].sum()  # Total VAT (including shipping VAT)
 
         # Count orders using the total field (each row represents an order)
-        order_count = len(df)  # Each row in daily metrics represents an order
+        if 'status' in df.columns:
+            order_count = len(df[df['status'] == 'on-hold'])  # Only count on-hold orders
+        else:
+            order_count = 0  # If status column is not available, return 0
 
         # Calculate revenues (excluding shipping)
         total_revenue_incl_vat = df['total'].sum() - df['shipping_total'].sum()  # Total revenue excluding shipping
