@@ -8,7 +8,9 @@ from requests.exceptions import SSLError, ConnectionError
 from urllib.parse import urlparse
 import pytz
 
+
 class WooCommerceClient:
+
     def __init__(self):
         try:
             # Validate store URL
@@ -21,17 +23,16 @@ class WooCommerceClient:
                 raise ValueError("Invalid WooCommerce store URL format")
 
             # Initialize API client
-            self.wcapi = API(
-                url=store_url,
-                consumer_key=os.getenv('WOOCOMMERCE_KEY'),
-                consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
-                version="wc/v3",
-                verify_ssl=False,
-                timeout=30
-            )
+            self.wcapi = API(url=store_url,
+                             consumer_key=os.getenv('WOOCOMMERCE_KEY'),
+                             consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
+                             version="wc/v3",
+                             verify_ssl=False,
+                             timeout=30)
 
         except Exception as e:
-            st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
+            st.sidebar.error(
+                f"Failed to initialize WooCommerce client: {str(e)}")
             raise
 
     def get_payment_method_display(self, payment_method):
@@ -76,8 +77,10 @@ class WooCommerceClient:
             utc_tz = pytz.UTC
 
             # Convert start and end dates to UTC
-            start_date_oslo = oslo_tz.localize(datetime.combine(start_date, datetime.min.time()))
-            end_date_oslo = oslo_tz.localize(datetime.combine(end_date, datetime.max.time()))
+            start_date_oslo = oslo_tz.localize(
+                datetime.combine(start_date, datetime.min.time()))
+            end_date_oslo = oslo_tz.localize(
+                datetime.combine(end_date, datetime.max.time()))
 
             start_date_utc = start_date_oslo.astimezone(utc_tz)
             end_date_utc = end_date_oslo.astimezone(utc_tz)
@@ -148,29 +151,29 @@ class WooCommerceClient:
                 # Calculate total shipping
                 total_shipping = shipping_base + shipping_tax
                 total_tax = float(order.get('total_tax', 0))
-                subtotal = sum(float(item.get('subtotal', 0)) for item in order.get('line_items', []))
+                subtotal = sum(
+                    float(item.get('subtotal', 0))
+                    for item in order.get('line_items', []))
 
                 # Get billing information
                 billing = order.get('billing', {})
 
                 # Get Dintero payment method and shipping method
-                dintero_method = self.get_dintero_payment_method(order.get('meta_data', []))
+                dintero_method = self.get_dintero_payment_method(
+                    order.get('meta_data', []))
                 shipping_method = self.get_shipping_method(shipping_lines)
 
                 # Create order record
                 order_info = {
-                    'date': order_date,
-                    'order_id': order_id,
+                    'Dato': order_date,
+                    'Ordre-ID': order_id,
                     'status': status,
-                    'total': total,
-                    'subtotal': subtotal,
-                    'shipping_base': shipping_base,
-                    'shipping_total': total_shipping,
-                    'shipping_tax': shipping_tax,
-                    'tax_total': total_tax,
+                    'Totalt': total,
+                    'Frakt': total_shipping,
+                    'Totalt MVA': total_tax,
                     'billing': billing,
-                    'dintero_payment_method': dintero_method,
-                    'shipping_method': shipping_method
+                    'Betalingsmetode': dintero_method,
+                    'Leveringsmetode': shipping_method
                 }
 
                 order_data.append(order_info)
@@ -188,18 +191,27 @@ class WooCommerceClient:
                             break
 
                     product_data.append({
-                        'date': order_date,
-                        'product_id': item.get('product_id'),
-                        'name': item.get('name'),
-                        'quantity': quantity,
-                        'total': float(item.get('total', 0)),
-                        'subtotal': float(item.get('subtotal', 0)),
-                        'tax': float(item.get('total_tax', 0)),
-                        'cost': cost * quantity
+                        'Dato':
+                        order_date,
+                        'product_id':
+                        item.get('product_id'),
+                        'name':
+                        item.get('name'),
+                        'quantity':
+                        quantity,
+                        'total':
+                        float(item.get('total', 0)),
+                        'subtotal':
+                        float(item.get('subtotal', 0)),
+                        'tax':
+                        float(item.get('total_tax', 0)),
+                        'cost':
+                        cost * quantity
                     })
 
             except Exception as e:
-                st.sidebar.error(f"Error processing order {order.get('id')}: {str(e)}")
+                st.sidebar.error(
+                    f"Error processing order {order.get('id')}: {str(e)}")
                 continue
 
         # Create DataFrames from collected data
