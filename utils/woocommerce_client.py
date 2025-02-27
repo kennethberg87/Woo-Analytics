@@ -66,6 +66,13 @@ class WooCommerceClient:
             return shipping_lines[0].get('method_title', '')
         return ''
 
+    def get_order_number(self, meta_data):
+        """Extract formatted order number from order meta data"""
+        for meta in meta_data:
+            if meta.get('key') == '_order_number_formatted':
+                return meta.get('value', '')
+        return ''
+
     def get_orders(self, start_date, end_date):
         """
         Fetch orders from WooCommerce API within the specified date range
@@ -156,15 +163,17 @@ class WooCommerceClient:
                 # Get billing information
                 billing = order.get('billing', {})
 
-                # Get Dintero payment method and shipping method
+                # Get order number, payment method and shipping method
+                order_number = self.get_order_number(order.get('meta_data', []))
                 dintero_method = self.get_dintero_payment_method(
                     order.get('meta_data', []))
                 shipping_method = self.get_shipping_method(shipping_lines)
 
                 # Create order record
                 order_info = {
-                    'date': order_date,  # Keep original 'date' column name
+                    'date': order_date,
                     'order_id': order_id,
+                    'order_number': order_number,
                     'status': status,
                     'total': total,
                     'subtotal': subtotal,
@@ -192,7 +201,7 @@ class WooCommerceClient:
                             break
 
                     product_data.append({
-                        'date': order_date,  # Keep original 'date' column name
+                        'date': order_date,
                         'product_id': item.get('product_id'),
                         'name': item.get('name'),
                         'quantity': quantity,
@@ -211,8 +220,4 @@ class WooCommerceClient:
         df_orders = pd.DataFrame(order_data)
         df_products = pd.DataFrame(product_data)
 
-        if df_orders.empty:
-            return df_orders, df_products
-
-        # Do not aggregate by date - return the full orders DataFrame to preserve status and billing info
         return df_orders, df_products

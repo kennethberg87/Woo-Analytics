@@ -222,15 +222,15 @@ def main():
                 "E-postadresse",
                 "Order Date":
                 st.column_config.DatetimeColumn("Ordre utført",
-                                              format="DD.MM.YYYY HH:mm"),
+                                                 format="DD.MM.YYYY HH:mm"),
                 "Payment Method":
                 "Betalingsmetode",
                 "Shipping Method":
                 "Fraktmetode",
                 "Total Orders":
                 st.column_config.NumberColumn("Ordretotal",
-                                           help="Totalsum for ordren",
-                                           format="kr %.2f")
+                                              help="Totalsum for ordren",
+                                              format="kr %.2f")
             },
             hide_index=True,
             use_container_width=True)
@@ -252,8 +252,8 @@ def main():
     with export_col1:
         st.subheader("Eksporter ordredata")
         export_format = st.selectbox("Velg filformat for eksport av ordredata",
-                                   options=['CSV', 'Excel', 'JSON', 'PDF'],
-                                   key='orders_export_format')
+                                      options=['CSV', 'Excel', 'JSON', 'PDF'],
+                                      key='orders_export_format')
         ExportHandler.export_data(df, "orders", export_format)
 
     with export_col2:
@@ -268,12 +268,16 @@ def main():
     with st.expander("Vis ordredata"):
         st.subheader("Ordredata")
         # Create a display copy of the DataFrame without unwanted columns
-        display_df = df.drop(columns=['shipping_base', 'subtotal', 'shipping_tax', 'revenue_no_shipping', 'tax_total'])
+        display_df = df.drop(columns=['shipping_base', 'subtotal', 'shipping_tax', 'revenue_no_shipping', 'tax_total', 'order_id'])
 
         # Add customer name column
         display_df['customer_name'] = display_df['billing'].apply(
             lambda x: f"{x.get('first_name', '')} {x.get('last_name', '')}".strip()
         )
+
+        # Add order number column (assuming it exists after API modification)
+        display_df['order_number'] = display_df['meta_data'].apply(lambda x: next((item['value'] for item in x if item['key'] == '_order_number_formatted'), None))
+
 
         # Remove the original billing column and reorder
         display_df = display_df.drop(columns=['billing'])
@@ -285,7 +289,7 @@ def main():
             }),
             column_config={
                 "date": "Dato",
-                "order_id": "Ordre-ID",
+                "order_number": "Ordrenummer",
                 "status": "Status",
                 "customer_name": "Kundenavn",
                 "total": "Totalt",
