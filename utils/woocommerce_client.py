@@ -24,15 +24,14 @@ class WooCommerceClient:
 
             # Initialize API client
             self.wcapi = API(url=store_url,
-                             consumer_key=os.getenv('WOOCOMMERCE_KEY'),
-                             consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
-                             version="wc/v3",
-                             verify_ssl=False,
-                             timeout=30)
+                            consumer_key=os.getenv('WOOCOMMERCE_KEY'),
+                            consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
+                            version="wc/v3",
+                            verify_ssl=False,
+                            timeout=30)
 
         except Exception as e:
-            st.sidebar.error(
-                f"Failed to initialize WooCommerce client: {str(e)}")
+            st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
             raise
 
     def get_payment_method_display(self, payment_method):
@@ -98,9 +97,9 @@ class WooCommerceClient:
 
             if isinstance(data, list):
                 st.sidebar.write(f"Number of orders returned: {len(data)}")
-                for order in data[:1]:  # Log first order for debugging
+                if len(data) > 0:
                     st.sidebar.write("\nFirst order sample:")
-                    st.sidebar.write(order)
+                    st.sidebar.write(data[0])
                 return data
             else:
                 st.sidebar.error("Invalid response format")
@@ -151,9 +150,8 @@ class WooCommerceClient:
                 # Calculate total shipping
                 total_shipping = shipping_base + shipping_tax
                 total_tax = float(order.get('total_tax', 0))
-                subtotal = sum(
-                    float(item.get('subtotal', 0))
-                    for item in order.get('line_items', []))
+                subtotal = sum(float(item.get('subtotal', 0))
+                             for item in order.get('line_items', []))
 
                 # Get billing information
                 billing = order.get('billing', {})
@@ -165,15 +163,18 @@ class WooCommerceClient:
 
                 # Create order record
                 order_info = {
-                    'Dato': order_date,
-                    'Ordre-ID': order_id,
+                    'date': order_date,  # Keep original 'date' column name
+                    'order_id': order_id,
                     'status': status,
-                    'Totalt': total,
-                    'Frakt': total_shipping,
-                    'Totalt MVA': total_tax,
+                    'total': total,
+                    'subtotal': subtotal,
+                    'shipping_base': shipping_base,
+                    'shipping_total': total_shipping,
+                    'shipping_tax': shipping_tax,
+                    'tax_total': total_tax,
                     'billing': billing,
-                    'Betalingsmetode': dintero_method,
-                    'Leveringsmetode': shipping_method
+                    'dintero_payment_method': dintero_method,
+                    'shipping_method': shipping_method
                 }
 
                 order_data.append(order_info)
@@ -191,22 +192,14 @@ class WooCommerceClient:
                             break
 
                     product_data.append({
-                        'Dato':
-                        order_date,
-                        'product_id':
-                        item.get('product_id'),
-                        'name':
-                        item.get('name'),
-                        'quantity':
-                        quantity,
-                        'total':
-                        float(item.get('total', 0)),
-                        'subtotal':
-                        float(item.get('subtotal', 0)),
-                        'tax':
-                        float(item.get('total_tax', 0)),
-                        'cost':
-                        cost * quantity
+                        'date': order_date,  # Keep original 'date' column name
+                        'product_id': item.get('product_id'),
+                        'name': item.get('name'),
+                        'quantity': quantity,
+                        'total': float(item.get('total', 0)),
+                        'subtotal': float(item.get('subtotal', 0)),
+                        'tax': float(item.get('total_tax', 0)),
+                        'cost': cost * quantity
                     })
 
             except Exception as e:
