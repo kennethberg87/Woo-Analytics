@@ -79,8 +79,8 @@ def main():
 
     with st.columns(2)[1]:
         end_date = st.date_input("Sluttdato",
-                                 value=today,
-                                 help="Select end date (defaults to today)")
+                                value=today,
+                                help="Select end date (defaults to today)")
 
     # Validate date range
     if start_date > end_date:
@@ -147,7 +147,6 @@ def main():
     with col4:
         # Removed shipping_base metric
         pass
-
 
     # Add second row of metrics
     col5, col6, col7, col8 = st.columns(4)
@@ -223,15 +222,15 @@ def main():
                 "E-postadresse",
                 "Order Date":
                 st.column_config.DatetimeColumn("Ordre utført",
-                                                format="DD.MM.YYYY HH:mm"),
+                                              format="DD.MM.YYYY HH:mm"),
                 "Payment Method":
                 "Betalingsmetode",
                 "Shipping Method":
                 "Fraktmetode",
                 "Total Orders":
                 st.column_config.NumberColumn("Ordretotal",
-                                              help="Totalsum for ordren",
-                                              format="kr %.2f")
+                                           help="Totalsum for ordren",
+                                           format="kr %.2f")
             },
             hide_index=True,
             use_container_width=True)
@@ -253,8 +252,8 @@ def main():
     with export_col1:
         st.subheader("Eksporter ordredata")
         export_format = st.selectbox("Velg filformat for eksport av ordredata",
-                                     options=['CSV', 'Excel', 'JSON', 'PDF'],
-                                     key='orders_export_format')
+                                   options=['CSV', 'Excel', 'JSON', 'PDF'],
+                                   key='orders_export_format')
         ExportHandler.export_data(df, "orders", export_format)
 
     with export_col2:
@@ -263,15 +262,24 @@ def main():
             "Velg filformat for eksport av produktdata",
             options=['CSV', 'Excel', 'JSON', 'PDF'],
             key='products_export_format')
-        ExportHandler.export_data(df_products, "products",
-                                  export_format_products)
+        ExportHandler.export_data(df_products, "products", export_format_products)
 
     # Raw data tables
     with st.expander("Vis ordredata"):
         st.subheader("Ordredata")
-        # Create a display copy of the DataFrame without shipping_base, subtotal, and shipping_tax
-        display_df = df.drop(columns=['shipping_base', 'subtotal', 'shipping_tax'])
-        st.dataframe(display_df.style.format({
+        # Create a display copy of the DataFrame without unwanted columns
+        display_df = df.drop(columns=['shipping_base', 'subtotal', 'shipping_tax', 'revenue_no_shipping'])
+
+        # Add customer name column
+        display_df['customer_name'] = display_df['billing'].apply(
+            lambda x: f"{x.get('first_name', '')} {x.get('last_name', '')}".strip()
+        )
+
+        # Remove the original billing column and reorder
+        display_df = display_df.drop(columns=['billing'])
+
+        st.dataframe(
+            display_df.style.format({
                 'total': 'kr {:,.2f}',
                 'shipping_total': 'kr {:,.2f}',
                 'tax_total': 'kr {:,.2f}'
@@ -280,6 +288,7 @@ def main():
                 "date": "Dato",
                 "order_id": "Ordre-ID",
                 "status": "Status",
+                "customer_name": "Kundenavn",
                 "total": "Totalt",
                 "shipping_total": "Frakt (inkl. MVA)",
                 "tax_total": "Total MVA",
