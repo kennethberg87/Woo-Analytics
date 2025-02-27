@@ -268,7 +268,7 @@ def main():
     with st.expander("Vis ordredata"):
         st.subheader("Ordredata")
         # Create a display copy of the DataFrame without unwanted columns
-        display_df = df.drop(columns=['shipping_base', 'subtotal', 'shipping_tax', 'revenue_no_shipping'])
+        display_df = df.drop(columns=['shipping_base', 'subtotal', 'shipping_tax', 'revenue_no_shipping', 'tax_total'])
 
         # Add customer name column
         display_df['customer_name'] = display_df['billing'].apply(
@@ -281,8 +281,7 @@ def main():
         st.dataframe(
             display_df.style.format({
                 'total': 'kr {:,.2f}',
-                'shipping_total': 'kr {:,.2f}',
-                'tax_total': 'kr {:,.2f}'
+                'shipping_total': 'kr {:,.2f}'
             }),
             column_config={
                 "date": "Dato",
@@ -291,7 +290,6 @@ def main():
                 "customer_name": "Kundenavn",
                 "total": "Totalt",
                 "shipping_total": "Frakt (inkl. MVA)",
-                "tax_total": "Total MVA",
                 "dintero_payment_method": "Betalingsmetode",
                 "shipping_method": "Leveringsmetode"
             },
