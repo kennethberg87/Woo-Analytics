@@ -269,25 +269,28 @@ def main():
     # Raw data tables
     with st.expander("Vis ordredata"):
         st.subheader("Ordredata")
-        st.dataframe(df.style.format({
-            'total': 'kr {:,.2f}',
-            'subtotal': 'kr {:,.2f}',
-            'shipping_total': 'kr {:,.2f}',
-            'tax_total': 'kr {:,.2f}'
-        }),
-                     column_config={
-                         "date": "Dato",
-                         "order_id": "Ordre-ID",
-                         "status": "Status",
-                         "total": "Totalt",
-                         "subtotal": "Subtotal",
-                         "shipping_total": "Frakt (inkl. MVA)",
-                         "shipping_tax": "Frakt MVA",
-                         "tax_total": "Total MVA",
-                         "dintero_payment_method": "Betalingsmetode",
-                         "shipping_method": "Leveringsmetode"
-                     },
-                     hide_index=True)
+        # Create a display copy of the DataFrame without shipping_base
+        display_df = df.drop(columns=['shipping_base'])
+        st.dataframe(display_df.style.format({
+                'total': 'kr {:,.2f}',
+                'subtotal': 'kr {:,.2f}',
+                'shipping_total': 'kr {:,.2f}',
+                'shipping_tax': 'kr {:,.2f}',
+                'tax_total': 'kr {:,.2f}'
+            }),
+            column_config={
+                "date": "Dato",
+                "order_id": "Ordre-ID",
+                "status": "Status",
+                "total": "Totalt",
+                "subtotal": "Subtotal",
+                "shipping_total": "Frakt (inkl. MVA)",
+                "shipping_tax": "Frakt MVA",
+                "tax_total": "Total MVA",
+                "dintero_payment_method": "Betalingsmetode",
+                "shipping_method": "Leveringsmetode"
+            },
+            hide_index=True)
 
         st.subheader("Produktdata")
         if not df_products.empty:
@@ -309,7 +312,6 @@ def main():
                 },
                 hide_index=True
             )
-
 
 if __name__ == "__main__":
     main()
