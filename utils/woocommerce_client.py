@@ -38,9 +38,12 @@ class WooCommerceClient:
         Fetch orders from WooCommerce API within the specified date range
         """
         try:
+            # Add one day to end_date to include orders from the full day
+            end_date_inclusive = end_date + timedelta(days=1)
+
             # Convert dates to WooCommerce expected format (ISO 8601)
             start_date_str = start_date.strftime('%Y-%m-%dT00:00:00')
-            end_date_str = end_date.strftime('%Y-%m-%dT23:59:59')
+            end_date_str = end_date_inclusive.strftime('%Y-%m-%dT00:00:00')
 
             st.write("Date Range Selection")
             st.write(f"Fetching orders from {start_date} to {end_date}")
@@ -58,7 +61,7 @@ class WooCommerceClient:
                     "after": start_date_str,
                     "before": end_date_str,
                     "per_page": 100,
-                    "status": ["pending", "processing", "on-hold", "completed", "delivered"],
+                    "status": ["pending", "processing", "on-hold", "completed", "delivered", "cancelled", "refunded", "failed"],
                     "page": page,
                     "orderby": "date",
                     "order": "desc"
@@ -69,10 +72,8 @@ class WooCommerceClient:
 
                 response = self.wcapi.get("orders", params=params)
 
-                # Debug API response
-                st.sidebar.write("API Response:")
-                st.sidebar.write(f"Status Code: {response.status_code}")
-                st.sidebar.write(f"Headers: {dict(response.headers)}")
+                st.sidebar.write("API Response Status:", response.status_code)
+                st.sidebar.write("API Response Headers:", dict(response.headers))
 
                 if response.status_code != 200:
                     st.sidebar.error(f"Failed to fetch orders. Status: {response.status_code}")
@@ -99,7 +100,8 @@ class WooCommerceClient:
                         'id': first_order.get('id'),
                         'status': first_order.get('status'),
                         'date_created': first_order.get('date_created'),
-                        'total': first_order.get('total')
+                        'total': first_order.get('total'),
+                        'date_modified': first_order.get('date_modified')
                     })
 
                 all_orders.extend(orders)
@@ -118,6 +120,14 @@ class WooCommerceClient:
                 page += 1
 
             st.sidebar.success(f"Successfully fetched {len(all_orders)} orders")
+
+            # Debug order dates
+            if all_orders:
+                st.sidebar.write("\nOrder Dates Summary:")
+                dates = [order.get('date_created') for order in all_orders]
+                st.sidebar.write(f"First order date: {dates[0]}")
+                st.sidebar.write(f"Last order date: {dates[-1]}")
+
             return all_orders
 
         except Exception as e:
