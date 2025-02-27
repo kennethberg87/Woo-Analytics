@@ -64,35 +64,26 @@ def main():
     # Date range selector
     st.sidebar.subheader("Date Range Selection")
 
-    # Set fixed date range for testing (known working dates)
-    default_start = datetime(2024, 2, 20).date()  # Fixed start date
-    default_end = datetime(2024, 2, 27).date()    # Fixed end date
+    # Get today's date
+    today = datetime.now().date()
 
     with st.columns(2)[0]:
         start_date = st.date_input(
             "Start Date",
-            value=default_start,
-            min_value=default_start,
-            max_value=default_end,
-            help="Select start date (February 20-27, 2024)"
+            value=today,
+            help="Select start date (defaults to today)"
         )
 
     with st.columns(2)[1]:
         end_date = st.date_input(
             "End Date",
-            value=default_end,
-            min_value=start_date,
-            max_value=default_end,
-            help="Select end date (February 20-27, 2024)"
+            value=today,
+            help="Select end date (defaults to today)"
         )
 
     # Validate date range
     if start_date > end_date:
         st.error("Error: End date must be after start date")
-        return
-
-    if start_date < default_start or end_date > default_end:
-        st.error("Error: Please select dates between February 20-27, 2024")
         return
 
     st.info(f"Fetching orders from {start_date} to {end_date}")
