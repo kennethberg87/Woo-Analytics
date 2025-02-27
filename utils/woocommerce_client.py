@@ -50,10 +50,6 @@ class WooCommerceClient:
             start_date_utc = start_date_oslo.astimezone(utc_tz)
             end_date_utc = end_date_oslo.astimezone(utc_tz)
 
-            st.sidebar.write(f"Fetching orders from {start_date} to {end_date}")
-            st.sidebar.write(f"Oslo time range: {start_date_oslo} to {end_date_oslo}")
-            st.sidebar.write(f"UTC time range: {start_date_utc} to {end_date_utc}")
-
             params = {
                 "after": start_date_utc.isoformat(),
                 "before": end_date_utc.isoformat(),
@@ -61,11 +57,15 @@ class WooCommerceClient:
                 "status": "any"
             }
 
+            st.sidebar.write(f"API Request Parameters: {params}")
             response = self.wcapi.get("orders", params=params)
             data = response.json()
 
             if isinstance(data, list):
-                st.sidebar.write(f"Number of orders fetched: {len(data)}")
+                st.sidebar.write(f"Number of orders returned: {len(data)}")
+                for order in data[:1]:  # Log first order for debugging
+                    st.sidebar.write("\nFirst order sample:")
+                    st.sidebar.write(order)
                 return data
             else:
                 st.sidebar.error("Invalid response format")
@@ -101,33 +101,33 @@ class WooCommerceClient:
                 # Initialize order info
                 order_id = order.get('id')
                 total = float(order.get('total', 0))
-                total_tax = float(order.get('total_tax', 0))
-
-                # Process shipping lines
                 shipping_total = 0
                 shipping_tax = 0
-                for shipping in order.get('shipping_lines', []):
-                    shipping_base = float(shipping.get('total', 0))
-                    ship_tax = float(shipping.get('total_tax', 0))
-                    shipping_total += shipping_base
-                    shipping_tax += ship_tax
 
+                # Process shipping lines
+                for shipping in order.get('shipping_lines', []):
+                    shipping_total += float(shipping.get('total', 0))
+                    shipping_tax += float(shipping.get('total_tax', 0))
+
+                # Calculate order totals
                 total_shipping = shipping_total + shipping_tax
+                total_tax = float(order.get('total_tax', 0))
+                subtotal = sum(float(item.get('subtotal', 0)) for item in order.get('line_items', []))
 
                 # Debug information for each order
                 st.sidebar.write(f"\nOrder #{order_id} ({order_date}):")
                 st.sidebar.write(f"Total (inc VAT): {total}")
-                st.sidebar.write(f"Total Tax: {total_tax}")
                 st.sidebar.write(f"Shipping Base: {shipping_total}")
                 st.sidebar.write(f"Shipping Tax: {shipping_tax}")
                 st.sidebar.write(f"Total Shipping: {total_shipping}")
+                st.sidebar.write(f"Total Tax: {total_tax}")
 
                 # Create order record
                 order_info = {
                     'date': order_date,
                     'order_id': order_id,
                     'total': total,
-                    'subtotal': sum(float(item.get('subtotal', 0)) for item in order.get('line_items', [])),
+                    'subtotal': subtotal,
                     'shipping_total': total_shipping,
                     'tax_total': total_tax
                 }
@@ -167,7 +167,7 @@ class WooCommerceClient:
         if df_orders.empty:
             return df_orders, df_products
 
-        # Daily metrics
+        # Group orders by date for daily metrics
         daily_metrics = df_orders.groupby('date').agg({
             'total': 'sum',
             'subtotal': 'sum',
@@ -177,9 +177,9 @@ class WooCommerceClient:
 
         st.sidebar.write("\n=== Daily Totals ===")
         for _, row in daily_metrics.iterrows():
-            st.sidebar.write(f"\nDate: {row['date']}")
-            st.sidebar.write(f"Total: {row['total']:.2f}")
-            st.sidebar.write(f"Shipping: {row['shipping_total']:.2f}")
-            st.sidebar.write(f"Tax: {row['tax_total']:.2f}")
+            st.sidebar.write(f"\nDate: {row['date'].strftime('%Y-%m-%d')}")
+            st.sidebar.write(f"Total Order Sum: {row['total']:.2f}")
+            st.sidebar.write(f"Total Shipping: {row['shipping_total']:.2f}")
+            st.sidebar.write(f"Total Tax: {row['tax_total']:.2f}")
 
         return daily_metrics, df_products
