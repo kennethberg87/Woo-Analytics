@@ -23,10 +23,6 @@ if 'woo_client' not in st.session_state:
         - WOOCOMMERCE_URL: Your store URL (e.g., https://your-store.com)
         - WOOCOMMERCE_KEY: Your API consumer key
         - WOOCOMMERCE_SECRET: Your API consumer secret
-
-        You can find/create these credentials in your WooCommerce dashboard:
-        1. Go to WooCommerce > Settings > Advanced > REST API
-        2. Click 'Add key' and create a new key with 'Read' permissions
         """)
         st.stop()
 
@@ -35,33 +31,34 @@ def main():
     st.title("📊 WooCommerce Daily Turnover Dashboard")
 
     # Debug mode toggle
-    debug_mode = st.sidebar.checkbox("Debug Mode", value=True)  # Default to True for troubleshooting
+    debug_mode = st.sidebar.checkbox("Debug Mode", value=True)
     if debug_mode:
         st.sidebar.info("Debug mode is enabled. You will see detailed API responses and error messages.")
 
     # Date range selector
     st.sidebar.subheader("Date Range Selection")
 
-    # Calculate default dates
-    today = datetime.now().date()
-    default_start = today - timedelta(days=7)  # Default to last 7 days
+    # Calculate default dates - Use 2024 as base year for querying real data
+    base_date = datetime(2024, 2, 27).date()  # Use a past date as reference
+    default_end = base_date
+    default_start = default_end - timedelta(days=7)
 
     col1, col2 = st.columns(2)
     with col1:
         start_date = st.date_input(
             "Start Date",
             value=default_start,
-            max_value=today,
-            help="Select start date (up to today)"
+            max_value=default_end,
+            help="Select start date (defaults to 7 days before end date)"
         )
 
     with col2:
         end_date = st.date_input(
             "End Date",
-            value=today,
+            value=default_end,
             min_value=start_date,
-            max_value=today,
-            help="Select end date (up to today)"
+            max_value=base_date,
+            help="Select end date (up to February 27, 2024)"
         )
 
     # Validate date range
@@ -69,8 +66,8 @@ def main():
         st.error("Error: End date must be after start date")
         return
 
-    if start_date > today or end_date > today:
-        st.error("Error: Cannot select future dates")
+    if start_date > base_date or end_date > base_date:
+        st.error("Error: Please select dates before February 27, 2024")
         return
 
     st.info(f"Fetching orders from {start_date} to {end_date}")
@@ -82,6 +79,8 @@ def main():
 
             if debug_mode:
                 st.sidebar.write("Raw order count:", len(orders))
+                if len(orders) > 0:
+                    st.sidebar.write("Sample order data:", orders[0])
 
             df = st.session_state.woo_client.process_orders_to_df(orders)
 
