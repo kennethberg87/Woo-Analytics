@@ -145,9 +145,9 @@ def main():
             help=
             "Profit calculated using revenue (excl. VAT) minus product costs")
     with col4:
-        st.metric("Fraktinntekter (eks. MVA)",
-                  f"kr {metrics['shipping_base']:,.2f}",
-                  help="Total shipping costs excluding VAT")
+        # Removed shipping_base metric
+        pass
+
 
     # Add second row of metrics
     col5, col6, col7, col8 = st.columns(4)
@@ -271,6 +271,7 @@ def main():
         st.subheader("Ordredata")
         st.dataframe(df.style.format({
             'total': 'kr {:,.2f}',
+            'subtotal': 'kr {:,.2f}',
             'shipping_total': 'kr {:,.2f}',
             'tax_total': 'kr {:,.2f}'
         }),
@@ -278,8 +279,11 @@ def main():
                          "date": "Dato",
                          "order_id": "Ordre-ID",
                          "status": "Status",
-                         "total": "Totalt inkl. frakt",
-                         "shipping_total": "Fraktkostnader (inkl. MVA)",
+                         "total": "Totalt",
+                         "subtotal": "Subtotal",
+                         "shipping_total": "Frakt (inkl. MVA)",
+                         "shipping_tax": "Frakt MVA",
+                         "tax_total": "Total MVA",
                          "dintero_payment_method": "Betalingsmetode",
                          "shipping_method": "Leveringsmetode"
                      },
@@ -287,20 +291,24 @@ def main():
 
         st.subheader("Produktdata")
         if not df_products.empty:
-            st.dataframe(df_products.style.format({
-                'total': 'kr {:,.2f}',
-                'tax': 'kr {:,.2f}'
-            }),
-                         column_config={
-                             "date": "Dato",
-                             "product_id": "Produkt-ID",
-                             "name": "Produktnavn",
-                             "quantity": "Antall",
-                             "total": "Totalt",
-                             "tax": "MVA",
-                             "cost": "Kostnad"
-                         },
-                         hide_index=True)
+            st.dataframe(
+                df_products.style.format({
+                    'total': 'kr {:,.2f}',
+                    'subtotal': 'kr {:,.2f}',
+                    'tax': 'kr {:,.2f}'
+                }),
+                column_config={
+                    "date": "Dato",
+                    "product_id": "Produkt-ID",
+                    "name": "Produktnavn",
+                    "quantity": "Antall",
+                    "total": "Totalt",
+                    "subtotal": "Subtotal",
+                    "tax": "MVA",
+                    "cost": "Kostnad"
+                },
+                hide_index=True
+            )
 
 
 if __name__ == "__main__":
