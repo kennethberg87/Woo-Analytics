@@ -1,7 +1,7 @@
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import streamlit as st #Added import for streamlit
+import streamlit as st
 
 class DataProcessor:
     @staticmethod
@@ -28,9 +28,9 @@ class DataProcessor:
         total_shipping = df['shipping_total'].sum()
         total_tax = df['tax_total'].sum()
 
-        # Calculate revenues
+        # Calculate revenues (excluding shipping)
         total_revenue_incl_vat = df['total'].sum() - df['shipping_total'].sum()  # Total revenue excluding shipping
-        total_revenue_excl_vat = total_revenue_incl_vat - total_tax  # Revenue excluding VAT
+        total_revenue_excl_vat = total_revenue_incl_vat - total_tax  # Revenue excluding VAT and shipping
 
         # Calculate profit (using revenue excluding VAT)
         total_profit = total_revenue_excl_vat - total_cost
@@ -58,12 +58,12 @@ class DataProcessor:
         }
 
         # Debug information
-        st.sidebar.write("\nRevenue Calculation Details:")
+        st.sidebar.write("\nDetailed Revenue Calculations:")
         st.sidebar.write(f"Total Order Sum: {df['total'].sum():.2f}")
         st.sidebar.write(f"Total Shipping: {total_shipping:.2f}")
-        st.sidebar.write(f"Total Revenue (incl. VAT): {total_revenue_incl_vat:.2f}")
+        st.sidebar.write(f"Revenue (incl. VAT, no shipping): {total_revenue_incl_vat:.2f}")
         st.sidebar.write(f"Total Tax: {total_tax:.2f}")
-        st.sidebar.write(f"Total Revenue (excl. VAT): {total_revenue_excl_vat:.2f}")
+        st.sidebar.write(f"Revenue (excl. VAT & shipping): {total_revenue_excl_vat:.2f}")
 
         return metrics
 
