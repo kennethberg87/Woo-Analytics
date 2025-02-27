@@ -104,22 +104,22 @@ def main():
     with col1:
         st.metric(
             "Total Revenue",
-            f"${metrics['total_revenue']:,.2f}"
+            f"kr {metrics['total_revenue']:,.2f}"
         )
     with col2:
         st.metric(
             "Average Daily Revenue",
-            f"${metrics['average_daily_revenue']:,.2f}"
+            f"kr {metrics['average_daily_revenue']:,.2f}"
         )
     with col3:
         st.metric(
             "Total Shipping",
-            f"${metrics['total_shipping']:,.2f}"
+            f"kr {metrics['total_shipping']:,.2f}"
         )
     with col4:
         st.metric(
             "Total Tax",
-            f"${metrics['total_tax']:,.2f}"
+            f"kr {metrics['total_tax']:,.2f}"
         )
 
     # Charts
@@ -140,10 +140,10 @@ def main():
     with st.expander("View Raw Data"):
         st.dataframe(
             df.style.format({
-                'total': '${:,.2f}',
-                'subtotal': '${:,.2f}',
-                'shipping_total': '${:,.2f}',
-                'tax_total': '${:,.2f}'
+                'total': 'kr {:,.2f}',
+                'subtotal': 'kr {:,.2f}',
+                'shipping_total': 'kr {:,.2f}',
+                'tax_total': 'kr {:,.2f}'
             })
         )
 

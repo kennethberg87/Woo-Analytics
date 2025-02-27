@@ -23,7 +23,7 @@ class DataProcessor:
             'total_shipping': df['shipping_total'].sum(),
             'total_tax': df['tax_total'].sum()
         }
-        
+
         return metrics
 
     @staticmethod
@@ -39,16 +39,18 @@ class DataProcessor:
             x='date',
             y='total',
             title='Daily Revenue',
-            labels={'total': 'Revenue', 'date': 'Date'},
+            labels={'total': 'Revenue (NOK)', 'date': 'Date'},
             template='plotly_white'
         )
-        
+
         fig.update_layout(
             height=400,
             hovermode='x unified',
-            showlegend=False
+            showlegend=False,
+            yaxis_tickprefix='kr ',
+            yaxis_tickformat=',.2f'
         )
-        
+
         return fig
 
     @staticmethod
@@ -60,7 +62,7 @@ class DataProcessor:
             return None
 
         fig = go.Figure()
-        
+
         # Add traces for different components
         fig.add_trace(go.Bar(
             name='Subtotal',
@@ -68,14 +70,14 @@ class DataProcessor:
             y=df['subtotal'],
             marker_color='#2E86C1'
         ))
-        
+
         fig.add_trace(go.Bar(
             name='Shipping',
             x=df['date'],
             y=df['shipping_total'],
             marker_color='#28B463'
         ))
-        
+
         fig.add_trace(go.Bar(
             name='Tax',
             x=df['date'],
@@ -88,7 +90,10 @@ class DataProcessor:
             title='Daily Revenue Breakdown',
             height=400,
             template='plotly_white',
-            hovermode='x unified'
+            hovermode='x unified',
+            yaxis_title='Amount (NOK)',
+            yaxis_tickprefix='kr ',
+            yaxis_tickformat=',.2f'
         )
 
         return fig
