@@ -223,6 +223,7 @@ def main():
                 "Name": "Customer Name",
                 "Email": "Email Address",
                 "Payment Method": "Dintero Payment Method",
+                "Shipping Method": "Shipping Method",
                 "Total Orders": st.column_config.NumberColumn(
                     "Total Order Value",
                     help="Total value of all orders",

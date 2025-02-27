@@ -41,6 +41,12 @@ class WooCommerceClient:
                 return meta.get('value', '')
         return ''
 
+    def get_shipping_method(self, shipping_lines):
+        """Extract shipping method from order shipping lines"""
+        if shipping_lines and len(shipping_lines) > 0:
+            return shipping_lines[0].get('method_title', '')
+        return ''
+
     def get_orders(self, start_date, end_date):
         """
         Fetch orders from WooCommerce API within the specified date range
@@ -113,7 +119,8 @@ class WooCommerceClient:
                 shipping_tax = 0
 
                 # Process shipping lines
-                for shipping in order.get('shipping_lines', []):
+                shipping_lines = order.get('shipping_lines', [])
+                for shipping in shipping_lines:
                     base = float(shipping.get('total', 0))
                     tax = float(shipping.get('total_tax', 0))
                     shipping_base += base
@@ -127,8 +134,9 @@ class WooCommerceClient:
                 # Get billing information
                 billing = order.get('billing', {})
 
-                # Get Dintero payment method
+                # Get Dintero payment method and shipping method
                 dintero_method = self.get_dintero_payment_method(order.get('meta_data', []))
+                shipping_method = self.get_shipping_method(shipping_lines)
 
                 # Create order record
                 order_info = {
@@ -142,7 +150,8 @@ class WooCommerceClient:
                     'shipping_tax': shipping_tax,
                     'tax_total': total_tax,
                     'billing': billing,
-                    'dintero_payment_method': dintero_method
+                    'dintero_payment_method': dintero_method,
+                    'shipping_method': shipping_method
                 }
 
                 order_data.append(order_info)
