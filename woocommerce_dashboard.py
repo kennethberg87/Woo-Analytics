@@ -269,13 +269,11 @@ def main():
     # Raw data tables
     with st.expander("Vis ordredata"):
         st.subheader("Ordredata")
-        # Create a display copy of the DataFrame without shipping_base
-        display_df = df.drop(columns=['shipping_base'])
+        # Create a display copy of the DataFrame without shipping_base, subtotal, and shipping_tax
+        display_df = df.drop(columns=['shipping_base', 'subtotal', 'shipping_tax'])
         st.dataframe(display_df.style.format({
                 'total': 'kr {:,.2f}',
-                'subtotal': 'kr {:,.2f}',
                 'shipping_total': 'kr {:,.2f}',
-                'shipping_tax': 'kr {:,.2f}',
                 'tax_total': 'kr {:,.2f}'
             }),
             column_config={
@@ -283,9 +281,7 @@ def main():
                 "order_id": "Ordre-ID",
                 "status": "Status",
                 "total": "Totalt",
-                "subtotal": "Subtotal",
                 "shipping_total": "Frakt (inkl. MVA)",
-                "shipping_tax": "Frakt MVA",
                 "tax_total": "Total MVA",
                 "dintero_payment_method": "Betalingsmetode",
                 "shipping_method": "Leveringsmetode"
