@@ -166,7 +166,12 @@ def main():
             f"kr {metrics['total_cogs']:,.2f}",
             help="Total cost of products sold (excl. VAT)"
         )
-
+    with col8:
+        st.metric(
+            "Orders",
+            f"{metrics['order_count']}",
+            help="Total number of orders in selected period"
+        )
 
     # Add explanation about calculations
     st.info("""
