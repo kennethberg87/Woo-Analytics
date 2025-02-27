@@ -29,19 +29,19 @@ class DataProcessor:
         total_profit = total_revenue - total_cost
         profit_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
 
-        # Group by selected time period
+        # Calculate average revenue based on period
         if period == 'weekly':
             df['period'] = df['date'].dt.strftime('%Y-W%U')
-            grouped = df.groupby('period')
+            avg_revenue = df.groupby('period')['total'].sum().mean()
         elif period == 'monthly':
             df['period'] = df['date'].dt.strftime('%Y-%m')
-            grouped = df.groupby('period')
+            avg_revenue = df.groupby('period')['total'].sum().mean()
         else:  # daily
-            grouped = df.groupby('date')
+            avg_revenue = df.groupby('date')['total'].sum().mean()
 
         metrics = {
             'total_revenue': total_revenue,
-            'average_revenue': grouped['total'].mean(),
+            'average_revenue': float(avg_revenue),  # Convert to float
             'total_shipping': df['shipping_total'].sum(),
             'total_tax': df['tax_total'].sum(),
             'total_profit': total_profit,
