@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from utils.woocommerce_client import WooCommerceClient
 from utils.data_processor import DataProcessor
+from utils.export_handler import ExportHandler
 
 # Page configuration
 st.set_page_config(
@@ -158,6 +159,30 @@ def main():
     product_quantity_chart = DataProcessor.create_product_quantity_chart(df_products)
     if product_quantity_chart:
         st.plotly_chart(product_quantity_chart, use_container_width=True)
+
+    # Export Section
+    st.header("Export Data")
+
+    # Create two columns for export options
+    export_col1, export_col2 = st.columns(2)
+
+    with export_col1:
+        st.subheader("Export Orders Data")
+        export_format = st.selectbox(
+            "Select Export Format for Orders",
+            options=['CSV', 'Excel', 'JSON'],
+            key='orders_export_format'
+        )
+        ExportHandler.export_data(df, "orders", export_format)
+
+    with export_col2:
+        st.subheader("Export Products Data")
+        export_format_products = st.selectbox(
+            "Select Export Format for Products",
+            options=['CSV', 'Excel', 'JSON'],
+            key='products_export_format'
+        )
+        ExportHandler.export_data(df_products, "products", export_format_products)
 
     # Raw data tables
     with st.expander("View Raw Data"):
