@@ -297,8 +297,10 @@ def main():
 
         st.subheader("Produktdata")
         if not df_products.empty:
+            # Create a display copy of the DataFrame without subtotal and tax columns
+            display_products_df = df_products.drop(columns=['subtotal', 'tax'])
             st.dataframe(
-                df_products.style.format({
+                display_products_df.style.format({
                     'total': 'kr {:,.2f}',
                     'cost': 'kr {:,.2f}'
                 }),
