@@ -42,22 +42,30 @@ def main():
     # Date range selector with past dates
     col1, col2 = st.columns(2)
     with col1:
-        end_date = datetime.now().date()
+        today = datetime.now().date()
+        default_start = today - timedelta(days=30)
         start_date = st.date_input(
             "Start Date",
-            end_date - timedelta(days=30),  # Default to last 30 days
-            max_value=end_date
+            default_start,
+            max_value=today,
+            help="Select a start date (up to today)"
         )
     with col2:
         end_date = st.date_input(
             "End Date",
-            end_date,
-            max_value=end_date
+            today,
+            min_value=start_date,
+            max_value=today,
+            help="Select an end date (up to today)"
         )
 
     # Validate date range
     if start_date > end_date:
         st.error("Error: End date must be after start date")
+        return
+
+    if start_date > datetime.now().date() or end_date > datetime.now().date():
+        st.error("Error: Cannot select future dates")
         return
 
     # Fetch and process data
