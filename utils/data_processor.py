@@ -123,53 +123,6 @@ class DataProcessor:
         return fig
 
     @staticmethod
-    def calculate_metrics(df, period='daily'):
-        """
-        Calculate key metrics from the DataFrame with different time periods
-        """
-        if df.empty:
-            return {
-                'total_revenue': 0,
-                'average_revenue': 0,
-                'total_shipping': 0,
-                'total_tax': 0
-            }
-
-        # Ensure date column is datetime
-        df['date'] = pd.to_datetime(df['date'])
-
-        # Group by selected time period
-        if period == 'weekly':
-            df['period'] = df['date'].dt.strftime('%Y-W%U')
-            grouped = df.groupby('period').agg({
-                'total': 'sum',
-                'shipping_total': 'sum',
-                'tax_total': 'sum'
-            })
-        elif period == 'monthly':
-            df['period'] = df['date'].dt.strftime('%Y-%m')
-            grouped = df.groupby('period').agg({
-                'total': 'sum',
-                'shipping_total': 'sum',
-                'tax_total': 'sum'
-            })
-        else:  # daily
-            grouped = df.groupby('date').agg({
-                'total': 'sum',
-                'shipping_total': 'sum',
-                'tax_total': 'sum'
-            })
-
-        metrics = {
-            'total_revenue': df['total'].sum(),
-            'average_revenue': grouped['total'].mean(),
-            'total_shipping': df['shipping_total'].sum(),
-            'total_tax': df['tax_total'].sum()
-        }
-
-        return metrics
-
-    @staticmethod
     def create_revenue_chart(df, period='daily'):
         """
         Create a line chart for revenue with different time periods
