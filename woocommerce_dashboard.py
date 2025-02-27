@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from utils.woocommerce_client import WooCommerceClient
 from utils.data_processor import DataProcessor
 from utils.export_handler import ExportHandler
+from utils.notification_handler import NotificationHandler
 
 # Page configuration
 st.set_page_config(
@@ -27,6 +28,10 @@ if 'woo_client' not in st.session_state:
         """)
         st.stop()
 
+# Initialize notification handler
+if 'notification_handler' not in st.session_state:
+    st.session_state.notification_handler = NotificationHandler()
+
 def main():
     # Header
     st.title("📊 WooCommerce Sales Analytics Dashboard")
@@ -35,6 +40,17 @@ def main():
     debug_mode = st.sidebar.checkbox("Debug Mode", value=True)
     if debug_mode:
         st.sidebar.info("Debug mode is enabled. You will see detailed API responses and error messages.")
+
+    # Real-time notifications toggle
+    notifications_enabled = st.sidebar.checkbox("Enable Real-time Notifications", value=True)
+
+    if notifications_enabled:
+        # Add a placeholder for notifications
+        notification_placeholder = st.empty()
+
+        # Check for new orders every 30 seconds
+        if st.session_state.notification_handler.monitor_orders(st.session_state.woo_client):
+            notification_placeholder.success("✨ Notifications are active - you'll be alerted of new orders!")
 
     # View period selector
     st.sidebar.subheader("View Settings")
