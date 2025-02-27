@@ -6,9 +6,7 @@ import streamlit as st
 class DataProcessor:
     @staticmethod
     def calculate_metrics(df, df_products, period='daily'):
-        """
-        Calculate key metrics including profit calculations, adjusting for VAT
-        """
+        """Calculate key metrics including profit calculations"""
         if df.empty:
             return {
                 'total_revenue_incl_vat': 0,
@@ -23,34 +21,33 @@ class DataProcessor:
         # Ensure date column is datetime
         df['date'] = pd.to_datetime(df['date'])
 
-        # Calculate totals from products DataFrame
+        # Calculate base metrics
         total_cost = df_products['cost'].sum() if 'cost' in df_products.columns else 0
-        total_shipping = df['shipping_total'].sum()
         total_tax = df['tax_total'].sum()
+        total_shipping = df['shipping_total'].sum()
 
         # Calculate revenues (excluding shipping)
-        total_revenue_incl_vat = df['total'].sum() - df['shipping_total'].sum()  # Total revenue excluding shipping
-        total_revenue_excl_vat = total_revenue_incl_vat - total_tax  # Revenue excluding VAT and shipping
+        total_revenue_incl_vat = df['subtotal'].sum()  # Product total including VAT
+        total_revenue_excl_vat = total_revenue_incl_vat - (total_tax - df['shipping_total'].sum())  # Remove product VAT only
 
-        # Calculate profit (using revenue excluding VAT)
+        # Calculate profit using VAT-exclusive revenue
         total_profit = total_revenue_excl_vat - total_cost
         profit_margin = (total_profit / total_revenue_excl_vat * 100) if total_revenue_excl_vat > 0 else 0
 
         # Calculate average revenue based on period (excluding shipping)
-        df['revenue_no_shipping'] = df['total'] - df['shipping_total']
         if period == 'weekly':
             df['period'] = df['date'].dt.strftime('%Y-W%U')
-            avg_revenue = df.groupby('period')['revenue_no_shipping'].sum().mean()
+            avg_revenue = df.groupby('period')['subtotal'].sum().mean()
         elif period == 'monthly':
             df['period'] = df['date'].dt.strftime('%Y-%m')
-            avg_revenue = df.groupby('period')['revenue_no_shipping'].sum().mean()
+            avg_revenue = df.groupby('period')['subtotal'].sum().mean()
         else:  # daily
-            avg_revenue = df.groupby('date')['revenue_no_shipping'].sum().mean()
+            avg_revenue = df.groupby('date')['subtotal'].sum().mean()
 
         metrics = {
             'total_revenue_incl_vat': total_revenue_incl_vat,
             'total_revenue_excl_vat': total_revenue_excl_vat,
-            'average_revenue': float(avg_revenue),  # Convert to float
+            'average_revenue': float(avg_revenue),
             'total_tax': total_tax,
             'total_shipping': total_shipping,
             'total_profit': total_profit,
@@ -59,11 +56,10 @@ class DataProcessor:
 
         # Debug information
         st.sidebar.write("\nDetailed Revenue Calculations:")
-        st.sidebar.write(f"Total Order Sum: {df['total'].sum():.2f}")
-        st.sidebar.write(f"Total Shipping: {total_shipping:.2f}")
-        st.sidebar.write(f"Revenue (incl. VAT, no shipping): {total_revenue_incl_vat:.2f}")
+        st.sidebar.write(f"Total Revenue (incl. VAT): {total_revenue_incl_vat:.2f}")
+        st.sidebar.write(f"Total Revenue (excl. VAT): {total_revenue_excl_vat:.2f}")
         st.sidebar.write(f"Total Tax: {total_tax:.2f}")
-        st.sidebar.write(f"Revenue (excl. VAT & shipping): {total_revenue_excl_vat:.2f}")
+        st.sidebar.write(f"Total Shipping: {total_shipping:.2f}")
 
         return metrics
 

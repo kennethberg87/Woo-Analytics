@@ -11,7 +11,6 @@ import pytz
 class WooCommerceClient:
     def __init__(self):
         try:
-            # Validate store URL
             store_url = os.getenv('WOOCOMMERCE_URL')
             if not store_url:
                 raise ValueError("WooCommerce store URL is not configured")
@@ -20,7 +19,6 @@ class WooCommerceClient:
             if not parsed_url.scheme or not parsed_url.netloc:
                 raise ValueError("Invalid WooCommerce store URL format")
 
-            # Initialize API client
             self.wcapi = API(
                 url=store_url,
                 consumer_key=os.getenv('WOOCOMMERCE_KEY'),
@@ -35,9 +33,7 @@ class WooCommerceClient:
             raise
 
     def get_orders(self, start_date, end_date):
-        """
-        Fetch orders from WooCommerce API within the specified date range
-        """
+        """Fetch orders from WooCommerce API within the specified date range"""
         try:
             # Convert dates to UTC for API request
             oslo_tz = pytz.timezone('Europe/Oslo')
@@ -59,14 +55,11 @@ class WooCommerceClient:
 
             st.sidebar.write(f"API Request Parameters: {params}")
             response = self.wcapi.get("orders", params=params)
-            data = response.json()
+            orders = response.json()
 
-            if isinstance(data, list):
-                st.sidebar.write(f"Number of orders returned: {len(data)}")
-                for order in data[:1]:  # Log first order for debugging
-                    st.sidebar.write("\nFirst order sample:")
-                    st.sidebar.write(order)
-                return data
+            if isinstance(orders, list):
+                st.sidebar.write(f"Successfully fetched {len(orders)} orders")
+                return orders
             else:
                 st.sidebar.error("Invalid response format")
                 return []
@@ -76,9 +69,7 @@ class WooCommerceClient:
             return []
 
     def process_orders_to_df(self, orders):
-        """
-        Convert orders to pandas DataFrame with daily metrics and product information
-        """
+        """Convert orders to pandas DataFrame with daily metrics and product information"""
         if not orders:
             return pd.DataFrame(), pd.DataFrame()
 
@@ -90,7 +81,7 @@ class WooCommerceClient:
 
         for order in orders:
             try:
-                # Parse and convert date to Oslo timezone
+                # Convert UTC timestamp to Oslo timezone
                 date_str = order.get('date_created')
                 if not date_str:
                     continue
@@ -98,44 +89,42 @@ class WooCommerceClient:
                 utc_date = pd.to_datetime(date_str)
                 order_date = utc_date.tz_localize('UTC').tz_convert(oslo_tz)
 
-                # Initialize order info
-                order_id = order.get('id')
-                total = float(order.get('total', 0))
-                shipping_total = 0
-                shipping_tax = 0
+                # Process line items first to get product totals
+                line_items = order.get('line_items', [])
+                products_total = sum(float(item.get('total', 0)) for item in line_items)
+                products_tax = sum(float(item.get('total_tax', 0)) for item in line_items)
 
                 # Process shipping lines
-                for shipping in order.get('shipping_lines', []):
-                    shipping_total += float(shipping.get('total', 0))
-                    shipping_tax += float(shipping.get('total_tax', 0))
+                shipping_lines = order.get('shipping_lines', [])
+                shipping_total = sum(float(line.get('total', 0)) for line in shipping_lines)
+                shipping_tax = sum(float(line.get('total_tax', 0)) for line in shipping_lines)
 
-                # Calculate order totals
-                total_shipping = shipping_total + shipping_tax
-                total_tax = float(order.get('total_tax', 0))
-                subtotal = sum(float(item.get('subtotal', 0)) for item in order.get('line_items', []))
-
-                # Debug information for each order
-                st.sidebar.write(f"\nOrder #{order_id} ({order_date}):")
-                st.sidebar.write(f"Total (inc VAT): {total}")
-                st.sidebar.write(f"Shipping Base: {shipping_total}")
-                st.sidebar.write(f"Shipping Tax: {shipping_tax}")
-                st.sidebar.write(f"Total Shipping: {total_shipping}")
-                st.sidebar.write(f"Total Tax: {total_tax}")
+                # Debug shipping information
+                st.sidebar.write(f"\nOrder #{order.get('id')} Shipping:")
+                st.sidebar.write(f"Base shipping: {shipping_total}")
+                st.sidebar.write(f"Shipping tax: {shipping_tax}")
+                st.sidebar.write(f"Total shipping: {shipping_total + shipping_tax}")
 
                 # Create order record
                 order_info = {
                     'date': order_date,
-                    'order_id': order_id,
-                    'total': total,
-                    'subtotal': subtotal,
-                    'shipping_total': total_shipping,
-                    'tax_total': total_tax
+                    'order_id': order.get('id'),
+                    'total': float(order.get('total', 0)),
+                    'subtotal': products_total,  # Product total without shipping
+                    'shipping_total': shipping_total + shipping_tax,  # Include shipping tax
+                    'tax_total': products_tax + shipping_tax  # Total tax (products + shipping)
                 }
+
+                # Debug order totals
+                st.sidebar.write(f"\nOrder totals:")
+                st.sidebar.write(f"Products total (inc VAT): {products_total}")
+                st.sidebar.write(f"Products tax: {products_tax}")
+                st.sidebar.write(f"Total order: {order_info['total']}")
 
                 order_data.append(order_info)
 
-                # Process line items
-                for item in order.get('line_items', []):
+                # Process individual line items
+                for item in line_items:
                     quantity = int(item.get('quantity', 0))
                     cost = 0
                     for meta in item.get('meta_data', []):
@@ -161,13 +150,14 @@ class WooCommerceClient:
                 st.sidebar.error(f"Error processing order {order.get('id')}: {str(e)}")
                 continue
 
+        # Create DataFrames
         df_orders = pd.DataFrame(order_data)
         df_products = pd.DataFrame(product_data)
 
         if df_orders.empty:
             return df_orders, df_products
 
-        # Group orders by date for daily metrics
+        # Group by date for daily metrics
         daily_metrics = df_orders.groupby('date').agg({
             'total': 'sum',
             'subtotal': 'sum',
@@ -175,11 +165,13 @@ class WooCommerceClient:
             'tax_total': 'sum'
         }).reset_index()
 
+        # Show daily totals for debugging
         st.sidebar.write("\n=== Daily Totals ===")
         for _, row in daily_metrics.iterrows():
             st.sidebar.write(f"\nDate: {row['date'].strftime('%Y-%m-%d')}")
-            st.sidebar.write(f"Total Order Sum: {row['total']:.2f}")
-            st.sidebar.write(f"Total Shipping: {row['shipping_total']:.2f}")
-            st.sidebar.write(f"Total Tax: {row['tax_total']:.2f}")
+            st.sidebar.write(f"Total: {row['total']:.2f}")
+            st.sidebar.write(f"Product Total: {row['subtotal']:.2f}")
+            st.sidebar.write(f"Shipping: {row['shipping_total']:.2f}")
+            st.sidebar.write(f"Tax: {row['tax_total']:.2f}")
 
         return daily_metrics, df_products
