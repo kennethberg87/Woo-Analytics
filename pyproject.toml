@@ -8,5 +8,6 @@ dependencies = [
     "plotly>=6.0.0",
     "streamlit>=1.42.2",
     "trafilatura>=2.0.0",
+    "twilio>=9.4.6",
     "woocommerce>=3.0.0",
 ]

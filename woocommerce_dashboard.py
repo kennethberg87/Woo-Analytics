@@ -39,19 +39,20 @@ def main():
     if debug_mode:
         st.sidebar.info("Debug mode is enabled. You will see detailed API responses and error messages.")
 
-    # Date range selector
+    # Date range selector with past dates
     col1, col2 = st.columns(2)
     with col1:
+        end_date = datetime.now().date()
         start_date = st.date_input(
             "Start Date",
-            datetime.now().date() - timedelta(days=30),
-            max_value=datetime.now().date()
+            end_date - timedelta(days=30),  # Default to last 30 days
+            max_value=end_date
         )
     with col2:
         end_date = st.date_input(
             "End Date",
-            datetime.now().date(),
-            max_value=datetime.now().date()
+            end_date,
+            max_value=end_date
         )
 
     # Validate date range
