@@ -160,6 +160,13 @@ def main():
             f"{metrics['profit_margin']:.1f}%",
             help="Profit as percentage of revenue (excl. VAT)"
         )
+    with col7:
+        st.metric(
+            "Cost of Goods Sold",
+            f"kr {metrics['total_cogs']:,.2f}",
+            help="Total cost of products sold (excl. VAT)"
+        )
+
 
     # Add explanation about calculations
     st.info("""
@@ -167,7 +174,8 @@ def main():
     - Revenue (incl. VAT): Total product sales including VAT, excluding shipping
     - Revenue (excl. VAT): Product revenue after removing VAT
     - Shipping costs are shown excluding VAT
-    - Profit: Revenue (excl. VAT) - Product Costs
+    - COGS: Total cost of products sold (excl. VAT)
+    - Profit: Revenue (excl. VAT) - COGS
     - Product costs are already VAT-exclusive
     """)
 

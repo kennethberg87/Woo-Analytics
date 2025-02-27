@@ -17,7 +17,8 @@ class DataProcessor:
                 'shipping_base': 0,
                 'total_tax': 0,
                 'total_profit': 0,
-                'profit_margin': 0
+                'profit_margin': 0,
+                'total_cogs': 0
             }
 
         # Ensure date column is datetime
@@ -55,7 +56,8 @@ class DataProcessor:
             'shipping_base': shipping_base,  # Base shipping excluding VAT
             'total_tax': total_tax,
             'total_profit': total_profit,
-            'profit_margin': profit_margin
+            'profit_margin': profit_margin,
+            'total_cogs': total_cost  # Add COGS to metrics
         }
 
         # Debug information
@@ -66,6 +68,7 @@ class DataProcessor:
         st.sidebar.write(f"Revenue (incl. VAT, no shipping): {total_revenue_incl_vat:.2f}")
         st.sidebar.write(f"Total Tax: {total_tax:.2f}")
         st.sidebar.write(f"Revenue (excl. VAT & shipping): {total_revenue_excl_vat:.2f}")
+        st.sidebar.write(f"Total COGS: {total_cost:.2f}")
 
         return metrics
 
