@@ -83,7 +83,6 @@ class DataProcessor:
         # Add total quantity column
         top_products.rename(columns={'quantity': 'Total Quantity'}, inplace=True)
 
-
         return top_products
 
     @staticmethod

@@ -117,14 +117,8 @@ class WooCommerceClient:
                 total_tax = float(order.get('total_tax', 0))
                 subtotal = sum(float(item.get('subtotal', 0)) for item in order.get('line_items', []))
 
-                # Debug information for each order
-                st.sidebar.write(f"\nOrder #{order_id} ({order_date}):")
-                st.sidebar.write(f"Total (inc VAT): {total}")
-                st.sidebar.write(f"Shipping Base (ex VAT): {shipping_base}")
-                st.sidebar.write(f"Shipping Tax: {shipping_tax}")
-                st.sidebar.write(f"Total Shipping (inc VAT): {total_shipping}")
-                st.sidebar.write(f"Total Tax: {total_tax}")
-                st.sidebar.write(f"Status: {status}")
+                # Get billing information
+                billing = order.get('billing', {})
 
                 # Create order record - now including both base and total shipping
                 order_info = {
@@ -136,7 +130,8 @@ class WooCommerceClient:
                     'shipping_base': shipping_base,  # Base shipping cost (ex VAT)
                     'shipping_total': total_shipping,  # Total shipping (inc VAT)
                     'shipping_tax': shipping_tax,  # Shipping VAT
-                    'tax_total': total_tax
+                    'tax_total': total_tax,
+                    'billing': billing  # Add complete billing information
                 }
 
                 order_data.append(order_info)
@@ -175,5 +170,5 @@ class WooCommerceClient:
         if df_orders.empty:
             return df_orders, df_products
 
-        # Do not aggregate by date - return the full orders DataFrame to preserve status
+        # Do not aggregate by date - return the full orders DataFrame to preserve status and billing info
         return df_orders, df_products
