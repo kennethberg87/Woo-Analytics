@@ -55,7 +55,15 @@ class WooCommerceClient:
                 st.sidebar.error(f"API Error Response: {error_message}")
                 raise Exception(f"API test failed with status {response.status_code}: {error_message}")
 
-            response.json()  # Validate JSON response
+            # Test basic orders endpoint
+            st.sidebar.write("Testing orders endpoint...")
+            test_response = self.wcapi.get("orders", params={"per_page": 1})
+            st.sidebar.write(f"Test orders response status: {test_response.status_code}")
+            test_data = test_response.json()
+            st.sidebar.write(f"Orders endpoint test: {'Successful' if isinstance(test_data, list) else 'Failed'}")
+            if isinstance(test_data, dict) and 'message' in test_data:
+                st.sidebar.error(f"Orders endpoint error: {test_data['message']}")
+
             st.sidebar.success("Successfully connected to WooCommerce API")
 
         except SSLError as e:
@@ -88,12 +96,12 @@ class WooCommerceClient:
 
             while True:
                 params = {
-                    "after": f"{start_date_iso}T00:00:00",
-                    "before": f"{end_date_iso}T23:59:59",
+                    "modified_after": f"{start_date_iso}T00:00:00",  # HPOS uses modified_after
+                    "modified_before": f"{end_date_iso}T23:59:59",  # HPOS uses modified_before
                     "per_page": 100,
                     "page": page,
                     "status": ["completed", "processing", "on-hold", "pending"],  # Added more statuses
-                    "orderby": "date",
+                    "orderby": "modified",  # HPOS uses modified date
                     "order": "desc"
                 }
 
@@ -113,6 +121,7 @@ class WooCommerceClient:
 
                 if not isinstance(data, list):
                     st.sidebar.write("No orders returned from API")
+                    st.sidebar.write(f"Full API Response: {data}")  # Add full response logging
                     break
 
                 orders.extend(data)
@@ -149,12 +158,14 @@ class WooCommerceClient:
         order_data = []
         for order in orders:
             try:
+                # HPOS response format might be different
+                date_created = order.get('date_modified', order.get('date_created', ''))
                 order_data.append({
-                    'date': datetime.fromisoformat(order['date_created']).date(),
-                    'total': float(order['total']),
-                    'subtotal': float(order['subtotal']),
-                    'shipping_total': float(order['shipping_total']),
-                    'tax_total': float(order['total_tax'])
+                    'date': datetime.fromisoformat(date_created.replace('Z', '+00:00')).date(),
+                    'total': float(order.get('total', 0)),
+                    'subtotal': float(order.get('subtotal', 0)),
+                    'shipping_total': float(order.get('shipping_total', 0)),
+                    'tax_total': float(order.get('total_tax', 0))
                 })
             except (KeyError, ValueError) as e:
                 st.sidebar.error(f"Error processing order: {str(e)}")
