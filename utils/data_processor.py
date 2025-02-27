@@ -67,15 +67,26 @@ class DataProcessor:
 
     @staticmethod
     def get_top_products(df_products, limit=10):
-        """Get top products by quantity sold"""
+        """Get top products by quantity sold within the selected date range"""
         if df_products.empty:
             return pd.DataFrame()
+
+        # Ensure date is in datetime format
+        df_products['date'] = pd.to_datetime(df_products['date'])
 
         # Group by product name and sum quantities
         top_products = df_products.groupby('name')['quantity'].sum().reset_index()
         top_products = top_products.sort_values('quantity', ascending=False).head(limit)
         top_products = top_products.reset_index(drop=True)
         top_products.index = top_products.index + 1  # Start index from 1
+
+        # Add total quantity column
+        top_products.rename(columns={'quantity': 'Total Quantity'}, inplace=True)
+
+        # Debug information
+        st.sidebar.write("\nTop Products Analysis:")
+        st.sidebar.write(f"Date range: {df_products['date'].min()} to {df_products['date'].max()}")
+        st.sidebar.write(f"Number of products found: {len(top_products)}")
 
         return top_products
 

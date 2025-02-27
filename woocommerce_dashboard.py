@@ -186,19 +186,24 @@ def main():
 
     # Display Top 10 Products
     st.header("Top 10 Products by Quantity Sold")
+    st.caption(f"For period: {start_date} to {end_date}")
+
     top_products = DataProcessor.get_top_products(df_products)
     if not top_products.empty:
         st.dataframe(
             top_products,
             column_config={
                 "name": "Product Name",
-                "quantity": "Units Sold"
+                "Total Quantity": st.column_config.NumberColumn(
+                    "Units Sold",
+                    help="Total number of units sold in the selected period"
+                )
             },
             hide_index=False,
             use_container_width=True
         )
     else:
-        st.warning("No product data available")
+        st.warning("No product data available for the selected date range")
 
     # Revenue Trends
     st.subheader(f"Revenue Trends ({view_period})")
