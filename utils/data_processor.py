@@ -30,7 +30,9 @@ class DataProcessor:
         shipping_base = df['shipping_base'].sum()  # Base shipping excluding VAT
         shipping_tax = df['shipping_tax'].sum()  # Shipping VAT
         total_tax = df['tax_total'].sum()  # Total VAT (including shipping VAT)
-        order_count = len(df['order_id'].unique())  # Count unique orders
+
+        # Count orders using the total field (each row represents an order)
+        order_count = len(df)  # Each row in daily metrics represents an order
 
         # Calculate revenues (excluding shipping)
         total_revenue_incl_vat = df['total'].sum() - df['shipping_total'].sum()  # Total revenue excluding shipping
