@@ -14,7 +14,7 @@ class DataProcessor:
                 'total_revenue_incl_vat': 0,
                 'total_revenue_excl_vat': 0,
                 'average_revenue': 0,
-                'total_shipping': 0,
+                'shipping_base': 0,
                 'total_tax': 0,
                 'total_profit': 0,
                 'profit_margin': 0
@@ -23,14 +23,15 @@ class DataProcessor:
         # Ensure date column is datetime
         df['date'] = pd.to_datetime(df['date'])
 
-        # Calculate totals from products DataFrame
+        # Calculate totals
         total_cost = df_products['cost'].sum() if 'cost' in df_products.columns else 0
-        total_shipping = df['shipping_total'].sum()
-        total_tax = df['tax_total'].sum()
+        shipping_base = df['shipping_base'].sum()  # Base shipping excluding VAT
+        shipping_tax = df['shipping_tax'].sum()  # Shipping VAT
+        total_tax = df['tax_total'].sum()  # Total VAT (including shipping VAT)
 
         # Calculate revenues (excluding shipping)
         total_revenue_incl_vat = df['total'].sum() - df['shipping_total'].sum()  # Total revenue excluding shipping
-        total_revenue_excl_vat = total_revenue_incl_vat - total_tax  # Revenue excluding VAT and shipping
+        total_revenue_excl_vat = total_revenue_incl_vat - (total_tax - shipping_tax)  # Revenue excluding VAT and shipping
 
         # Calculate profit (using revenue excluding VAT)
         total_profit = total_revenue_excl_vat - total_cost
@@ -51,8 +52,8 @@ class DataProcessor:
             'total_revenue_incl_vat': total_revenue_incl_vat,
             'total_revenue_excl_vat': total_revenue_excl_vat,
             'average_revenue': float(avg_revenue),  # Convert to float
+            'shipping_base': shipping_base,  # Base shipping excluding VAT
             'total_tax': total_tax,
-            'total_shipping': total_shipping,
             'total_profit': total_profit,
             'profit_margin': profit_margin
         }
@@ -60,7 +61,8 @@ class DataProcessor:
         # Debug information
         st.sidebar.write("\nDetailed Revenue Calculations:")
         st.sidebar.write(f"Total Order Sum: {df['total'].sum():.2f}")
-        st.sidebar.write(f"Total Shipping: {total_shipping:.2f}")
+        st.sidebar.write(f"Base Shipping (ex VAT): {shipping_base:.2f}")
+        st.sidebar.write(f"Shipping Tax: {shipping_tax:.2f}")
         st.sidebar.write(f"Revenue (incl. VAT, no shipping): {total_revenue_incl_vat:.2f}")
         st.sidebar.write(f"Total Tax: {total_tax:.2f}")
         st.sidebar.write(f"Revenue (excl. VAT & shipping): {total_revenue_excl_vat:.2f}")

@@ -141,9 +141,9 @@ def main():
         )
     with col4:
         st.metric(
-            "Total Shipping",
-            f"kr {metrics['total_shipping']:,.2f}",
-            help="Total shipping costs collected"
+            "Total Shipping (excl. VAT)",
+            f"kr {metrics['shipping_base']:,.2f}",
+            help="Total shipping costs excluding VAT"
         )
 
     # Add second row of metrics
@@ -152,7 +152,7 @@ def main():
         st.metric(
             "Total Tax",
             f"kr {metrics['total_tax']:,.2f}",
-            help="Total VAT collected"
+            help="Total VAT collected (including shipping VAT)"
         )
     with col6:
         st.metric(
@@ -166,7 +166,7 @@ def main():
     💡 Revenue and Profit Calculation Details:
     - Revenue (incl. VAT): Total product sales including VAT, excluding shipping
     - Revenue (excl. VAT): Product revenue after removing VAT
-    - Shipping costs are tracked separately and not included in revenue calculations
+    - Shipping costs are shown excluding VAT
     - Profit: Revenue (excl. VAT) - Product Costs
     - Product costs are already VAT-exclusive
     """)

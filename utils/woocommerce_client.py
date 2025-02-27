@@ -101,34 +101,38 @@ class WooCommerceClient:
                 # Initialize order info
                 order_id = order.get('id')
                 total = float(order.get('total', 0))
-                shipping_total = 0
+                shipping_base = 0
                 shipping_tax = 0
 
-                # Process shipping lines
+                # Process shipping lines - now separating base and tax
                 for shipping in order.get('shipping_lines', []):
-                    shipping_total += float(shipping.get('total', 0))
-                    shipping_tax += float(shipping.get('total_tax', 0))
+                    base = float(shipping.get('total', 0))
+                    tax = float(shipping.get('total_tax', 0))
+                    shipping_base += base
+                    shipping_tax += tax
 
-                # Calculate order totals
-                total_shipping = shipping_total + shipping_tax
+                # Calculate total shipping (base + tax)
+                total_shipping = shipping_base + shipping_tax
                 total_tax = float(order.get('total_tax', 0))
                 subtotal = sum(float(item.get('subtotal', 0)) for item in order.get('line_items', []))
 
                 # Debug information for each order
                 st.sidebar.write(f"\nOrder #{order_id} ({order_date}):")
                 st.sidebar.write(f"Total (inc VAT): {total}")
-                st.sidebar.write(f"Shipping Base: {shipping_total}")
+                st.sidebar.write(f"Shipping Base (ex VAT): {shipping_base}")
                 st.sidebar.write(f"Shipping Tax: {shipping_tax}")
-                st.sidebar.write(f"Total Shipping: {total_shipping}")
+                st.sidebar.write(f"Total Shipping (inc VAT): {total_shipping}")
                 st.sidebar.write(f"Total Tax: {total_tax}")
 
-                # Create order record
+                # Create order record - now including both base and total shipping
                 order_info = {
                     'date': order_date,
                     'order_id': order_id,
                     'total': total,
                     'subtotal': subtotal,
-                    'shipping_total': total_shipping,
+                    'shipping_base': shipping_base,  # Base shipping cost (ex VAT)
+                    'shipping_total': total_shipping,  # Total shipping (inc VAT)
+                    'shipping_tax': shipping_tax,  # Shipping VAT
                     'tax_total': total_tax
                 }
 
@@ -171,7 +175,9 @@ class WooCommerceClient:
         daily_metrics = df_orders.groupby('date').agg({
             'total': 'sum',
             'subtotal': 'sum',
-            'shipping_total': 'sum',
+            'shipping_base': 'sum',  # Base shipping ex VAT
+            'shipping_total': 'sum',  # Total shipping inc VAT
+            'shipping_tax': 'sum',  # Shipping VAT
             'tax_total': 'sum'
         }).reset_index()
 
@@ -179,7 +185,8 @@ class WooCommerceClient:
         for _, row in daily_metrics.iterrows():
             st.sidebar.write(f"\nDate: {row['date'].strftime('%Y-%m-%d')}")
             st.sidebar.write(f"Total Order Sum: {row['total']:.2f}")
-            st.sidebar.write(f"Total Shipping: {row['shipping_total']:.2f}")
+            st.sidebar.write(f"Shipping Base (ex VAT): {row['shipping_base']:.2f}")
+            st.sidebar.write(f"Shipping Tax: {row['shipping_tax']:.2f}")
             st.sidebar.write(f"Total Tax: {row['tax_total']:.2f}")
 
         return daily_metrics, df_products
