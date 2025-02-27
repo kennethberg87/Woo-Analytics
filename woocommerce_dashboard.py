@@ -300,8 +300,7 @@ def main():
             st.dataframe(
                 df_products.style.format({
                     'total': 'kr {:,.2f}',
-                    'subtotal': 'kr {:,.2f}',
-                    'tax': 'kr {:,.2f}'
+                    'cost': 'kr {:,.2f}'
                 }),
                 column_config={
                     "date": "Dato",
@@ -309,8 +308,6 @@ def main():
                     "name": "Produktnavn",
                     "quantity": "Antall",
                     "total": "Totalt",
-                    "subtotal": "Subtotal",
-                    "tax": "MVA",
                     "cost": "Kostnad"
                 },
                 hide_index=True
