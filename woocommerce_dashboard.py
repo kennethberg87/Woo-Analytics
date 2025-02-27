@@ -28,12 +28,21 @@ if 'woo_client' not in st.session_state:
 
 def main():
     # Header
-    st.title("📊 WooCommerce Daily Turnover Dashboard")
+    st.title("📊 WooCommerce Sales Analytics Dashboard")
 
     # Debug mode toggle
     debug_mode = st.sidebar.checkbox("Debug Mode", value=True)
     if debug_mode:
         st.sidebar.info("Debug mode is enabled. You will see detailed API responses and error messages.")
+
+    # View period selector
+    st.sidebar.subheader("View Settings")
+    view_period = st.sidebar.selectbox(
+        "Select View Period",
+        options=['Daily', 'Weekly', 'Monthly'],
+        index=0,
+        help="Choose how to aggregate the data"
+    )
 
     # Date range selector
     st.sidebar.subheader("Date Range Selection")
@@ -96,8 +105,11 @@ def main():
         st.warning(f"No orders found between {start_date} and {end_date}")
         return
 
+    # Convert view_period to lowercase for processing
+    period = view_period.lower()
+
     # Calculate metrics
-    metrics = DataProcessor.calculate_metrics(df)
+    metrics = DataProcessor.calculate_metrics(df, period)
 
     # Display metrics in columns
     col1, col2, col3, col4 = st.columns(4)
@@ -108,8 +120,8 @@ def main():
         )
     with col2:
         st.metric(
-            "Average Daily Revenue",
-            f"kr {metrics['average_daily_revenue']:,.2f}"
+            f"Average {view_period} Revenue",
+            f"kr {metrics['average_revenue']:,.2f}"
         )
     with col3:
         st.metric(
@@ -123,16 +135,16 @@ def main():
         )
 
     # Charts
-    st.subheader("Revenue Trends")
+    st.subheader(f"Revenue Trends ({view_period})")
 
-    # Daily revenue chart
-    revenue_chart = DataProcessor.create_daily_revenue_chart(df)
+    # Revenue chart
+    revenue_chart = DataProcessor.create_revenue_chart(df, period)
     if revenue_chart:
         st.plotly_chart(revenue_chart, use_container_width=True)
 
     # Revenue breakdown chart
-    st.subheader("Revenue Breakdown")
-    breakdown_chart = DataProcessor.create_revenue_breakdown_chart(df)
+    st.subheader(f"Revenue Breakdown ({view_period})")
+    breakdown_chart = DataProcessor.create_revenue_breakdown_chart(df, period)
     if breakdown_chart:
         st.plotly_chart(breakdown_chart, use_container_width=True)
 
