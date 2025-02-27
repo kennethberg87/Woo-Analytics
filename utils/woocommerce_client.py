@@ -168,28 +168,12 @@ class WooCommerceClient:
                 st.sidebar.error(f"Error processing order {order.get('id')}: {str(e)}")
                 continue
 
+        # Create DataFrames from collected data
         df_orders = pd.DataFrame(order_data)
         df_products = pd.DataFrame(product_data)
 
         if df_orders.empty:
             return df_orders, df_products
 
-        # Group orders by date for daily metrics
-        daily_metrics = df_orders.groupby('date').agg({
-            'total': 'sum',
-            'subtotal': 'sum',
-            'shipping_base': 'sum',  # Base shipping ex VAT
-            'shipping_total': 'sum',  # Total shipping inc VAT
-            'shipping_tax': 'sum',  # Shipping VAT
-            'tax_total': 'sum'
-        }).reset_index()
-
-        st.sidebar.write("\n=== Daily Totals ===")
-        for _, row in daily_metrics.iterrows():
-            st.sidebar.write(f"\nDate: {row['date'].strftime('%Y-%m-%d')}")
-            st.sidebar.write(f"Total Order Sum: {row['total']:.2f}")
-            st.sidebar.write(f"Shipping Base (ex VAT): {row['shipping_base']:.2f}")
-            st.sidebar.write(f"Shipping Tax: {row['shipping_tax']:.2f}")
-            st.sidebar.write(f"Total Tax: {row['tax_total']:.2f}")
-
-        return daily_metrics, df_products
+        # Do not aggregate by date - return the full orders DataFrame to preserve status
+        return df_orders, df_products
