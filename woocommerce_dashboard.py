@@ -275,10 +275,6 @@ def main():
             lambda x: f"{x.get('first_name', '')} {x.get('last_name', '')}".strip()
         )
 
-        # Add order number column (assuming it exists after API modification)
-        display_df['order_number'] = display_df['meta_data'].apply(lambda x: next((item['value'] for item in x if item['key'] == '_order_number_formatted'), None))
-
-
         # Remove the original billing column and reorder
         display_df = display_df.drop(columns=['billing'])
 
