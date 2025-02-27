@@ -30,15 +30,6 @@ class WooCommerceClient:
                 timeout=30
             )
 
-            # Test API connection
-            response = self.wcapi.get("")
-            if response.status_code == 401:
-                raise ValueError("Invalid API credentials (Unauthorized)")
-            elif response.status_code != 200:
-                error_data = response.json() if response.headers.get('content-type', '').startswith('application/json') else None
-                error_message = error_data.get('message') if error_data else 'Unknown error'
-                raise Exception(f"API test failed with status {response.status_code}: {error_message}")
-
         except Exception as e:
             st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
             raise
@@ -60,6 +51,8 @@ class WooCommerceClient:
             end_date_utc = end_date_oslo.astimezone(utc_tz)
 
             st.sidebar.write(f"Fetching orders from {start_date} to {end_date}")
+            st.sidebar.write(f"Oslo time range: {start_date_oslo} to {end_date_oslo}")
+            st.sidebar.write(f"UTC time range: {start_date_utc} to {end_date_utc}")
 
             params = {
                 "after": start_date_utc.isoformat(),
@@ -68,25 +61,15 @@ class WooCommerceClient:
                 "status": "any"
             }
 
-            st.sidebar.write(f"API Request Parameters: {params}")
-
             response = self.wcapi.get("orders", params=params)
-            st.sidebar.write(f"API Response Status: {response.status_code}")
+            data = response.json()
 
-            try:
-                data = response.json()
-                if isinstance(data, list):
-                    st.sidebar.write(f"Number of orders returned: {len(data)}")
-                    if len(data) > 0:
-                        st.sidebar.write("First order sample:", {k: v for k, v in data[0].items() if k in ['id', 'status', 'date_created']})
-                else:
-                    st.sidebar.write(f"API Response Content: {str(data)[:500]}")
-            except Exception as e:
-                st.sidebar.error(f"Failed to parse JSON response: {str(e)}")
+            if isinstance(data, list):
+                st.sidebar.write(f"Number of orders fetched: {len(data)}")
+                return data
+            else:
+                st.sidebar.error("Invalid response format")
                 return []
-
-            st.sidebar.success(f"Successfully fetched {len(data)} orders")
-            return data
 
         except Exception as e:
             st.sidebar.error(f"Error fetching orders: {str(e)}")
@@ -97,65 +80,63 @@ class WooCommerceClient:
         Convert orders to pandas DataFrame with daily metrics and product information
         """
         if not orders:
-            st.sidebar.write("No orders to process")
             return pd.DataFrame(), pd.DataFrame()
 
-        # Set timezone for processing
         oslo_tz = pytz.timezone('Europe/Oslo')
-
         order_data = []
         product_data = []
 
+        st.sidebar.write("\n=== Processing Orders ===")
+
         for order in orders:
             try:
-                # Convert UTC timestamp to Oslo timezone
+                # Parse and convert date to Oslo timezone
                 date_str = order.get('date_created')
                 if not date_str:
-                    st.sidebar.warning(f"No date found in order: {order}")
                     continue
 
-                # Parse UTC timestamp and convert to Oslo time
                 utc_date = pd.to_datetime(date_str)
                 order_date = utc_date.tz_localize('UTC').tz_convert(oslo_tz)
 
-                # Process main order data
-                order_info = {
-                    'date': order_date,
-                    'order_id': order.get('id'),
-                    'total': float(order.get('total', 0)),  # Total including VAT and shipping
-                    'subtotal': sum(float(item.get('subtotal', 0)) for item in order.get('line_items', [])),  # Sum of line items
-                    'shipping_total': 0,  # Initialize shipping total
-                    'tax_total': float(order.get('total_tax', 0))  # Total VAT
-                }
+                # Initialize order info
+                order_id = order.get('id')
+                total = float(order.get('total', 0))
+                total_tax = float(order.get('total_tax', 0))
 
                 # Process shipping lines
-                shipping_lines = order.get('shipping_lines', [])
-                if shipping_lines:
-                    for shipping_line in shipping_lines:
-                        # Get base shipping cost
-                        base_shipping = float(shipping_line.get('total', 0))
-                        # Get shipping tax
-                        shipping_tax = float(shipping_line.get('total_tax', 0))
+                shipping_total = 0
+                shipping_tax = 0
+                for shipping in order.get('shipping_lines', []):
+                    shipping_base = float(shipping.get('total', 0))
+                    ship_tax = float(shipping.get('total_tax', 0))
+                    shipping_total += shipping_base
+                    shipping_tax += ship_tax
 
-                        # Debug shipping details
-                        st.sidebar.write(f"\nOrder #{order_info['order_id']} Shipping Details:")
-                        st.sidebar.write(f"Base Shipping: {base_shipping}")
-                        st.sidebar.write(f"Shipping Tax: {shipping_tax}")
+                total_shipping = shipping_total + shipping_tax
 
-                        # Add to total shipping
-                        order_info['shipping_total'] += base_shipping + shipping_tax
+                # Debug information for each order
+                st.sidebar.write(f"\nOrder #{order_id} ({order_date}):")
+                st.sidebar.write(f"Total (inc VAT): {total}")
+                st.sidebar.write(f"Total Tax: {total_tax}")
+                st.sidebar.write(f"Shipping Base: {shipping_total}")
+                st.sidebar.write(f"Shipping Tax: {shipping_tax}")
+                st.sidebar.write(f"Total Shipping: {total_shipping}")
 
-                # Debug order totals
-                st.sidebar.write(f"\nOrder #{order_info['order_id']} Totals:")
-                st.sidebar.write(f"Total (incl. VAT & shipping): {order_info['total']}")
-                st.sidebar.write(f"Total Shipping (incl. tax): {order_info['shipping_total']}")
-                st.sidebar.write(f"Total Tax: {order_info['tax_total']}")
+                # Create order record
+                order_info = {
+                    'date': order_date,
+                    'order_id': order_id,
+                    'total': total,
+                    'subtotal': sum(float(item.get('subtotal', 0)) for item in order.get('line_items', [])),
+                    'shipping_total': total_shipping,
+                    'tax_total': total_tax
+                }
 
                 order_data.append(order_info)
 
-                # Process line items (products)
+                # Process line items
                 for item in order.get('line_items', []):
-                    # Extract cost from meta_data
+                    quantity = int(item.get('quantity', 0))
                     cost = 0
                     for meta in item.get('meta_data', []):
                         if meta.get('key') == '_yith_cog_item_cost':
@@ -165,31 +146,28 @@ class WooCommerceClient:
                                 cost = 0
                             break
 
-                    quantity = int(item.get('quantity', 0))
                     product_data.append({
                         'date': order_date,
                         'product_id': item.get('product_id'),
                         'name': item.get('name'),
                         'quantity': quantity,
-                        'total': float(item.get('total', 0)),  # Including VAT
+                        'total': float(item.get('total', 0)),
                         'subtotal': float(item.get('subtotal', 0)),
-                        'tax': float(item.get('total_tax', 0)),  # VAT
-                        'cost': cost * quantity  # Total cost for the quantity ordered
+                        'tax': float(item.get('total_tax', 0)),
+                        'cost': cost * quantity
                     })
 
             except Exception as e:
-                st.sidebar.error(f"Error processing order: {str(e)}")
+                st.sidebar.error(f"Error processing order {order.get('id')}: {str(e)}")
                 continue
 
-        # Create DataFrames
         df_orders = pd.DataFrame(order_data)
         df_products = pd.DataFrame(product_data)
 
         if df_orders.empty:
-            st.sidebar.warning("No valid orders found after processing")
             return df_orders, df_products
 
-        # Group orders by date for daily metrics
+        # Daily metrics
         daily_metrics = df_orders.groupby('date').agg({
             'total': 'sum',
             'subtotal': 'sum',
@@ -197,13 +175,11 @@ class WooCommerceClient:
             'tax_total': 'sum'
         }).reset_index()
 
-        # Add debug information
-        st.sidebar.write(f"\nRaw order count: {len(orders)}")
-        if len(daily_metrics) > 0:
-            st.sidebar.write("\nDaily Totals:")
-            st.sidebar.write(daily_metrics[['date', 'total', 'shipping_total', 'tax_total']].to_dict('records'))
-
-        st.sidebar.success(f"Processed {len(daily_metrics)} days of order data")
-        st.sidebar.write("Processed data shape:", daily_metrics.shape)
+        st.sidebar.write("\n=== Daily Totals ===")
+        for _, row in daily_metrics.iterrows():
+            st.sidebar.write(f"\nDate: {row['date']}")
+            st.sidebar.write(f"Total: {row['total']:.2f}")
+            st.sidebar.write(f"Shipping: {row['shipping_total']:.2f}")
+            st.sidebar.write(f"Tax: {row['tax_total']:.2f}")
 
         return daily_metrics, df_products
