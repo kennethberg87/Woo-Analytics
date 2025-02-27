@@ -224,7 +224,7 @@ def main():
                 "Email": "Email Address",
                 "Order Date": st.column_config.DatetimeColumn(
                     "Order Date & Time",
-                    format="DD/MM/YYYY HH:mm"
+                    format="DD.MM.YYYY HH:mm"
                 ),
                 "Payment Method": "Dintero Payment Method",
                 "Shipping Method": "Shipping Method",
