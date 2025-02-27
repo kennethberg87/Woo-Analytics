@@ -51,31 +51,49 @@ class WooCommerceClient:
             start_date_iso = start_date.isoformat()
             end_date_iso = end_date.isoformat()
 
-            st.sidebar.write(f"Fetching orders from {start_date_iso} to {end_date_iso}")
+            st.write(f"Date Range Selection")
+            st.write(f"Fetching orders from {start_date_iso} to {end_date_iso}")
 
-            params = {
-                "after": f"{start_date_iso}T00:00:00",
-                "before": f"{end_date_iso}T23:59:59",
-                "per_page": 100,
-                "status": "any"
-            }
+            all_orders = []
+            page = 1
 
-            st.sidebar.write(f"API Request Parameters: {params}")
-            response = self.wcapi.get("orders", params=params)
-            st.sidebar.write(f"API Response Status: {response.status_code}")
-            st.sidebar.write(f"API Response Headers: {dict(response.headers)}")
+            while True:
+                params = {
+                    "after": f"{start_date_iso}T00:00:00",
+                    "before": f"{end_date_iso}T23:59:59",
+                    "per_page": 100,
+                    "page": page,
+                    "status": ["processing", "completed", "on-hold", "pending"]
+                }
 
-            data = response.json()
-            if isinstance(data, list):
-                st.sidebar.write(f"Number of orders returned: {len(data)}")
-                if len(data) > 0:
-                    st.sidebar.write("First order sample:", {k: v for k, v in data[0].items() if k in ['id', 'status', 'date_created']})
-            else:
-                st.sidebar.error(f"Unexpected response format: {type(data)}")
-                return []
+                st.sidebar.write(f"API Request Parameters: {params}")
+                response = self.wcapi.get("orders", params=params)
+                st.sidebar.write(f"API Response Status: {response.status_code}")
+                st.sidebar.write(f"API Response Headers: {dict(response.headers)}")
 
-            st.sidebar.success(f"Successfully fetched {len(data)} orders")
-            return data
+                if response.status_code != 200:
+                    st.sidebar.error(f"Failed to fetch orders. Status: {response.status_code}")
+                    break
+
+                orders = response.json()
+                if not isinstance(orders, list):
+                    st.sidebar.error(f"Unexpected response format: {type(orders)}")
+                    break
+
+                if not orders:  # No more orders
+                    break
+
+                all_orders.extend(orders)
+
+                # Check if there are more pages
+                total_pages = int(response.headers.get('X-WP-TotalPages', 1))
+                if page >= total_pages:
+                    break
+
+                page += 1
+
+            st.sidebar.success(f"Successfully fetched {len(all_orders)} orders")
+            return all_orders
 
         except Exception as e:
             st.sidebar.error(f"Error fetching orders: {str(e)}")
