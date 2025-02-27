@@ -6,6 +6,7 @@ import os
 import requests
 from requests.exceptions import SSLError, ConnectionError
 from urllib.parse import urlparse
+import pytz
 
 class WooCommerceClient:
     def __init__(self):
@@ -38,15 +39,6 @@ class WooCommerceClient:
                 error_message = error_data.get('message') if error_data else 'Unknown error'
                 raise Exception(f"API test failed with status {response.status_code}: {error_message}")
 
-            # Test orders endpoint
-            test_response = self.wcapi.get("orders", params={"per_page": 1})
-            if test_response.status_code != 200:
-                raise Exception(f"Orders endpoint test failed with status {test_response.status_code}")
-
-            test_data = test_response.json()
-            if not isinstance(test_data, list):
-                st.sidebar.error(f"Unexpected orders endpoint response format: {test_data}")
-
         except Exception as e:
             st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
             raise
@@ -56,30 +48,33 @@ class WooCommerceClient:
         Fetch orders from WooCommerce API within the specified date range
         """
         try:
-            # Convert dates to ISO format
-            start_date_iso = start_date.isoformat()
-            end_date_iso = end_date.isoformat()
+            # Convert dates to UTC for API request
+            oslo_tz = pytz.timezone('Europe/Oslo')
+            utc_tz = pytz.UTC
 
-            st.sidebar.write(f"Fetching orders from {start_date_iso} to {end_date_iso}")
+            # Convert start and end dates to UTC
+            start_date_oslo = oslo_tz.localize(datetime.combine(start_date, datetime.min.time()))
+            end_date_oslo = oslo_tz.localize(datetime.combine(end_date, datetime.max.time()))
 
-            # Simplify the query parameters to basic WooCommerce v3 format
+            start_date_utc = start_date_oslo.astimezone(utc_tz)
+            end_date_utc = end_date_oslo.astimezone(utc_tz)
+
+            st.sidebar.write(f"Fetching orders from {start_date} to {end_date}")
+
             params = {
-                "after": f"{start_date_iso}T00:00:00",
-                "before": f"{end_date_iso}T23:59:59",
+                "after": start_date_utc.isoformat(),
+                "before": end_date_utc.isoformat(),
                 "per_page": 100,
-                "status": "any"  # Try fetching all order statuses
+                "status": "any"
             }
 
             st.sidebar.write(f"API Request Parameters: {params}")
 
-            # Add detailed response logging
             response = self.wcapi.get("orders", params=params)
             st.sidebar.write(f"API Response Status: {response.status_code}")
-            st.sidebar.write(f"API Response Headers: {dict(response.headers)}")
 
             try:
                 data = response.json()
-                st.sidebar.write(f"API Response Type: {type(data)}")
                 if isinstance(data, list):
                     st.sidebar.write(f"Number of orders returned: {len(data)}")
                     if len(data) > 0:
@@ -88,14 +83,6 @@ class WooCommerceClient:
                     st.sidebar.write(f"API Response Content: {str(data)[:500]}")
             except Exception as e:
                 st.sidebar.error(f"Failed to parse JSON response: {str(e)}")
-                st.sidebar.error(f"Raw response: {response.text[:500]}")
-                return []
-
-            if isinstance(data, dict):
-                st.sidebar.error(f"API Error Response: {data}")
-                return []
-            elif not isinstance(data, list):
-                st.sidebar.error(f"Unexpected response format: {type(data)}")
                 return []
 
             st.sidebar.success(f"Successfully fetched {len(data)} orders")
@@ -111,23 +98,25 @@ class WooCommerceClient:
         """
         if not orders:
             st.sidebar.write("No orders to process")
-            return pd.DataFrame(columns=['date', 'total', 'subtotal', 'shipping_total', 'tax_total']), pd.DataFrame()
+            return pd.DataFrame(), pd.DataFrame()
 
-        # Extract relevant data from orders
+        # Set timezone for processing
+        oslo_tz = pytz.timezone('Europe/Oslo')
+
         order_data = []
         product_data = []
 
         for order in orders:
             try:
-                # Try multiple date fields
-                date_str = order.get('date_modified') or order.get('date_created') or order.get('date_modified_gmt') or order.get('date_created_gmt')
+                # Convert UTC timestamp to Oslo timezone
+                date_str = order.get('date_created')
                 if not date_str:
                     st.sidebar.warning(f"No date found in order: {order}")
                     continue
 
-                # Remove timezone suffix if present and convert to datetime
-                date_str = date_str.replace('Z', '+00:00')
-                order_date = pd.to_datetime(date_str)
+                # Parse UTC timestamp and convert to Oslo time
+                utc_date = pd.to_datetime(date_str)
+                order_date = utc_date.tz_localize('UTC').tz_convert(oslo_tz)
 
                 # Process main order data
                 order_info = {
@@ -139,17 +128,17 @@ class WooCommerceClient:
                     'tax_total': float(order.get('total_tax', 0))  # Total VAT
                 }
 
-                # Debug log for order totals
-                st.sidebar.write(f"Processing Order #{order_info['order_id']}:")
-                st.sidebar.write(f"Total (incl. VAT & shipping): {order_info['total']}")
-                st.sidebar.write(f"Shipping: {order_info['shipping_total']}")
-                st.sidebar.write(f"Tax: {order_info['tax_total']}")
-
                 # Add shipping tax if present
                 shipping_lines = order.get('shipping_lines', [])
                 if shipping_lines:
                     shipping_tax = sum(float(line.get('total_tax', 0)) for line in shipping_lines)
                     order_info['shipping_total'] += shipping_tax  # Include shipping tax in total shipping cost
+
+                # Debug log for order totals
+                st.sidebar.write(f"Processing Order #{order_info['order_id']}:")
+                st.sidebar.write(f"Total (incl. VAT & shipping): {order_info['total']}")
+                st.sidebar.write(f"Shipping: {order_info['shipping_total']}")
+                st.sidebar.write(f"Tax: {order_info['tax_total']}")
 
                 order_data.append(order_info)
 
@@ -179,24 +168,17 @@ class WooCommerceClient:
 
             except Exception as e:
                 st.sidebar.error(f"Error processing order: {str(e)}")
-                st.sidebar.error(f"Problematic order data: {order}")
                 continue
 
-        # Create main orders DataFrame
+        # Create DataFrames
         df_orders = pd.DataFrame(order_data)
-        if df_orders.empty:
-            st.sidebar.warning("No valid orders found after processing")
-            return df_orders, pd.DataFrame()
-
-        # Create products DataFrame
         df_products = pd.DataFrame(product_data)
 
-        # Ensure date columns are datetime
-        df_orders['date'] = pd.to_datetime(df_orders['date'])
-        if not df_products.empty:
-            df_products['date'] = pd.to_datetime(df_products['date'])
+        if df_orders.empty:
+            st.sidebar.warning("No valid orders found after processing")
+            return df_orders, df_products
 
-        # Group orders by date for daily metrics
+        # Group orders by date for daily metrics (date is already in Oslo timezone)
         daily_metrics = df_orders.groupby('date').agg({
             'total': 'sum',
             'subtotal': 'sum',
