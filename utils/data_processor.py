@@ -24,11 +24,11 @@ class DataProcessor:
         # Calculate totals from products DataFrame
         total_cost = df_products['cost'].sum() if 'cost' in df_products.columns else 0
         total_shipping = df['shipping_total'].sum()
-        total_revenue_incl_vat = df['total'].sum() - total_shipping  # Exclude shipping from revenue
         total_tax = df['tax_total'].sum()
 
-        # Calculate revenue excluding VAT
-        total_revenue_excl_vat = total_revenue_incl_vat - total_tax
+        # Calculate revenues
+        total_revenue_incl_vat = df['total'].sum() - total_shipping  # Total revenue excluding shipping
+        total_revenue_excl_vat = total_revenue_incl_vat - total_tax  # Revenue excluding VAT
 
         # Calculate profit (using revenue excluding VAT)
         total_profit = total_revenue_excl_vat - total_cost

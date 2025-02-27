@@ -132,10 +132,10 @@ class WooCommerceClient:
                 # Process main order data
                 order_data.append({
                     'date': order_date,
-                    'total': float(order.get('total', 0)),
+                    'total': float(order.get('total', 0)),  # Total including VAT
                     'subtotal': float(order.get('subtotal', 0)),
                     'shipping_total': float(order.get('shipping_total', 0)),
-                    'tax_total': float(order.get('total_tax', 0))
+                    'tax_total': float(order.get('total_tax', 0))  # Total VAT
                 })
 
                 # Process line items (products) with cost information
@@ -156,9 +156,9 @@ class WooCommerceClient:
                         'product_id': item.get('product_id'),
                         'name': item.get('name'),
                         'quantity': quantity,
-                        'total': float(item.get('total', 0)),
+                        'total': float(item.get('total', 0)),  # Including VAT
                         'subtotal': float(item.get('subtotal', 0)),
-                        'tax': float(item.get('total_tax', 0)),
+                        'tax': float(item.get('total_tax', 0)),  # VAT
                         'cost': cost * quantity  # Total cost for the quantity ordered
                     })
 
@@ -189,5 +189,13 @@ class WooCommerceClient:
             'tax_total': 'sum'
         }).reset_index()
 
+        # Add debug information
+        st.sidebar.write(f"Raw order count: {len(orders)}")
+        if len(daily_metrics) > 0:
+            st.sidebar.write("Sample daily totals:")
+            st.sidebar.write(daily_metrics[['date', 'total']].to_dict('records'))
+
         st.sidebar.success(f"Processed {len(daily_metrics)} days of order data")
+        st.sidebar.write("Processed data shape:", daily_metrics.shape)
+
         return daily_metrics, df_products
