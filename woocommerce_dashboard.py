@@ -253,7 +253,7 @@ def main():
     with export_col1:
         st.subheader("Eksporter ordredata")
         export_format = st.selectbox("Velg filformat for eksport av ordredata",
-                                     options=['CSV', 'Excel', 'JSON'],
+                                     options=['CSV', 'Excel', 'JSON', 'PDF'],
                                      key='orders_export_format')
         ExportHandler.export_data(df, "orders", export_format)
 
@@ -261,7 +261,7 @@ def main():
         st.subheader("Eksporter produktdata")
         export_format_products = st.selectbox(
             "Velg filformat for eksport av produktdata",
-            options=['CSV', 'Excel', 'JSON'],
+            options=['CSV', 'Excel', 'JSON', 'PDF'],
             key='products_export_format')
         ExportHandler.export_data(df_products, "products",
                                   export_format_products)
