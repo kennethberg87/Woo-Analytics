@@ -34,6 +34,13 @@ class WooCommerceClient:
             st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
             raise
 
+    def get_dintero_payment_method(self, meta_data):
+        """Extract Dintero payment method from order meta data"""
+        for meta in meta_data:
+            if meta.get('key') == '_dintero_payment_method':
+                return meta.get('value', '')
+        return ''
+
     def get_orders(self, start_date, end_date):
         """
         Fetch orders from WooCommerce API within the specified date range
@@ -101,18 +108,18 @@ class WooCommerceClient:
                 # Initialize order info
                 order_id = order.get('id')
                 total = float(order.get('total', 0))
-                status = order.get('status', '')  # Get order status
+                status = order.get('status', '')
                 shipping_base = 0
                 shipping_tax = 0
 
-                # Process shipping lines - now separating base and tax
+                # Process shipping lines
                 for shipping in order.get('shipping_lines', []):
                     base = float(shipping.get('total', 0))
                     tax = float(shipping.get('total_tax', 0))
                     shipping_base += base
                     shipping_tax += tax
 
-                # Calculate total shipping (base + tax)
+                # Calculate total shipping
                 total_shipping = shipping_base + shipping_tax
                 total_tax = float(order.get('total_tax', 0))
                 subtotal = sum(float(item.get('subtotal', 0)) for item in order.get('line_items', []))
@@ -120,18 +127,22 @@ class WooCommerceClient:
                 # Get billing information
                 billing = order.get('billing', {})
 
-                # Create order record - now including both base and total shipping
+                # Get Dintero payment method
+                dintero_method = self.get_dintero_payment_method(order.get('meta_data', []))
+
+                # Create order record
                 order_info = {
                     'date': order_date,
                     'order_id': order_id,
-                    'status': status,  # Add status to order info
+                    'status': status,
                     'total': total,
                     'subtotal': subtotal,
-                    'shipping_base': shipping_base,  # Base shipping cost (ex VAT)
-                    'shipping_total': total_shipping,  # Total shipping (inc VAT)
-                    'shipping_tax': shipping_tax,  # Shipping VAT
+                    'shipping_base': shipping_base,
+                    'shipping_total': total_shipping,
+                    'shipping_tax': shipping_tax,
                     'tax_total': total_tax,
-                    'billing': billing  # Add complete billing information
+                    'billing': billing,
+                    'dintero_payment_method': dintero_method
                 }
 
                 order_data.append(order_info)
