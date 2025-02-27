@@ -275,16 +275,43 @@ def main():
                 'subtotal': 'kr {:,.2f}',
                 'shipping_total': 'kr {:,.2f}',
                 'tax_total': 'kr {:,.2f}'
-            }))
+            }),
+            column_config={
+                "date": "Dato",
+                "order_id": "Ordre-ID",
+                "status": "Status",
+                "total": "Totalt",
+                "subtotal": "Subtotal",
+                "shipping_base": "Frakt (eks. MVA)",
+                "shipping_total": "Frakt (inkl. MVA)",
+                "shipping_tax": "Frakt MVA",
+                "tax_total": "Total MVA",
+                "dintero_payment_method": "Betalingsmetode",
+                "shipping_method": "Leveringsmetode"
+            },
+            hide_index=True
+        )
 
-        st.subheader("Product Data")
+        st.subheader("Produktdata")
         if not df_products.empty:
             st.dataframe(
                 df_products.style.format({
                     'total': 'kr {:,.2f}',
                     'subtotal': 'kr {:,.2f}',
                     'tax': 'kr {:,.2f}'
-                }))
+                }),
+                column_config={
+                    "date": "Dato",
+                    "product_id": "Produkt-ID",
+                    "name": "Produktnavn",
+                    "quantity": "Antall",
+                    "total": "Totalt",
+                    "subtotal": "Subtotal",
+                    "tax": "MVA",
+                    "cost": "Kostnad"
+                },
+                hide_index=True
+            )
 
 
 if __name__ == "__main__":
