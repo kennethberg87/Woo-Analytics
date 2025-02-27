@@ -83,12 +83,40 @@ class DataProcessor:
         # Add total quantity column
         top_products.rename(columns={'quantity': 'Total Quantity'}, inplace=True)
 
-        # Debug information
-        st.sidebar.write("\nTop Products Analysis:")
-        st.sidebar.write(f"Date range: {df_products['date'].min()} to {df_products['date'].max()}")
-        st.sidebar.write(f"Number of products found: {len(top_products)}")
 
         return top_products
+
+    @staticmethod
+    def get_customer_list(df):
+        """Get list of customers with their order totals"""
+        if df.empty:
+            return pd.DataFrame()
+
+        # Create customer list with order totals
+        customer_data = []
+        for _, order in df.iterrows():
+            if 'billing' in order and isinstance(order['billing'], dict):
+                customer = {
+                    'First Name': order['billing'].get('first_name', ''),
+                    'Last Name': order['billing'].get('last_name', ''),
+                    'Email': order['billing'].get('email', ''),
+                    'Total Orders': order['total']
+                }
+                customer_data.append(customer)
+
+        if not customer_data:
+            return pd.DataFrame()
+
+        # Create DataFrame from customer data
+        customers_df = pd.DataFrame(customer_data)
+
+        # Group by customer details and sum their orders
+        customers_df = customers_df.groupby(['First Name', 'Last Name', 'Email'])['Total Orders'].sum().reset_index()
+
+        # Sort by total orders descending
+        customers_df = customers_df.sort_values('Total Orders', ascending=False)
+
+        return customers_df
 
     @staticmethod
     def create_revenue_chart(df, period='daily'):
@@ -130,70 +158,6 @@ class DataProcessor:
             height=400,
             hovermode='x unified',
             showlegend=False,
-            yaxis_tickprefix='kr ',
-            yaxis_tickformat=',.2f'
-        )
-
-        return fig
-
-    @staticmethod
-    def create_revenue_breakdown_chart(df, period='daily'):
-        """Create a stacked bar chart showing revenue breakdown with different time periods"""
-        if df.empty:
-            return None
-
-        # Ensure date column is datetime
-        df['date'] = pd.to_datetime(df['date'])
-
-        # Group by selected time period
-        if period == 'weekly':
-            df['period'] = df['date'].dt.strftime('%Y-W%U')
-            x_title = 'Week'
-        elif period == 'monthly':
-            df['period'] = df['date'].dt.strftime('%Y-%m')
-            x_title = 'Month'
-        else:  # daily
-            df['period'] = df['date']
-            x_title = 'Date'
-
-        grouped = df.groupby('period').agg({
-            'subtotal': 'sum',
-            'shipping_total': 'sum',
-            'tax_total': 'sum'
-        }).reset_index()
-
-        fig = go.Figure()
-
-        # Add traces for different components
-        fig.add_trace(go.Bar(
-            name='Subtotal',
-            x=grouped['period'],
-            y=grouped['subtotal'],
-            marker_color='#2E86C1'
-        ))
-
-        fig.add_trace(go.Bar(
-            name='Shipping',
-            x=grouped['period'],
-            y=grouped['shipping_total'],
-            marker_color='#28B463'
-        ))
-
-        fig.add_trace(go.Bar(
-            name='Tax',
-            x=grouped['period'],
-            y=grouped['tax_total'],
-            marker_color='#CB4335'
-        ))
-
-        fig.update_layout(
-            barmode='stack',
-            title=f'{period.capitalize()} Revenue Breakdown',
-            height=400,
-            template='plotly_white',
-            hovermode='x unified',
-            xaxis_title=x_title,
-            yaxis_title='Amount (NOK)',
             yaxis_tickprefix='kr ',
             yaxis_tickformat=',.2f'
         )

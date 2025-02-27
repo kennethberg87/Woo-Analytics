@@ -211,11 +211,30 @@ def main():
     if revenue_chart:
         st.plotly_chart(revenue_chart, use_container_width=True)
 
-    # Revenue Breakdown
-    st.subheader(f"Revenue Breakdown ({view_period})")
-    breakdown_chart = DataProcessor.create_revenue_breakdown_chart(df, period)
-    if breakdown_chart:
-        st.plotly_chart(breakdown_chart, use_container_width=True)
+    # Customer List
+    st.header("Customer Overview")
+    st.caption(f"For period: {start_date} to {end_date}")
+
+    customers_df = DataProcessor.get_customer_list(df)
+    if not customers_df.empty:
+        st.dataframe(
+            customers_df,
+            column_config={
+                "First Name": "First Name",
+                "Last Name": "Last Name",
+                "Email": "Email Address",
+                "Total Orders": st.column_config.NumberColumn(
+                    "Total Order Value",
+                    help="Total value of all orders",
+                    format="kr %.2f"
+                )
+            },
+            hide_index=True,
+            use_container_width=True
+        )
+    else:
+        st.warning("No customer data available for the selected date range")
+
 
     # Product Distribution
     st.subheader("Product Distribution")
