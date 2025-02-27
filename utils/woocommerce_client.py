@@ -34,12 +34,31 @@ class WooCommerceClient:
             st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
             raise
 
+    def get_payment_method_display(self, payment_method):
+        """Convert payment method code to display name"""
+        if not payment_method:
+            return "Ukjent"
+
+        payment_methods = {
+            'Klarna': 'Klarna',
+            'BamboraVipps': 'Vipps',
+            'Vipps': 'Vipps',
+            'BamboraApplepay': 'Apple Pay',
+            'BamboraGooglepay': 'Google Pay',
+            'CollectorInvoice': 'Faktura',
+            'BamboraCreditcard': 'Kortbetaling',
+            'CollectorInstallment': 'Walley Delbetaling'
+        }
+
+        return payment_methods.get(payment_method, "Ukjent")
+
     def get_dintero_payment_method(self, meta_data):
         """Extract Dintero payment method from order meta data"""
         for meta in meta_data:
             if meta.get('key') == '_dintero_payment_method':
-                return meta.get('value', '')
-        return ''
+                method = meta.get('value', '')
+                return self.get_payment_method_display(method)
+        return 'Ukjent'
 
     def get_shipping_method(self, shipping_lines):
         """Extract shipping method from order shipping lines"""
