@@ -35,28 +35,33 @@ def main():
     st.title("📊 WooCommerce Daily Turnover Dashboard")
 
     # Debug mode toggle
-    debug_mode = st.sidebar.checkbox("Debug Mode", value=False)
+    debug_mode = st.sidebar.checkbox("Debug Mode", value=True)  # Default to True for troubleshooting
     if debug_mode:
         st.sidebar.info("Debug mode is enabled. You will see detailed API responses and error messages.")
 
-    # Date range selector with past dates
+    # Date range selector
+    st.sidebar.subheader("Date Range Selection")
+
+    # Calculate default dates
+    today = datetime.now().date()
+    default_start = today - timedelta(days=7)  # Default to last 7 days
+
     col1, col2 = st.columns(2)
     with col1:
-        today = datetime.now().date()
-        default_start = today - timedelta(days=30)
         start_date = st.date_input(
             "Start Date",
-            default_start,
+            value=default_start,
             max_value=today,
-            help="Select a start date (up to today)"
+            help="Select start date (up to today)"
         )
+
     with col2:
         end_date = st.date_input(
             "End Date",
-            today,
+            value=today,
             min_value=start_date,
             max_value=today,
-            help="Select an end date (up to today)"
+            help="Select end date (up to today)"
         )
 
     # Validate date range
@@ -64,20 +69,25 @@ def main():
         st.error("Error: End date must be after start date")
         return
 
-    if start_date > datetime.now().date() or end_date > datetime.now().date():
+    if start_date > today or end_date > today:
         st.error("Error: Cannot select future dates")
         return
+
+    st.info(f"Fetching orders from {start_date} to {end_date}")
 
     # Fetch and process data
     try:
         with st.spinner("Fetching data from WooCommerce..."):
             orders = st.session_state.woo_client.get_orders(start_date, end_date)
+
             if debug_mode:
                 st.sidebar.write("Raw order count:", len(orders))
 
             df = st.session_state.woo_client.process_orders_to_df(orders)
+
             if debug_mode and not df.empty:
                 st.sidebar.write("Processed data shape:", df.shape)
+
     except Exception as e:
         st.error(f"Error: {str(e)}")
         if debug_mode:
