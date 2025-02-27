@@ -138,16 +138,28 @@ class WooCommerceClient:
                     'tax_total': float(order.get('total_tax', 0))
                 })
 
-                # Process line items (products)
+                # Process line items (products) with cost information
                 for item in order.get('line_items', []):
+                    # Extract cost from meta_data
+                    cost = 0
+                    for meta in item.get('meta_data', []):
+                        if meta.get('key') == '_yith_cog_item_cost':
+                            try:
+                                cost = float(meta.get('value', 0))
+                            except (ValueError, TypeError):
+                                cost = 0
+                            break
+
+                    quantity = int(item.get('quantity', 0))
                     product_data.append({
                         'date': order_date,
                         'product_id': item.get('product_id'),
                         'name': item.get('name'),
-                        'quantity': int(item.get('quantity', 0)),
+                        'quantity': quantity,
                         'total': float(item.get('total', 0)),
                         'subtotal': float(item.get('subtotal', 0)),
-                        'tax': float(item.get('total_tax', 0))
+                        'tax': float(item.get('total_tax', 0)),
+                        'cost': cost * quantity  # Total cost for the quantity ordered
                     })
 
             except Exception as e:

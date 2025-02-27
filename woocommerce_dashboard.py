@@ -125,8 +125,8 @@ def main():
     # Convert view_period to lowercase for processing
     period = view_period.lower()
 
-    # Calculate metrics
-    metrics = DataProcessor.calculate_metrics(df, period)
+    # Calculate metrics including profit
+    metrics = DataProcessor.calculate_metrics(df, df_products, period)
 
     # Display metrics in columns
     col1, col2, col3, col4 = st.columns(4)
@@ -142,14 +142,22 @@ def main():
         )
     with col3:
         st.metric(
-            "Total Shipping",
-            f"kr {metrics['total_shipping']:,.2f}"
+            "Total Profit",
+            f"kr {metrics['total_profit']:,.2f}"
         )
     with col4:
         st.metric(
-            "Total Tax",
-            f"kr {metrics['total_tax']:,.2f}"
+            "Profit Margin",
+            f"{metrics['profit_margin']:.1f}%"
         )
+
+    # Add Profit Analysis Section
+    st.header("Profit Analysis")
+    profit_chart = DataProcessor.create_profit_analysis_chart(df_products)
+    if profit_chart:
+        st.plotly_chart(profit_chart, use_container_width=True)
+    else:
+        st.warning("No profit data available. Please check if product costs are properly configured in WooCommerce.")
 
     # Revenue Trends
     st.subheader(f"Revenue Trends ({view_period})")

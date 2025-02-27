@@ -4,6 +4,125 @@ import plotly.graph_objects as go
 
 class DataProcessor:
     @staticmethod
+    def calculate_metrics(df, df_products, period='daily'):
+        """
+        Calculate key metrics including profit calculations
+        """
+        if df.empty:
+            return {
+                'total_revenue': 0,
+                'average_revenue': 0,
+                'total_shipping': 0,
+                'total_tax': 0,
+                'total_profit': 0,
+                'profit_margin': 0
+            }
+
+        # Ensure date column is datetime
+        df['date'] = pd.to_datetime(df['date'])
+
+        # Calculate total costs from products DataFrame
+        total_cost = df_products['cost'].sum() if 'cost' in df_products.columns else 0
+        total_revenue = df['total'].sum()
+
+        # Calculate profit
+        total_profit = total_revenue - total_cost
+        profit_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
+
+        # Group by selected time period
+        if period == 'weekly':
+            df['period'] = df['date'].dt.strftime('%Y-W%U')
+            grouped = df.groupby('period')
+        elif period == 'monthly':
+            df['period'] = df['date'].dt.strftime('%Y-%m')
+            grouped = df.groupby('period')
+        else:  # daily
+            grouped = df.groupby('date')
+
+        metrics = {
+            'total_revenue': total_revenue,
+            'average_revenue': grouped['total'].mean(),
+            'total_shipping': df['shipping_total'].sum(),
+            'total_tax': df['tax_total'].sum(),
+            'total_profit': total_profit,
+            'profit_margin': profit_margin
+        }
+
+        return metrics
+
+    @staticmethod
+    def create_profit_analysis_chart(df_products):
+        """
+        Create a horizontal bar chart showing profit by product
+        """
+        if df_products.empty or 'cost' not in df_products.columns:
+            return None
+
+        # Calculate profit per product
+        product_analysis = df_products.groupby('name').agg({
+            'quantity': 'sum',
+            'total': 'sum',
+            'cost': 'sum'
+        }).reset_index()
+
+        product_analysis['profit'] = product_analysis['total'] - product_analysis['cost']
+        product_analysis['margin'] = (product_analysis['profit'] / product_analysis['total'] * 100).round(2)
+
+        # Sort by profit
+        product_analysis = product_analysis.sort_values('profit', ascending=True)
+
+        fig = go.Figure()
+
+        # Add bars for revenue and cost
+        fig.add_trace(go.Bar(
+            name='Revenue',
+            x=product_analysis['total'],
+            y=product_analysis['name'],
+            orientation='h',
+            marker_color='#2E86C1'
+        ))
+
+        fig.add_trace(go.Bar(
+            name='Cost',
+            x=product_analysis['cost'],
+            y=product_analysis['name'],
+            orientation='h',
+            marker_color='#E74C3C'
+        ))
+
+        # Add text annotations for profit margin
+        for i, row in product_analysis.iterrows():
+            fig.add_annotation(
+                x=row['total'],
+                y=row['name'],
+                text=f"Margin: {row['margin']:.1f}%",
+                showarrow=False,
+                xanchor='left',
+                xshift=10,
+                font=dict(size=10)
+            )
+
+        fig.update_layout(
+            title='Product Profit Analysis',
+            barmode='overlay',
+            height=max(400, len(product_analysis) * 30),
+            template='plotly_white',
+            yaxis_title='Product',
+            xaxis_title='Amount (NOK)',
+            xaxis_tickprefix='kr ',
+            xaxis_tickformat=',.2f',
+            legend=dict(
+                orientation='h',
+                yanchor='bottom',
+                y=1.02,
+                xanchor='right',
+                x=1
+            )
+        )
+
+        return fig
+
+    @staticmethod
     def calculate_metrics(df, period='daily'):
         """
         Calculate key metrics from the DataFrame with different time periods
