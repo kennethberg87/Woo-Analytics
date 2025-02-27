@@ -124,25 +124,36 @@ class WooCommerceClient:
                     'order_id': order.get('id'),
                     'total': float(order.get('total', 0)),  # Total including VAT and shipping
                     'subtotal': sum(float(item.get('subtotal', 0)) for item in order.get('line_items', [])),  # Sum of line items
-                    'shipping_total': float(order.get('shipping_total', 0)),  # Base shipping cost
+                    'shipping_total': 0,  # Initialize shipping total
                     'tax_total': float(order.get('total_tax', 0))  # Total VAT
                 }
 
-                # Add shipping tax if present
+                # Process shipping lines
                 shipping_lines = order.get('shipping_lines', [])
                 if shipping_lines:
-                    shipping_tax = sum(float(line.get('total_tax', 0)) for line in shipping_lines)
-                    order_info['shipping_total'] += shipping_tax  # Include shipping tax in total shipping cost
+                    for shipping_line in shipping_lines:
+                        # Get base shipping cost
+                        base_shipping = float(shipping_line.get('total', 0))
+                        # Get shipping tax
+                        shipping_tax = float(shipping_line.get('total_tax', 0))
 
-                # Debug log for order totals
-                st.sidebar.write(f"Processing Order #{order_info['order_id']}:")
+                        # Debug shipping details
+                        st.sidebar.write(f"\nOrder #{order_info['order_id']} Shipping Details:")
+                        st.sidebar.write(f"Base Shipping: {base_shipping}")
+                        st.sidebar.write(f"Shipping Tax: {shipping_tax}")
+
+                        # Add to total shipping
+                        order_info['shipping_total'] += base_shipping + shipping_tax
+
+                # Debug order totals
+                st.sidebar.write(f"\nOrder #{order_info['order_id']} Totals:")
                 st.sidebar.write(f"Total (incl. VAT & shipping): {order_info['total']}")
-                st.sidebar.write(f"Shipping: {order_info['shipping_total']}")
-                st.sidebar.write(f"Tax: {order_info['tax_total']}")
+                st.sidebar.write(f"Total Shipping (incl. tax): {order_info['shipping_total']}")
+                st.sidebar.write(f"Total Tax: {order_info['tax_total']}")
 
                 order_data.append(order_info)
 
-                # Process line items (products) with cost information
+                # Process line items (products)
                 for item in order.get('line_items', []):
                     # Extract cost from meta_data
                     cost = 0
@@ -178,7 +189,7 @@ class WooCommerceClient:
             st.sidebar.warning("No valid orders found after processing")
             return df_orders, df_products
 
-        # Group orders by date for daily metrics (date is already in Oslo timezone)
+        # Group orders by date for daily metrics
         daily_metrics = df_orders.groupby('date').agg({
             'total': 'sum',
             'subtotal': 'sum',
@@ -187,10 +198,10 @@ class WooCommerceClient:
         }).reset_index()
 
         # Add debug information
-        st.sidebar.write(f"Raw order count: {len(orders)}")
+        st.sidebar.write(f"\nRaw order count: {len(orders)}")
         if len(daily_metrics) > 0:
-            st.sidebar.write("Sample daily totals:")
-            st.sidebar.write(daily_metrics[['date', 'total', 'shipping_total']].to_dict('records'))
+            st.sidebar.write("\nDaily Totals:")
+            st.sidebar.write(daily_metrics[['date', 'total', 'shipping_total', 'tax_total']].to_dict('records'))
 
         st.sidebar.success(f"Processed {len(daily_metrics)} days of order data")
         st.sidebar.write("Processed data shape:", daily_metrics.shape)
