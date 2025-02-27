@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 
 class NotificationHandler:
@@ -18,7 +18,7 @@ class NotificationHandler:
         for order in orders:
             order_id = str(order.get('id'))
             date_created = order.get('date_created')
-            
+
             # Skip if we've already notified about this order
             if order_id in st.session_state.notifications:
                 continue
@@ -42,7 +42,7 @@ class NotificationHandler:
             order_id = order.get('id')
             total = float(order.get('total', 0))
             currency = order.get('currency', 'NOK')
-            
+
             # Create notification message
             message = f"""🔔 New Order #{order_id}
 Total: {currency} {total:,.2f}
@@ -59,7 +59,7 @@ Time: {datetime.now().strftime('%H:%M:%S')}"""
         try:
             # Get current time
             current_time = datetime.now()
-            
+
             # Fetch recent orders
             orders = woo_client.get_orders(
                 start_date=(current_time - timedelta(minutes=check_interval)).date(),
