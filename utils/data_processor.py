@@ -6,7 +6,7 @@ class DataProcessor:
     @staticmethod
     def calculate_metrics(df, df_products, period='daily'):
         """
-        Calculate key metrics including profit calculations
+        Calculate key metrics including profit calculations, adjusting for VAT
         """
         if df.empty:
             return {
@@ -21,13 +21,17 @@ class DataProcessor:
         # Ensure date column is datetime
         df['date'] = pd.to_datetime(df['date'])
 
-        # Calculate total costs from products DataFrame
+        # Calculate totals from products DataFrame
         total_cost = df_products['cost'].sum() if 'cost' in df_products.columns else 0
-        total_revenue = df['total'].sum()
+        total_revenue_incl_vat = df['total'].sum()
+        total_tax = df['tax_total'].sum()
 
-        # Calculate profit
-        total_profit = total_revenue - total_cost
-        profit_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
+        # Calculate revenue excluding VAT
+        total_revenue_excl_vat = total_revenue_incl_vat - total_tax
+
+        # Calculate profit (using revenue excluding VAT)
+        total_profit = total_revenue_excl_vat - total_cost
+        profit_margin = (total_profit / total_revenue_excl_vat * 100) if total_revenue_excl_vat > 0 else 0
 
         # Calculate average revenue based on period
         if period == 'weekly':
@@ -40,10 +44,10 @@ class DataProcessor:
             avg_revenue = df.groupby('date')['total'].sum().mean()
 
         metrics = {
-            'total_revenue': total_revenue,
+            'total_revenue_incl_vat': total_revenue_incl_vat,
+            'total_revenue_excl_vat': total_revenue_excl_vat,
             'average_revenue': float(avg_revenue),  # Convert to float
-            'total_shipping': df['shipping_total'].sum(),
-            'total_tax': df['tax_total'].sum(),
+            'total_tax': total_tax,
             'total_profit': total_profit,
             'profit_margin': profit_margin
         }
@@ -53,7 +57,7 @@ class DataProcessor:
     @staticmethod
     def create_profit_analysis_chart(df_products):
         """
-        Create a horizontal bar chart showing profit by product
+        Create a horizontal bar chart showing profit by product, accounting for VAT
         """
         if df_products.empty or 'cost' not in df_products.columns:
             return None
@@ -62,21 +66,24 @@ class DataProcessor:
         product_analysis = df_products.groupby('name').agg({
             'quantity': 'sum',
             'total': 'sum',
+            'tax': 'sum',
             'cost': 'sum'
         }).reset_index()
 
-        product_analysis['profit'] = product_analysis['total'] - product_analysis['cost']
-        product_analysis['margin'] = (product_analysis['profit'] / product_analysis['total'] * 100).round(2)
+        # Calculate revenue excluding VAT
+        product_analysis['revenue_excl_vat'] = product_analysis['total'] - product_analysis['tax']
+        product_analysis['profit'] = product_analysis['revenue_excl_vat'] - product_analysis['cost']
+        product_analysis['margin'] = (product_analysis['profit'] / product_analysis['revenue_excl_vat'] * 100).round(2)
 
         # Sort by profit
         product_analysis = product_analysis.sort_values('profit', ascending=True)
 
         fig = go.Figure()
 
-        # Add bars for revenue and cost
+        # Add bars for revenue (excl. VAT) and cost
         fig.add_trace(go.Bar(
-            name='Revenue',
-            x=product_analysis['total'],
+            name='Revenue (excl. VAT)',
+            x=product_analysis['revenue_excl_vat'],
             y=product_analysis['name'],
             orientation='h',
             marker_color='#2E86C1'
@@ -93,7 +100,7 @@ class DataProcessor:
         # Add text annotations for profit margin
         for i, row in product_analysis.iterrows():
             fig.add_annotation(
-                x=row['total'],
+                x=row['revenue_excl_vat'],
                 y=row['name'],
                 text=f"Margin: {row['margin']:.1f}%",
                 showarrow=False,
@@ -103,7 +110,7 @@ class DataProcessor:
             )
 
         fig.update_layout(
-            title='Product Profit Analysis',
+            title='Product Profit Analysis (Revenue excl. VAT)',
             barmode='overlay',
             height=max(400, len(product_analysis) * 30),
             template='plotly_white',

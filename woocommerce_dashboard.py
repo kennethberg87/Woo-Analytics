@@ -132,13 +132,13 @@ def main():
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric(
-            "Total Revenue",
-            f"kr {metrics['total_revenue']:,.2f}"
+            "Total Revenue (incl. VAT)",
+            f"kr {metrics['total_revenue_incl_vat']:,.2f}"
         )
     with col2:
         st.metric(
-            f"Average {view_period} Revenue",
-            f"kr {metrics['average_revenue']:,.2f}"
+            "Total Revenue (excl. VAT)",
+            f"kr {metrics['total_revenue_excl_vat']:,.2f}"
         )
     with col3:
         st.metric(
@@ -150,6 +150,15 @@ def main():
             "Profit Margin",
             f"{metrics['profit_margin']:.1f}%"
         )
+
+    # Add explanation about VAT calculations
+    st.info("""
+    💡 Profit Calculation Details:
+    - Revenue (incl. VAT): Total sales including VAT
+    - Revenue (excl. VAT): Revenue after removing VAT
+    - Profit: Revenue (excl. VAT) - Product Costs
+    - Product costs are already VAT-exclusive
+    """)
 
     # Add Profit Analysis Section
     st.header("Profit Analysis")
