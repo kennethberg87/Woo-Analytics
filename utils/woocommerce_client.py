@@ -29,15 +29,6 @@ class WooCommerceClient:
                 timeout=30
             )
 
-            # Test API connection
-            response = self.wcapi.get("")
-            if response.status_code == 401:
-                raise ValueError("Invalid API credentials (Unauthorized)")
-            elif response.status_code != 200:
-                error_data = response.json() if response.headers.get('content-type', '').startswith('application/json') else None
-                error_message = error_data.get('message') if error_data else 'Unknown error'
-                raise Exception(f"API test failed with status {response.status_code}: {error_message}")
-
         except Exception as e:
             st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
             raise
@@ -47,32 +38,20 @@ class WooCommerceClient:
         Fetch orders from WooCommerce API within the specified date range
         """
         try:
-            # Convert dates to ISO format with timezone handling
-            start_date_str = f"{start_date.isoformat()}T00:00:00"
-            end_date_str = f"{end_date.isoformat()}T23:59:59"
+            # Convert dates to WooCommerce expected format (ISO 8601)
+            start_date_str = start_date.strftime('%Y-%m-%dT00:00:00')
+            end_date_str = end_date.strftime('%Y-%m-%dT23:59:59')
 
             st.write("Date Range Selection")
             st.write(f"Fetching orders from {start_date} to {end_date}")
 
             # Debug date parameters
-            st.sidebar.write("API Date Parameters:")
+            st.sidebar.write("\nAPI Request Parameters:")
             st.sidebar.write(f"Start: {start_date_str}")
             st.sidebar.write(f"End: {end_date_str}")
 
             all_orders = []
             page = 1
-
-            # List of valid order statuses
-            order_statuses = [
-                "pending",
-                "processing",
-                "on-hold",
-                "completed",
-                "cancelled",
-                "refunded",
-                "failed",
-                "trash"
-            ]
 
             while True:
                 params = {
@@ -80,39 +59,50 @@ class WooCommerceClient:
                     "before": end_date_str,
                     "per_page": 100,
                     "page": page,
-                    "status": order_statuses
+                    "status": "any"  # Fetch all order statuses
                 }
 
                 st.sidebar.write(f"\nFetching page {page}")
                 st.sidebar.write(f"API Parameters: {params}")
 
                 response = self.wcapi.get("orders", params=params)
-                st.sidebar.write(f"Response Status: {response.status_code}")
-                st.sidebar.write(f"Response Headers: {dict(response.headers)}")
+
+                # Debug API response
+                st.sidebar.write("API Response:")
+                st.sidebar.write(f"Status Code: {response.status_code}")
+                st.sidebar.write(f"Headers: {dict(response.headers)}")
 
                 if response.status_code != 200:
                     st.sidebar.error(f"Failed to fetch orders. Status: {response.status_code}")
+                    response_json = response.json()
+                    st.sidebar.error(f"Error message: {response_json.get('message', 'Unknown error')}")
                     break
 
                 orders = response.json()
-                st.sidebar.write(f"Orders returned: {len(orders)}")
+                st.sidebar.write(f"Orders returned on this page: {len(orders)}")
 
                 if not isinstance(orders, list):
                     st.sidebar.error(f"Unexpected response format: {type(orders)}")
+                    st.sidebar.write("Response content:", orders)
                     break
 
                 if not orders:  # No more orders
                     break
 
-                # Debug first order date in response
+                # Debug first order
                 if orders:
                     first_order = orders[0]
-                    st.sidebar.write(f"Sample Order Date: {first_order.get('date_created')}")
-                    st.sidebar.write(f"Sample Order Status: {first_order.get('status')}")
+                    st.sidebar.write("\nSample Order Details:")
+                    st.sidebar.write({
+                        'id': first_order.get('id'),
+                        'status': first_order.get('status'),
+                        'date_created': first_order.get('date_created'),
+                        'total': first_order.get('total')
+                    })
 
                 all_orders.extend(orders)
 
-                # Check if there are more pages
+                # Check pagination
                 total_pages = int(response.headers.get('X-WP-TotalPages', 1))
                 total_orders = int(response.headers.get('X-WP-Total', 0))
                 st.sidebar.write(f"Total Pages: {total_pages}")
@@ -135,8 +125,8 @@ class WooCommerceClient:
         Convert orders to pandas DataFrame with daily metrics
         """
         if not orders:
-            st.sidebar.write("No orders to process")
-            return pd.DataFrame(columns=['date', 'total', 'subtotal', 'shipping_total', 'tax_total']), pd.DataFrame()
+            st.sidebar.warning("No orders to process")
+            return pd.DataFrame(), pd.DataFrame()
 
         # Extract relevant data from orders
         order_data = []
@@ -176,7 +166,7 @@ class WooCommerceClient:
 
                 order_data.append(order_info)
 
-                # Process line items (products) with cost information
+                # Process line items (products)
                 for item in order.get('line_items', []):
                     # Extract cost from meta_data
                     cost = 0
@@ -204,13 +194,12 @@ class WooCommerceClient:
                 st.sidebar.error(f"Error processing order: {str(e)}")
                 continue
 
-        # Create main orders DataFrame
+        # Create DataFrames
         df_orders = pd.DataFrame(order_data)
         if df_orders.empty:
             st.sidebar.warning("No valid orders found after processing")
             return df_orders, pd.DataFrame()
 
-        # Create products DataFrame
         df_products = pd.DataFrame(product_data)
 
         # Ensure date columns are datetime
@@ -227,7 +216,8 @@ class WooCommerceClient:
         }).reset_index()
 
         # Debug totals
-        st.sidebar.write("\nFinal Totals:")
+        st.sidebar.write("\nDaily Totals:")
+        st.sidebar.write(f"Number of days: {len(daily_metrics)}")
         st.sidebar.write(f"Total Line Items (incl. VAT): {daily_metrics['total'].sum():.2f}")
         st.sidebar.write(f"Total Tax: {daily_metrics['tax_total'].sum():.2f}")
         st.sidebar.write(f"Total Shipping: {daily_metrics['shipping_total'].sum():.2f}")
