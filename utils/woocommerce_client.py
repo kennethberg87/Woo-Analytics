@@ -47,35 +47,56 @@ class WooCommerceClient:
         Fetch orders from WooCommerce API within the specified date range
         """
         try:
-            # Convert dates to ISO format
-            start_date_iso = start_date.isoformat()
-            end_date_iso = end_date.isoformat()
+            # Convert dates to ISO format with timezone handling
+            start_date_str = f"{start_date.isoformat()}T00:00:00"
+            end_date_str = f"{end_date.isoformat()}T23:59:59"
 
-            st.write(f"Date Range Selection")
-            st.write(f"Fetching orders from {start_date_iso} to {end_date_iso}")
+            st.write("Date Range Selection")
+            st.write(f"Fetching orders from {start_date} to {end_date}")
+
+            # Debug date parameters
+            st.sidebar.write("API Date Parameters:")
+            st.sidebar.write(f"Start: {start_date_str}")
+            st.sidebar.write(f"End: {end_date_str}")
 
             all_orders = []
             page = 1
 
+            # List of valid order statuses
+            order_statuses = [
+                "pending",
+                "processing",
+                "on-hold",
+                "completed",
+                "cancelled",
+                "refunded",
+                "failed",
+                "trash"
+            ]
+
             while True:
                 params = {
-                    "after": f"{start_date_iso}T00:00:00",
-                    "before": f"{end_date_iso}T23:59:59",
+                    "after": start_date_str,
+                    "before": end_date_str,
                     "per_page": 100,
                     "page": page,
-                    "status": ["processing", "completed", "on-hold", "pending"]
+                    "status": order_statuses
                 }
 
-                st.sidebar.write(f"API Request Parameters: {params}")
+                st.sidebar.write(f"\nFetching page {page}")
+                st.sidebar.write(f"API Parameters: {params}")
+
                 response = self.wcapi.get("orders", params=params)
-                st.sidebar.write(f"API Response Status: {response.status_code}")
-                st.sidebar.write(f"API Response Headers: {dict(response.headers)}")
+                st.sidebar.write(f"Response Status: {response.status_code}")
+                st.sidebar.write(f"Response Headers: {dict(response.headers)}")
 
                 if response.status_code != 200:
                     st.sidebar.error(f"Failed to fetch orders. Status: {response.status_code}")
                     break
 
                 orders = response.json()
+                st.sidebar.write(f"Orders returned: {len(orders)}")
+
                 if not isinstance(orders, list):
                     st.sidebar.error(f"Unexpected response format: {type(orders)}")
                     break
@@ -83,10 +104,20 @@ class WooCommerceClient:
                 if not orders:  # No more orders
                     break
 
+                # Debug first order date in response
+                if orders:
+                    first_order = orders[0]
+                    st.sidebar.write(f"Sample Order Date: {first_order.get('date_created')}")
+                    st.sidebar.write(f"Sample Order Status: {first_order.get('status')}")
+
                 all_orders.extend(orders)
 
                 # Check if there are more pages
                 total_pages = int(response.headers.get('X-WP-TotalPages', 1))
+                total_orders = int(response.headers.get('X-WP-Total', 0))
+                st.sidebar.write(f"Total Pages: {total_pages}")
+                st.sidebar.write(f"Total Orders: {total_orders}")
+
                 if page >= total_pages:
                     break
 
@@ -101,7 +132,7 @@ class WooCommerceClient:
 
     def process_orders_to_df(self, orders):
         """
-        Convert orders to pandas DataFrame with daily metrics and product information
+        Convert orders to pandas DataFrame with daily metrics
         """
         if not orders:
             st.sidebar.write("No orders to process")
@@ -113,10 +144,10 @@ class WooCommerceClient:
 
         for order in orders:
             try:
-                # Try multiple date fields
-                date_str = order.get('date_created') or order.get('date_modified') or order.get('date_created_gmt')
+                # Parse date
+                date_str = order.get('date_created')
                 if not date_str:
-                    st.sidebar.warning(f"No date found in order: {order}")
+                    st.sidebar.warning(f"No date found in order: {order.get('id')}")
                     continue
 
                 # Remove timezone suffix if present and convert to datetime
