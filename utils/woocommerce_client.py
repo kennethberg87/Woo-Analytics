@@ -158,7 +158,7 @@ class WooCommerceClient:
                 total_shipping = shipping_base + shipping_tax
                 total_tax = float(order.get('total_tax', 0))
                 subtotal = sum(float(item.get('subtotal', 0))
-                             for item in order.get('line_items', []))
+                               for item in order.get('line_items', []))
 
                 # Get billing information
                 billing = order.get('billing', {})
@@ -205,7 +205,7 @@ class WooCommerceClient:
                         'product_id': item.get('product_id'),
                         'name': item.get('name'),
                         'quantity': quantity,
-                        'total': float(item.get('total', 0)),
+                        'total': float(item.get('total', 0)) + float(item.get('total_tax', 0)),  # Ensure total includes tax
                         'subtotal': float(item.get('subtotal', 0)),
                         'tax': float(item.get('total_tax', 0)),
                         'cost': cost * quantity
