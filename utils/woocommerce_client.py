@@ -138,7 +138,7 @@ class WooCommerceClient:
 
         except SSLError as e:
             st.sidebar.error("SSL Certificate verification failed while fetching orders.")
-            raise Exception("SSL Certificate verification failed while fetching orders.")
+            raise Exception(f"SSL Certificate verification failed: {str(e)}")
         except ConnectionError as e:
             st.sidebar.error(f"Connection error while fetching orders: {str(e)}")
             raise Exception(f"Connection error while fetching orders: {str(e)}")
