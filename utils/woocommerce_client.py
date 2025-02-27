@@ -100,7 +100,7 @@ class WooCommerceClient:
                     "modified_before": f"{end_date_iso}T23:59:59",  # HPOS uses modified_before
                     "per_page": 100,
                     "page": page,
-                    "status": ["completed", "processing", "on-hold", "pending"],  # Added more statuses
+                    "status": ["completed", "processing", "on-hold", "pending", "failed"],  # Added more statuses
                     "orderby": "modified",  # HPOS uses modified date
                     "order": "desc"
                 }
