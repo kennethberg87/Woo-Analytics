@@ -38,27 +38,26 @@ def main():
     # Date range selector
     st.sidebar.subheader("Date Range Selection")
 
-    # Calculate default dates - Use 2024 as base year for querying real data
-    base_date = datetime(2024, 2, 27).date()  # Use a past date as reference
-    default_end = base_date
-    default_start = default_end - timedelta(days=7)
+    # Set fixed date range for testing (known working dates)
+    default_start = datetime(2024, 2, 20).date()  # Fixed start date
+    default_end = datetime(2024, 2, 27).date()    # Fixed end date
 
-    col1, col2 = st.columns(2)
-    with col1:
+    with st.columns(2)[0]:
         start_date = st.date_input(
             "Start Date",
             value=default_start,
+            min_value=default_start,
             max_value=default_end,
-            help="Select start date (defaults to 7 days before end date)"
+            help="Select start date (February 20-27, 2024)"
         )
 
-    with col2:
+    with st.columns(2)[1]:
         end_date = st.date_input(
             "End Date",
             value=default_end,
             min_value=start_date,
-            max_value=base_date,
-            help="Select end date (up to February 27, 2024)"
+            max_value=default_end,
+            help="Select end date (February 20-27, 2024)"
         )
 
     # Validate date range
@@ -66,8 +65,8 @@ def main():
         st.error("Error: End date must be after start date")
         return
 
-    if start_date > base_date or end_date > base_date:
-        st.error("Error: Please select dates before February 27, 2024")
+    if start_date < default_start or end_date > default_end:
+        st.error("Error: Please select dates between February 20-27, 2024")
         return
 
     st.info(f"Fetching orders from {start_date} to {end_date}")
@@ -80,7 +79,7 @@ def main():
             if debug_mode:
                 st.sidebar.write("Raw order count:", len(orders))
                 if len(orders) > 0:
-                    st.sidebar.write("Sample order data:", orders[0])
+                    st.sidebar.write("Sample order data:", {k: v for k, v in orders[0].items() if k in ['id', 'status', 'date_created', 'total']})
 
             df = st.session_state.woo_client.process_orders_to_df(orders)
 

@@ -67,7 +67,7 @@ class WooCommerceClient:
                 "after": f"{start_date_iso}T00:00:00",
                 "before": f"{end_date_iso}T23:59:59",
                 "per_page": 100,
-                "status": "any",  # Try fetching all order statuses
+                "status": "any"  # Try fetching all order statuses
             }
 
             st.sidebar.write(f"API Request Parameters: {params}")
