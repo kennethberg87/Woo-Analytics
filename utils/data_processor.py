@@ -100,6 +100,7 @@ class DataProcessor:
                 customer = {
                     'Name': f"{first_name} {last_name}".strip(),
                     'Email': order['billing'].get('email', ''),
+                    'Order Date': order['date'],
                     'Total Orders': order['total'],
                     'Payment Method': order.get('dintero_payment_method', ''),
                     'Shipping Method': order.get('shipping_method', '')
@@ -113,10 +114,10 @@ class DataProcessor:
         customers_df = pd.DataFrame(customer_data)
 
         # Group by customer details and sum their orders
-        customers_df = customers_df.groupby(['Name', 'Email', 'Payment Method', 'Shipping Method'])['Total Orders'].sum().reset_index()
+        customers_df = customers_df.groupby(['Name', 'Email', 'Payment Method', 'Shipping Method', 'Order Date'])['Total Orders'].sum().reset_index()
 
-        # Sort by total orders descending
-        customers_df = customers_df.sort_values('Total Orders', ascending=False)
+        # Sort by date descending (most recent first)
+        customers_df = customers_df.sort_values('Order Date', ascending=False)
 
         return customers_df
 

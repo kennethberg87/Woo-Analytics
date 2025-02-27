@@ -222,6 +222,10 @@ def main():
             column_config={
                 "Name": "Customer Name",
                 "Email": "Email Address",
+                "Order Date": st.column_config.DatetimeColumn(
+                    "Order Date & Time",
+                    format="DD/MM/YYYY HH:mm"
+                ),
                 "Payment Method": "Dintero Payment Method",
                 "Shipping Method": "Shipping Method",
                 "Total Orders": st.column_config.NumberColumn(
