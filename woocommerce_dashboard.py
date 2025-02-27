@@ -184,13 +184,21 @@ def main():
     - Product costs are already VAT-exclusive
     """)
 
-    # Add Profit Analysis Section
-    st.header("Profit Analysis")
-    profit_chart = DataProcessor.create_profit_analysis_chart(df_products)
-    if profit_chart:
-        st.plotly_chart(profit_chart, use_container_width=True)
+    # Display Top 10 Products
+    st.header("Top 10 Products by Quantity Sold")
+    top_products = DataProcessor.get_top_products(df_products)
+    if not top_products.empty:
+        st.dataframe(
+            top_products,
+            column_config={
+                "name": "Product Name",
+                "quantity": "Units Sold"
+            },
+            hide_index=False,
+            use_container_width=True
+        )
     else:
-        st.warning("No profit data available. Please check if product costs are properly configured in WooCommerce.")
+        st.warning("No product data available")
 
     # Revenue Trends
     st.subheader(f"Revenue Trends ({view_period})")
@@ -204,18 +212,12 @@ def main():
     if breakdown_chart:
         st.plotly_chart(breakdown_chart, use_container_width=True)
 
-    # Product Analysis Section
-    st.header("Product Analysis")
+    # Product Distribution
+    st.subheader("Product Distribution")
+    quantity_chart = DataProcessor.create_product_quantity_chart(df_products)
+    if quantity_chart:
+        st.plotly_chart(quantity_chart, use_container_width=True)
 
-    # Product Sales Breakdown
-    product_sales_chart = DataProcessor.create_product_sales_chart(df_products)
-    if product_sales_chart:
-        st.plotly_chart(product_sales_chart, use_container_width=True)
-
-    # Product Quantity Distribution
-    product_quantity_chart = DataProcessor.create_product_quantity_chart(df_products)
-    if product_quantity_chart:
-        st.plotly_chart(product_quantity_chart, use_container_width=True)
 
     # Export Section
     st.header("Export Data")

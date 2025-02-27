@@ -6,9 +6,7 @@ import streamlit as st
 class DataProcessor:
     @staticmethod
     def calculate_metrics(df, df_products, period='daily'):
-        """
-        Calculate key metrics including profit calculations, adjusting for VAT
-        """
+        """Calculate key metrics including profit calculations, adjusting for VAT"""
         if df.empty:
             return {
                 'total_revenue_incl_vat': 0,
@@ -19,7 +17,7 @@ class DataProcessor:
                 'total_profit': 0,
                 'profit_margin': 0,
                 'total_cogs': 0,
-                'order_count': 0  # Add order count metric
+                'order_count': 0
             }
 
         # Ensure date column is datetime
@@ -56,108 +54,34 @@ class DataProcessor:
         metrics = {
             'total_revenue_incl_vat': total_revenue_incl_vat,
             'total_revenue_excl_vat': total_revenue_excl_vat,
-            'average_revenue': float(avg_revenue),  # Convert to float
-            'shipping_base': shipping_base,  # Base shipping excluding VAT
+            'average_revenue': float(avg_revenue),
+            'shipping_base': shipping_base,
             'total_tax': total_tax,
             'total_profit': total_profit,
             'profit_margin': profit_margin,
-            'total_cogs': total_cost,  # Add COGS to metrics
-            'order_count': order_count  # Add order count to metrics
+            'total_cogs': total_cost,
+            'order_count': order_count
         }
-
-        # Debug information
-        st.sidebar.write("\nDetailed Revenue Calculations:")
-        st.sidebar.write(f"Total Order Sum: {df['total'].sum():.2f}")
-        st.sidebar.write(f"Base Shipping (ex VAT): {shipping_base:.2f}")
-        st.sidebar.write(f"Shipping Tax: {shipping_tax:.2f}")
-        st.sidebar.write(f"Revenue (incl. VAT, no shipping): {total_revenue_incl_vat:.2f}")
-        st.sidebar.write(f"Total Tax: {total_tax:.2f}")
-        st.sidebar.write(f"Revenue (excl. VAT & shipping): {total_revenue_excl_vat:.2f}")
-        st.sidebar.write(f"Total COGS: {total_cost:.2f}")
-        st.sidebar.write(f"Number of Orders: {order_count}")
 
         return metrics
 
     @staticmethod
-    def create_profit_analysis_chart(df_products):
-        """
-        Create a horizontal bar chart showing profit by product, accounting for VAT
-        """
-        if df_products.empty or 'cost' not in df_products.columns:
-            return None
+    def get_top_products(df_products, limit=10):
+        """Get top products by quantity sold"""
+        if df_products.empty:
+            return pd.DataFrame()
 
-        # Calculate profit per product
-        product_analysis = df_products.groupby('name').agg({
-            'quantity': 'sum',
-            'total': 'sum',
-            'tax': 'sum',
-            'cost': 'sum'
-        }).reset_index()
+        # Group by product name and sum quantities
+        top_products = df_products.groupby('name')['quantity'].sum().reset_index()
+        top_products = top_products.sort_values('quantity', ascending=False).head(limit)
+        top_products = top_products.reset_index(drop=True)
+        top_products.index = top_products.index + 1  # Start index from 1
 
-        # Calculate revenue excluding VAT
-        product_analysis['revenue_excl_vat'] = product_analysis['total'] - product_analysis['tax']
-        product_analysis['profit'] = product_analysis['revenue_excl_vat'] - product_analysis['cost']
-        product_analysis['margin'] = (product_analysis['profit'] / product_analysis['revenue_excl_vat'] * 100).round(2)
-
-        # Sort by profit
-        product_analysis = product_analysis.sort_values('profit', ascending=True)
-
-        fig = go.Figure()
-
-        # Add bars for revenue (excl. VAT) and cost
-        fig.add_trace(go.Bar(
-            name='Revenue (excl. VAT)',
-            x=product_analysis['revenue_excl_vat'],
-            y=product_analysis['name'],
-            orientation='h',
-            marker_color='#2E86C1'
-        ))
-
-        fig.add_trace(go.Bar(
-            name='Cost',
-            x=product_analysis['cost'],
-            y=product_analysis['name'],
-            orientation='h',
-            marker_color='#E74C3C'
-        ))
-
-        # Add text annotations for profit margin
-        for i, row in product_analysis.iterrows():
-            fig.add_annotation(
-                x=row['revenue_excl_vat'],
-                y=row['name'],
-                text=f"Margin: {row['margin']:.1f}%",
-                showarrow=False,
-                xanchor='left',
-                xshift=10,
-                font=dict(size=10)
-            )
-
-        fig.update_layout(
-            title='Product Profit Analysis (Revenue excl. VAT)',
-            barmode='overlay',
-            height=max(400, len(product_analysis) * 30),
-            template='plotly_white',
-            yaxis_title='Product',
-            xaxis_title='Amount (NOK)',
-            xaxis_tickprefix='kr ',
-            xaxis_tickformat=',.2f',
-            legend=dict(
-                orientation='h',
-                yanchor='bottom',
-                y=1.02,
-                xanchor='right',
-                x=1
-            )
-        )
-
-        return fig
+        return top_products
 
     @staticmethod
     def create_revenue_chart(df, period='daily'):
-        """
-        Create a line chart for revenue with different time periods
-        """
+        """Create a line chart for revenue with different time periods"""
         if df.empty:
             return None
 
@@ -203,9 +127,7 @@ class DataProcessor:
 
     @staticmethod
     def create_revenue_breakdown_chart(df, period='daily'):
-        """
-        Create a stacked bar chart showing revenue breakdown with different time periods
-        """
+        """Create a stacked bar chart showing revenue breakdown with different time periods"""
         if df.empty:
             return None
 
@@ -268,51 +190,8 @@ class DataProcessor:
         return fig
 
     @staticmethod
-    def create_product_sales_chart(df_products, period='daily'):
-        """
-        Create a bar chart showing sales by product
-        """
-        if df_products.empty:
-            return None
-
-        # Group by product and calculate total sales
-        product_sales = df_products.groupby('name').agg({
-            'quantity': 'sum',
-            'total': 'sum'
-        }).reset_index()
-
-        # Sort by total sales
-        product_sales = product_sales.sort_values('total', ascending=True)
-
-        fig = go.Figure()
-
-        # Add bar for total revenue
-        fig.add_trace(go.Bar(
-            x=product_sales['total'],
-            y=product_sales['name'],
-            orientation='h',
-            marker_color='#2E86C1',
-            name='Revenue'
-        ))
-
-        fig.update_layout(
-            title='Product Sales Breakdown',
-            height=max(400, len(product_sales) * 30),  # Dynamic height based on number of products
-            template='plotly_white',
-            yaxis_title='Product',
-            xaxis_title='Revenue (NOK)',
-            xaxis_tickprefix='kr ',
-            xaxis_tickformat=',.2f',
-            showlegend=False
-        )
-
-        return fig
-
-    @staticmethod
     def create_product_quantity_chart(df_products):
-        """
-        Create a pie chart showing quantity sold by product
-        """
+        """Create a pie chart showing quantity sold by product"""
         if df_products.empty:
             return None
 
