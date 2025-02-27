@@ -129,13 +129,27 @@ class WooCommerceClient:
                 date_str = date_str.replace('Z', '+00:00')
                 order_date = pd.to_datetime(date_str)
 
+                # Debug log revenue components
+                total = float(order.get('total', 0))
+                shipping_total = float(order.get('shipping_total', 0))
+                tax_total = float(order.get('total_tax', 0))
+                subtotal = total - shipping_total - tax_total
+
+                st.sidebar.write(f"""
+                Order #{order.get('id')} breakdown:
+                - Total (incl. VAT): {total:.2f}
+                - Shipping: {shipping_total:.2f}
+                - Tax: {tax_total:.2f}
+                - Subtotal: {subtotal:.2f}
+                """)
+
                 # Process main order data
                 order_data.append({
                     'date': order_date,
-                    'total': float(order.get('total', 0)),
-                    'subtotal': float(order.get('subtotal', 0)),
-                    'shipping_total': float(order.get('shipping_total', 0)),
-                    'tax_total': float(order.get('total_tax', 0))
+                    'total': total,
+                    'subtotal': subtotal,
+                    'shipping_total': shipping_total,
+                    'tax_total': tax_total
                 })
 
                 # Process line items (products) with cost information
@@ -151,14 +165,25 @@ class WooCommerceClient:
                             break
 
                     quantity = int(item.get('quantity', 0))
+                    total_item = float(item.get('total', 0))
+                    tax_item = float(item.get('total_tax', 0))
+
+                    st.sidebar.write(f"""
+                    Product: {item.get('name')}
+                    - Quantity: {quantity}
+                    - Total (incl. VAT): {total_item:.2f}
+                    - Tax: {tax_item:.2f}
+                    - Cost: {cost * quantity:.2f}
+                    """)
+
                     product_data.append({
                         'date': order_date,
                         'product_id': item.get('product_id'),
                         'name': item.get('name'),
                         'quantity': quantity,
-                        'total': float(item.get('total', 0)),
+                        'total': total_item,
                         'subtotal': float(item.get('subtotal', 0)),
-                        'tax': float(item.get('total_tax', 0)),
+                        'tax': tax_item,
                         'cost': cost * quantity  # Total cost for the quantity ordered
                     })
 
@@ -190,4 +215,15 @@ class WooCommerceClient:
         }).reset_index()
 
         st.sidebar.success(f"Processed {len(daily_metrics)} days of order data")
+
+        # Debug total calculations
+        if not daily_metrics.empty:
+            st.sidebar.write(f"""
+            Daily totals:
+            - Total Revenue (incl. VAT): {daily_metrics['total'].sum():.2f}
+            - Shipping Total: {daily_metrics['shipping_total'].sum():.2f}
+            - Tax Total: {daily_metrics['tax_total'].sum():.2f}
+            - Subtotal: {daily_metrics['subtotal'].sum():.2f}
+            """)
+
         return daily_metrics, df_products
