@@ -163,3 +163,69 @@ class DataProcessor:
         )
 
         return fig
+
+    @staticmethod
+    def create_product_sales_chart(df_products, period='daily'):
+        """
+        Create a bar chart showing sales by product
+        """
+        if df_products.empty:
+            return None
+
+        # Group by product and calculate total sales
+        product_sales = df_products.groupby('name').agg({
+            'quantity': 'sum',
+            'total': 'sum'
+        }).reset_index()
+
+        # Sort by total sales
+        product_sales = product_sales.sort_values('total', ascending=True)
+
+        fig = go.Figure()
+
+        # Add bar for total revenue
+        fig.add_trace(go.Bar(
+            x=product_sales['total'],
+            y=product_sales['name'],
+            orientation='h',
+            marker_color='#2E86C1',
+            name='Revenue'
+        ))
+
+        fig.update_layout(
+            title='Product Sales Breakdown',
+            height=max(400, len(product_sales) * 30),  # Dynamic height based on number of products
+            template='plotly_white',
+            yaxis_title='Product',
+            xaxis_title='Revenue (NOK)',
+            xaxis_tickprefix='kr ',
+            xaxis_tickformat=',.2f',
+            showlegend=False
+        )
+
+        return fig
+
+    @staticmethod
+    def create_product_quantity_chart(df_products):
+        """
+        Create a pie chart showing quantity sold by product
+        """
+        if df_products.empty:
+            return None
+
+        # Group by product and calculate total quantity
+        product_quantities = df_products.groupby('name')['quantity'].sum().reset_index()
+
+        fig = px.pie(
+            product_quantities,
+            values='quantity',
+            names='name',
+            title='Product Sales Distribution (by Quantity)'
+        )
+
+        fig.update_layout(
+            height=400,
+            template='plotly_white'
+        )
+
+        return fig

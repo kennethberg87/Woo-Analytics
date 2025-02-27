@@ -107,14 +107,16 @@ class WooCommerceClient:
 
     def process_orders_to_df(self, orders):
         """
-        Convert orders to pandas DataFrame with daily metrics
+        Convert orders to pandas DataFrame with daily metrics and product information
         """
         if not orders:
             st.sidebar.write("No orders to process")
-            return pd.DataFrame(columns=['date', 'total', 'subtotal', 'shipping_total', 'tax_total'])
+            return pd.DataFrame(columns=['date', 'total', 'subtotal', 'shipping_total', 'tax_total']), pd.DataFrame()
 
         # Extract relevant data from orders
         order_data = []
+        product_data = []
+
         for order in orders:
             try:
                 # Try multiple date fields
@@ -127,6 +129,7 @@ class WooCommerceClient:
                 date_str = date_str.replace('Z', '+00:00')
                 order_date = pd.to_datetime(date_str)
 
+                # Process main order data
                 order_data.append({
                     'date': order_date,
                     'total': float(order.get('total', 0)),
@@ -134,22 +137,40 @@ class WooCommerceClient:
                     'shipping_total': float(order.get('shipping_total', 0)),
                     'tax_total': float(order.get('total_tax', 0))
                 })
+
+                # Process line items (products)
+                for item in order.get('line_items', []):
+                    product_data.append({
+                        'date': order_date,
+                        'product_id': item.get('product_id'),
+                        'name': item.get('name'),
+                        'quantity': int(item.get('quantity', 0)),
+                        'total': float(item.get('total', 0)),
+                        'subtotal': float(item.get('subtotal', 0)),
+                        'tax': float(item.get('total_tax', 0))
+                    })
+
             except Exception as e:
                 st.sidebar.error(f"Error processing order: {str(e)}")
                 st.sidebar.error(f"Problematic order data: {order}")
                 continue
 
-        # Create DataFrame with datetime index
-        df = pd.DataFrame(order_data)
-        if df.empty:
+        # Create main orders DataFrame
+        df_orders = pd.DataFrame(order_data)
+        if df_orders.empty:
             st.sidebar.warning("No valid orders found after processing")
-            return df
+            return df_orders, pd.DataFrame()
 
-        # Ensure date column is datetime
-        df['date'] = pd.to_datetime(df['date'])
+        # Create products DataFrame
+        df_products = pd.DataFrame(product_data)
 
-        # Group by date and calculate daily metrics
-        daily_metrics = df.groupby('date').agg({
+        # Ensure date columns are datetime
+        df_orders['date'] = pd.to_datetime(df_orders['date'])
+        if not df_products.empty:
+            df_products['date'] = pd.to_datetime(df_products['date'])
+
+        # Group orders by date for daily metrics
+        daily_metrics = df_orders.groupby('date').agg({
             'total': 'sum',
             'subtotal': 'sum',
             'shipping_total': 'sum',
@@ -157,4 +178,4 @@ class WooCommerceClient:
         }).reset_index()
 
         st.sidebar.success(f"Processed {len(daily_metrics)} days of order data")
-        return daily_metrics
+        return daily_metrics, df_products

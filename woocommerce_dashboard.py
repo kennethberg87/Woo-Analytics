@@ -90,7 +90,7 @@ def main():
                 if len(orders) > 0:
                     st.sidebar.write("Sample order data:", {k: v for k, v in orders[0].items() if k in ['id', 'status', 'date_created', 'total']})
 
-            df = st.session_state.woo_client.process_orders_to_df(orders)
+            df, df_products = st.session_state.woo_client.process_orders_to_df(orders)
 
             if debug_mode and not df.empty:
                 st.sidebar.write("Processed data shape:", df.shape)
@@ -134,22 +134,34 @@ def main():
             f"kr {metrics['total_tax']:,.2f}"
         )
 
-    # Charts
+    # Revenue Trends
     st.subheader(f"Revenue Trends ({view_period})")
-
-    # Revenue chart
     revenue_chart = DataProcessor.create_revenue_chart(df, period)
     if revenue_chart:
         st.plotly_chart(revenue_chart, use_container_width=True)
 
-    # Revenue breakdown chart
+    # Revenue Breakdown
     st.subheader(f"Revenue Breakdown ({view_period})")
     breakdown_chart = DataProcessor.create_revenue_breakdown_chart(df, period)
     if breakdown_chart:
         st.plotly_chart(breakdown_chart, use_container_width=True)
 
-    # Raw data table
+    # Product Analysis Section
+    st.header("Product Analysis")
+
+    # Product Sales Breakdown
+    product_sales_chart = DataProcessor.create_product_sales_chart(df_products)
+    if product_sales_chart:
+        st.plotly_chart(product_sales_chart, use_container_width=True)
+
+    # Product Quantity Distribution
+    product_quantity_chart = DataProcessor.create_product_quantity_chart(df_products)
+    if product_quantity_chart:
+        st.plotly_chart(product_quantity_chart, use_container_width=True)
+
+    # Raw data tables
     with st.expander("View Raw Data"):
+        st.subheader("Order Data")
         st.dataframe(
             df.style.format({
                 'total': 'kr {:,.2f}',
@@ -158,6 +170,16 @@ def main():
                 'tax_total': 'kr {:,.2f}'
             })
         )
+
+        st.subheader("Product Data")
+        if not df_products.empty:
+            st.dataframe(
+                df_products.style.format({
+                    'total': 'kr {:,.2f}',
+                    'subtotal': 'kr {:,.2f}',
+                    'tax': 'kr {:,.2f}'
+                })
+            )
 
 if __name__ == "__main__":
     main()
