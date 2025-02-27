@@ -101,6 +101,7 @@ class WooCommerceClient:
                 # Initialize order info
                 order_id = order.get('id')
                 total = float(order.get('total', 0))
+                status = order.get('status', '')  # Get order status
                 shipping_base = 0
                 shipping_tax = 0
 
@@ -123,11 +124,13 @@ class WooCommerceClient:
                 st.sidebar.write(f"Shipping Tax: {shipping_tax}")
                 st.sidebar.write(f"Total Shipping (inc VAT): {total_shipping}")
                 st.sidebar.write(f"Total Tax: {total_tax}")
+                st.sidebar.write(f"Status: {status}")
 
                 # Create order record - now including both base and total shipping
                 order_info = {
                     'date': order_date,
                     'order_id': order_id,
+                    'status': status,  # Add status to order info
                     'total': total,
                     'subtotal': subtotal,
                     'shipping_base': shipping_base,  # Base shipping cost (ex VAT)

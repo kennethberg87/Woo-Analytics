@@ -29,8 +29,8 @@ class DataProcessor:
         shipping_tax = df['shipping_tax'].sum()  # Shipping VAT
         total_tax = df['tax_total'].sum()  # Total VAT (including shipping VAT)
 
-        # Count orders using the total field (each row represents an order)
-        order_count = len(df)  # Each row in daily metrics represents an order
+        # Count orders excluding pending status
+        order_count = len(df[df['status'] != 'pending'])  # Filter out pending orders
 
         # Calculate revenues (excluding shipping)
         total_revenue_incl_vat = df['total'].sum() - df['shipping_total'].sum()  # Total revenue excluding shipping
@@ -40,7 +40,7 @@ class DataProcessor:
         total_profit = total_revenue_excl_vat - total_cost
         profit_margin = (total_profit / total_revenue_excl_vat * 100) if total_revenue_excl_vat > 0 else 0
 
-        # Calculate average revenue based on period (excluding shipping)
+        # Calculate average revenue based on period
         df['revenue_no_shipping'] = df['total'] - df['shipping_total']
         if period == 'weekly':
             df['period'] = df['date'].dt.strftime('%Y-W%U')
