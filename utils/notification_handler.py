@@ -29,6 +29,7 @@ class NotificationHandler:
                 if order_date > st.session_state.last_check_time:
                     new_orders.append(order)
                     st.session_state.notifications.add(order_id)
+                    st.sidebar.info(f"Found new order: #{order_id} at {order_date}")
             except Exception as e:
                 st.sidebar.error(f"Error processing order date: {e}")
 
@@ -42,14 +43,19 @@ class NotificationHandler:
             order_id = order.get('id')
             total = float(order.get('total', 0))
             currency = order.get('currency', 'NOK')
+            customer_name = f"{order.get('billing', {}).get('first_name', '')} {order.get('billing', {}).get('last_name', '')}"
 
-            # Create notification message
-            message = f"""🔔 New Order #{order_id}
+            # Create notification message with more details
+            message = f"""🛍️ New Order Alert! #{order_id}
+Customer: {customer_name}
 Total: {currency} {total:,.2f}
 Time: {datetime.now().strftime('%H:%M:%S')}"""
 
             # Display notification using Streamlit
-            st.toast(message, icon='🔔')
+            st.toast(message, icon='🛍️')
+
+            # Also show in sidebar for better visibility
+            st.sidebar.success(message)
 
         except Exception as e:
             st.sidebar.error(f"Error displaying notification: {e}")
@@ -73,8 +79,8 @@ Time: {datetime.now().strftime('%H:%M:%S')}"""
             for order in new_orders:
                 self.display_notification(order)
 
-            return len(new_orders)
+            return True  # Return True to indicate monitoring is active
 
         except Exception as e:
             st.sidebar.error(f"Error monitoring orders: {e}")
-            return 0
+            return False
