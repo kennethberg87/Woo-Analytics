@@ -20,6 +20,13 @@ class DataProcessor:
                 'order_count': 0
             }
 
+        # Define valid order statuses to count
+        valid_statuses = [
+            "on-hold", "processing", "completed", "delivered", 
+            "cancelled", "pakkes", "klar-til-henting", "underveis", 
+            "forsinket", "delivered-local"
+        ]
+
         # Ensure date column is datetime
         df['date'] = pd.to_datetime(df['date'])
 
@@ -29,9 +36,9 @@ class DataProcessor:
         shipping_tax = df['shipping_tax'].sum()  # Shipping VAT
         total_tax = df['tax_total'].sum()  # Total VAT (including shipping VAT)
 
-        # Count orders using the total field (each row represents an order)
+        # Count orders with specified statuses
         if 'status' in df.columns:
-            order_count = len(df[df['status'] == 'on-hold'])  # Only count on-hold orders
+            order_count = len(df[df['status'].isin(valid_statuses)])
         else:
             order_count = 0  # If status column is not available, return 0
 
@@ -65,6 +72,15 @@ class DataProcessor:
             'total_cogs': total_cost,
             'order_count': order_count
         }
+
+        # Debug information
+        st.sidebar.write(f"\nOrder Count Details:")
+        st.sidebar.write(f"Total orders with valid status: {order_count}")
+        if 'status' in df.columns:
+            status_counts = df['status'].value_counts()
+            st.sidebar.write("Status breakdown:")
+            for status, count in status_counts.items():
+                st.sidebar.write(f"- {status}: {count}")
 
         return metrics
 
