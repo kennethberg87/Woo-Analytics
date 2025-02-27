@@ -192,10 +192,15 @@ class WooCommerceClient:
                 for item in order.get('line_items', []):
                     quantity = int(item.get('quantity', 0))
                     cost = 0
+                    tax_rate = 0.25  # Default VAT rate 25%
                     for meta in item.get('meta_data', []):
                         if meta.get('key') == '_yith_cog_item_cost':
                             try:
-                                cost = float(meta.get('value', 0))
+                                base_cost = float(meta.get('value', 0))
+                                # Add VAT to cost
+                                if item.get('tax_class') == 'naeringsmidler':
+                                    tax_rate = 0.15  # 15% VAT for food items
+                                cost = base_cost * (1 + tax_rate)  # Add VAT to base cost
                             except (ValueError, TypeError):
                                 cost = 0
                             break
@@ -205,10 +210,10 @@ class WooCommerceClient:
                         'product_id': item.get('product_id'),
                         'name': item.get('name'),
                         'quantity': quantity,
-                        'total': float(item.get('total', 0)) + float(item.get('total_tax', 0)),  # Ensure total includes tax
+                        'total': float(item.get('total', 0)) + float(item.get('total_tax', 0)),  # Total including tax
                         'subtotal': float(item.get('subtotal', 0)),
                         'tax': float(item.get('total_tax', 0)),
-                        'cost': cost * quantity
+                        'cost': cost * quantity  # Cost including VAT * quantity
                     })
 
             except Exception as e:
