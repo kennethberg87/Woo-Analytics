@@ -18,9 +18,14 @@ class NotificationHandler:
         for order in orders:
             order_id = str(order.get('id'))
             date_created = order.get('date_created')
+            status = order.get('status')
 
             # Skip if we've already notified about this order
             if order_id in st.session_state.notifications:
+                continue
+
+            # Only process orders with status "on-hold"
+            if status != "on-hold":
                 continue
 
             # Check if this is a new order
@@ -29,7 +34,7 @@ class NotificationHandler:
                 if order_date > st.session_state.last_check_time:
                     new_orders.append(order)
                     st.session_state.notifications.add(order_id)
-                    st.sidebar.info(f"Found new order: #{order_id} at {order_date}")
+                    st.sidebar.info(f"Found new on-hold order: #{order_id} at {order_date}")
             except Exception as e:
                 st.sidebar.error(f"Error processing order date: {e}")
 
@@ -46,7 +51,7 @@ class NotificationHandler:
             customer_name = f"{order.get('billing', {}).get('first_name', '')} {order.get('billing', {}).get('last_name', '')}"
 
             # Create notification message with more details
-            message = f"""🛍️ New Order Alert! #{order_id}
+            message = f"""🛍️ New On-Hold Order! #{order_id}
 Customer: {customer_name}
 Total: {currency} {total:,.2f}
 Time: {datetime.now().strftime('%H:%M:%S')}"""
