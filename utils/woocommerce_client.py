@@ -58,35 +58,34 @@ class WooCommerceClient:
         try:
             # Convert dates to ISO format
             start_date_iso = start_date.isoformat()
-            # End date should be inclusive
             end_date_iso = end_date.isoformat()
 
             st.sidebar.write(f"Fetching orders from {start_date_iso} to {end_date_iso}")
 
-            # Try both HPOS and standard date parameters
+            # Simplify the query parameters to basic WooCommerce v3 format
             params = {
                 "after": f"{start_date_iso}T00:00:00",
                 "before": f"{end_date_iso}T23:59:59",
-                "modified_after": f"{start_date_iso}T00:00:00",
-                "modified_before": f"{end_date_iso}T23:59:59",
-                "date_created_min": f"{start_date_iso}T00:00:00",
-                "date_created_max": f"{end_date_iso}T23:59:59",
                 "per_page": 100,
-                "page": 1,
-                "status": ["completed", "processing", "on-hold", "pending", "failed"],
-                "orderby": "date",
-                "order": "desc"
+                "status": "any",  # Try fetching all order statuses
             }
 
             st.sidebar.write(f"API Request Parameters: {params}")
+
+            # Add detailed response logging
             response = self.wcapi.get("orders", params=params)
             st.sidebar.write(f"API Response Status: {response.status_code}")
+            st.sidebar.write(f"API Response Headers: {dict(response.headers)}")
 
-            # Log full response for debugging
             try:
                 data = response.json()
                 st.sidebar.write(f"API Response Type: {type(data)}")
-                st.sidebar.write(f"API Response Preview: {str(data)[:500]}")  # First 500 chars
+                if isinstance(data, list):
+                    st.sidebar.write(f"Number of orders returned: {len(data)}")
+                    if len(data) > 0:
+                        st.sidebar.write("First order sample:", {k: v for k, v in data[0].items() if k in ['id', 'status', 'date_created']})
+                else:
+                    st.sidebar.write(f"API Response Content: {str(data)[:500]}")
             except Exception as e:
                 st.sidebar.error(f"Failed to parse JSON response: {str(e)}")
                 st.sidebar.error(f"Raw response: {response.text[:500]}")
