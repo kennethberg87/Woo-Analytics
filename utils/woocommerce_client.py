@@ -58,8 +58,10 @@ class WooCommerceClient:
                     "after": start_date_str,
                     "before": end_date_str,
                     "per_page": 100,
+                    "status": ["pending", "processing", "on-hold", "completed", "delivered"],
                     "page": page,
-                    "status": "any"  # Fetch all order statuses
+                    "orderby": "date",
+                    "order": "desc"
                 }
 
                 st.sidebar.write(f"\nFetching page {page}")
@@ -102,11 +104,13 @@ class WooCommerceClient:
 
                 all_orders.extend(orders)
 
-                # Check pagination
+                # Check pagination and total
                 total_pages = int(response.headers.get('X-WP-TotalPages', 1))
                 total_orders = int(response.headers.get('X-WP-Total', 0))
                 st.sidebar.write(f"Total Pages: {total_pages}")
                 st.sidebar.write(f"Total Orders: {total_orders}")
+                st.sidebar.write(f"Current Page: {page}")
+                st.sidebar.write(f"Orders fetched so far: {len(all_orders)}")
 
                 if page >= total_pages:
                     break
