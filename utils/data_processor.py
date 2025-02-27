@@ -3,7 +3,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+
 class DataProcessor:
+
     @staticmethod
     def calculate_metrics(df, df_products, period='daily'):
         """Calculate key metrics including profit calculations, adjusting for VAT"""
@@ -24,32 +26,41 @@ class DataProcessor:
         df['date'] = pd.to_datetime(df['date'])
 
         # Calculate totals
-        total_cost = df_products['cost'].sum() if 'cost' in df_products.columns else 0
-        shipping_base = df['shipping_base'].sum()  # Base shipping excluding VAT
+        total_cost = df_products['cost'].sum(
+        ) if 'cost' in df_products.columns else 0
+        shipping_base = df['shipping_base'].sum(
+        )  # Base shipping excluding VAT
         shipping_tax = df['shipping_tax'].sum()  # Shipping VAT
         total_tax = df['tax_total'].sum()  # Total VAT (including shipping VAT)
 
         # Count orders excluding pending status
-        order_count = len(df[df['status'] != 'pending'])  # Filter out pending orders
+        order_count = len(
+            df[df['status'] != 'pending'])  # Filter out pending orders
 
         # Calculate revenues (excluding shipping)
-        total_revenue_incl_vat = df['total'].sum() - df['shipping_total'].sum()  # Total revenue excluding shipping
-        total_revenue_excl_vat = total_revenue_incl_vat - (total_tax - shipping_tax)  # Revenue excluding VAT and shipping
+        total_revenue_incl_vat = df['total'].sum() - df['shipping_total'].sum(
+        )  # Total revenue excluding shipping
+        total_revenue_excl_vat = total_revenue_incl_vat - (
+            total_tax - shipping_tax)  # Revenue excluding VAT and shipping
 
         # Calculate profit (using revenue excluding VAT)
         total_profit = total_revenue_excl_vat - total_cost
-        profit_margin = (total_profit / total_revenue_excl_vat * 100) if total_revenue_excl_vat > 0 else 0
+        profit_margin = (total_profit / total_revenue_excl_vat *
+                         100) if total_revenue_excl_vat > 0 else 0
 
         # Calculate average revenue based on period
         df['revenue_no_shipping'] = df['total'] - df['shipping_total']
         if period == 'weekly':
             df['period'] = df['date'].dt.strftime('%Y-W%U')
-            avg_revenue = df.groupby('period')['revenue_no_shipping'].sum().mean()
+            avg_revenue = df.groupby(
+                'period')['revenue_no_shipping'].sum().mean()
         elif period == 'monthly':
             df['period'] = df['date'].dt.strftime('%Y-%m')
-            avg_revenue = df.groupby('period')['revenue_no_shipping'].sum().mean()
+            avg_revenue = df.groupby(
+                'period')['revenue_no_shipping'].sum().mean()
         else:  # daily
-            avg_revenue = df.groupby('date')['revenue_no_shipping'].sum().mean()
+            avg_revenue = df.groupby(
+                'date')['revenue_no_shipping'].sum().mean()
 
         metrics = {
             'total_revenue_incl_vat': total_revenue_incl_vat,
@@ -75,13 +86,16 @@ class DataProcessor:
         df_products['date'] = pd.to_datetime(df_products['date'])
 
         # Group by product name and sum quantities
-        top_products = df_products.groupby('name')['quantity'].sum().reset_index()
-        top_products = top_products.sort_values('quantity', ascending=False).head(limit)
+        top_products = df_products.groupby(
+            'name')['quantity'].sum().reset_index()
+        top_products = top_products.sort_values('quantity',
+                                                ascending=False).head(limit)
         top_products = top_products.reset_index(drop=True)
         top_products.index = top_products.index + 1  # Start index from 1
 
         # Add total quantity column
-        top_products.rename(columns={'quantity': 'Total Quantity'}, inplace=True)
+        top_products.rename(columns={'quantity': 'Total Quantity'},
+                            inplace=True)
 
         return top_products
 
@@ -114,7 +128,9 @@ class DataProcessor:
         customers_df = pd.DataFrame(customer_data)
 
         # Group by customer details and sum their orders
-        customers_df = customers_df.groupby(['Name', 'Email', 'Payment Method', 'Shipping Method', 'Order Date'])['Total Orders'].sum().reset_index()
+        customers_df = customers_df.groupby([
+            'Name', 'Email', 'Payment Method', 'Shipping Method', 'Order Date'
+        ])['Total Orders'].sum().reset_index()
 
         # Sort by date descending (most recent first)
         customers_df = customers_df.sort_values('Order Date', ascending=False)
@@ -133,37 +149,32 @@ class DataProcessor:
         # Group by selected time period
         if period == 'weekly':
             df['period'] = df['date'].dt.strftime('%Y-W%U')
-            grouped = df.groupby('period').agg({
-                'total': 'sum'
-            }).reset_index()
+            grouped = df.groupby('period').agg({'total': 'sum'}).reset_index()
             x_title = 'Week'
         elif period == 'monthly':
             df['period'] = df['date'].dt.strftime('%Y-%m')
-            grouped = df.groupby('period').agg({
-                'total': 'sum'
-            }).reset_index()
+            grouped = df.groupby('period').agg({'total': 'sum'}).reset_index()
             x_title = 'Month'
         else:  # daily
             grouped = df.copy()
             grouped['period'] = grouped['date']
             x_title = 'Date'
 
-        fig = px.line(
-            grouped,
-            x='period',
-            y='total',
-            title=f'{period.capitalize()} Revenue',
-            labels={'total': 'Revenue (NOK)', 'period': x_title},
-            template='plotly_white'
-        )
+        fig = px.line(grouped,
+                      x='period',
+                      y='total',
+                      title=f'{period.capitalize()} omsetning',
+                      labels={
+                          'total': 'Omsetning (NOK)',
+                          'period': x_title
+                      },
+                      template='plotly_white')
 
-        fig.update_layout(
-            height=400,
-            hovermode='x unified',
-            showlegend=False,
-            yaxis_tickprefix='kr ',
-            yaxis_tickformat=',.2f'
-        )
+        fig.update_layout(height=400,
+                          hovermode='x unified',
+                          showlegend=False,
+                          yaxis_tickprefix='kr ',
+                          yaxis_tickformat=',.2f')
 
         return fig
 
@@ -174,18 +185,14 @@ class DataProcessor:
             return None
 
         # Group by product and calculate total quantity
-        product_quantities = df_products.groupby('name')['quantity'].sum().reset_index()
+        product_quantities = df_products.groupby(
+            'name')['quantity'].sum().reset_index()
 
-        fig = px.pie(
-            product_quantities,
-            values='quantity',
-            names='name',
-            title='Product Sales Distribution (by Quantity)'
-        )
+        fig = px.pie(product_quantities,
+                     values='quantity',
+                     names='name',
+                     title='Product Sales Distribution (by Quantity)')
 
-        fig.update_layout(
-            height=400,
-            template='plotly_white'
-        )
+        fig.update_layout(height=400, template='plotly_white')
 
         return fig
