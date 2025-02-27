@@ -15,19 +15,29 @@ st.set_page_config(
 if 'woo_client' not in st.session_state:
     try:
         st.session_state.woo_client = WooCommerceClient()
+        st.success("Successfully connected to WooCommerce API")
     except Exception as e:
         st.error(f"Failed to connect to WooCommerce: {str(e)}")
         st.info("""
         Please ensure you have set up the following environment variables:
-        - WOOCOMMERCE_URL: Your store URL
+        - WOOCOMMERCE_URL: Your store URL (e.g., https://your-store.com)
         - WOOCOMMERCE_KEY: Your API consumer key
         - WOOCOMMERCE_SECRET: Your API consumer secret
+
+        You can find/create these credentials in your WooCommerce dashboard:
+        1. Go to WooCommerce > Settings > Advanced > REST API
+        2. Click 'Add key' and create a new key with 'Read' permissions
         """)
         st.stop()
 
 def main():
     # Header
     st.title("📊 WooCommerce Daily Turnover Dashboard")
+
+    # Debug mode toggle
+    debug_mode = st.sidebar.checkbox("Debug Mode", value=False)
+    if debug_mode:
+        st.sidebar.info("Debug mode is enabled. You will see detailed API responses and error messages.")
 
     # Date range selector
     col1, col2 = st.columns(2)
@@ -53,13 +63,20 @@ def main():
     try:
         with st.spinner("Fetching data from WooCommerce..."):
             orders = st.session_state.woo_client.get_orders(start_date, end_date)
+            if debug_mode:
+                st.sidebar.write("Raw order count:", len(orders))
+
             df = st.session_state.woo_client.process_orders_to_df(orders)
+            if debug_mode and not df.empty:
+                st.sidebar.write("Processed data shape:", df.shape)
     except Exception as e:
         st.error(f"Error: {str(e)}")
+        if debug_mode:
+            st.sidebar.error(f"Detailed error: {str(e)}")
         return
 
     if df.empty:
-        st.warning("No orders found for the selected date range")
+        st.warning(f"No orders found between {start_date} and {end_date}")
         return
 
     # Calculate metrics
