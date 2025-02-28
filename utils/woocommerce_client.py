@@ -98,13 +98,9 @@ class WooCommerceClient:
             # Remove trailing slash if present
             store_url = store_url.rstrip('/')
 
-            # For PDF Invoices & Packing Slips plugin, we can directly generate the URL
-            # The plugin uses a direct download endpoint that doesn't require authentication
-            invoice_url = f"{store_url}/wp-admin/admin-ajax.php"
-            invoice_url += f"?action=generate_wpo_wcpdf"
-            invoice_url += f"&document_type=invoice"
-            invoice_url += f"&order_ids={order_id}"
-            invoice_url += "&_wpnonce=123456"  # The plugin will validate the nonce server-side
+            # For PDF Invoices & Packing Slips plugin, we need to construct a URL that includes
+            # the order payment page which will automatically trigger the PDF download
+            invoice_url = f"{store_url}/kasse/ordre-betaling/{order_id}/?download_document=invoice"
 
             return invoice_url
 
