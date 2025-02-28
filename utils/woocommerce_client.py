@@ -99,8 +99,8 @@ class WooCommerceClient:
             store_url = store_url.rstrip('/')
 
             # For PDF Invoices & Packing Slips plugin, we need to construct a URL that includes
-            # the direct download endpoint
-            invoice_url = f"{store_url}/wpo_wcpdf/download/invoice/{order_id}"
+            # the direct download endpoint with a static hash
+            invoice_url = f"{store_url}/wcpdf/invoice/{order_id}/9e9c036d2f/pdf"
 
             logging.debug(f"Generated invoice URL: {invoice_url}")
             return invoice_url

@@ -304,6 +304,12 @@ def main():
                     cols[col_idx].markdown(
                         f"📄 [{invoice['Fakturanummer']} - {invoice['Ordrenummer']}]({invoice['URL']})"
                     )
+
+            if debug_mode:
+                st.expander("Debug Information").write({
+                    'Sample Invoice URL': invoice_data[0]['URL'] if invoice_data else None,
+                    'Number of Invoices': len(invoice_data)
+                })
         else:
             st.info("Ingen fakturaer funnet for valgt periode")
     else:
