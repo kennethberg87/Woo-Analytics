@@ -17,6 +17,54 @@ st.set_page_config(page_title="WooCommerce Dashboard",
                    page_icon="📊",
                    layout="wide")
 
+# Theme handling in sidebar
+with st.sidebar:
+    # Add theme toggle at the top
+    theme = "dark" if st.toggle("🌓 Mørkt tema") else "light"
+
+    # Set theme config
+    st.markdown(f"""
+        <script>
+            currentTheme = window.localStorage.getItem('theme');
+            if (currentTheme !== "{theme}") {{
+                window.localStorage.setItem('theme', "{theme}");
+                window.location.reload();
+            }}
+        </script>
+        """, unsafe_allow_html=True)
+
+    # Debug mode toggle
+    debug_mode = st.checkbox("Debug Mode", value=True)
+    if debug_mode:
+        st.info(
+            "Debug mode is enabled. API responses and error messages are being logged to woocommerce_api.log"
+        )
+
+    # Real-time notifications toggle
+    notifications_enabled = st.checkbox("Aktiver sanntidsvarsler", value=True)
+    st.session_state.notifications_enabled = notifications_enabled #Added this line
+
+    # Add notification controls to sidebar if notifications are enabled
+    if 'notifications_enabled' in st.session_state and st.session_state.notifications_enabled:
+        # Add sound toggle
+        st.session_state.sound_enabled = st.sidebar.checkbox(
+            "🔔 Aktiver lydvarsling",
+            value=st.session_state.get('sound_enabled', True),
+            help="Spiller av Ca-Ching lyd når en ny ordre er mottatt.")
+
+        # Add a placeholder for notifications
+        notification_placeholder = st.sidebar.empty()
+
+        # Check for new orders every 30 seconds if all components are initialized
+        if ('notification_handler' in st.session_state and 
+            'woo_client' in st.session_state and 
+            st.session_state.notification_handler.monitor_orders(st.session_state.woo_client)):
+            notification_placeholder.success(
+                "✨ Aktivert varsler - Du får beskjed når det kommer inn en ny bestilling!"
+            )
+
+
+
 # Initialize session state
 if 'woo_client' not in st.session_state:
     try:
@@ -132,34 +180,6 @@ def render_invoice_section(df, selected_start_date, selected_end_date):
 def main():
     # Header
     st.title("📊 Salgsstatistikk nettbutikk")
-
-    # Debug mode toggle
-    debug_mode = st.sidebar.checkbox("Debug Mode", value=True)
-    if debug_mode:
-        st.sidebar.info(
-            "Debug mode is enabled. API responses and error messages are being logged to woocommerce_api.log"
-        )
-
-    # Real-time notifications toggle
-    notifications_enabled = st.sidebar.checkbox("Aktiver sanntidsvarsler",
-                                                value=True)
-
-    # Add sound toggle if notifications are enabled
-    if notifications_enabled:
-        st.session_state.sound_enabled = st.sidebar.checkbox(
-            "🔔 Aktiver lydvarsling",
-            value=st.session_state.get('sound_enabled', True),
-            help="Spiller av Ca-Ching lyd når en ny ordre er mottatt.")
-
-        # Add a placeholder for notifications
-        notification_placeholder = st.empty()
-
-        # Check for new orders every 30 seconds
-        if st.session_state.notification_handler.monitor_orders(
-                st.session_state.woo_client):
-            notification_placeholder.success(
-                "✨ Aktivert varsler - Du får beskjed når det kommer inn en ny bestilling!"
-            )
 
     # View period selector (before date range)
     view_period = st.selectbox("Velg visningsperiode",
