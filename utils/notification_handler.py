@@ -19,7 +19,7 @@ class NotificationHandler:
             js_code = """
                 <script>
                 function playSound() {
-                    var audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2751/2751-preview.mp3');
+                    var audio = new Audio('/attached_assets/cash-register.mp3');
                     audio.play();
                 }
                 playSound();
