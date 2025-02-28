@@ -64,7 +64,6 @@ def render_invoice_section(df, selected_start_date, selected_end_date):
 
     if not df.empty:
         invoice_data = []
-        invoice_urls = []  # List to store invoice URLs for bulk download
         for _, order in df.iterrows():
             invoice_details = st.session_state.woo_client.get_invoice_details(
                 order['meta_data'])
@@ -86,8 +85,6 @@ def render_invoice_section(df, selected_start_date, selected_end_date):
                     'URL':
                         invoice_url
                 })
-                if invoice_url:
-                    invoice_urls.append((invoice_details['invoice_number'], invoice_url))
 
         if invoice_data:
             # Create DataFrame for invoices
@@ -113,16 +110,9 @@ def render_invoice_section(df, selected_start_date, selected_end_date):
 
             # Add download section with improved styling
             st.subheader("Last ned fakturaer")
-
-            # Add bulk download button
-            ExportHandler.download_invoices_zip(
-                invoice_urls,
-                f"fakturaer_{selected_start_date.strftime('%Y%m%d')}_{selected_end_date.strftime('%Y%m%d')}.zip"
-            )
-
             st.info("""
-            💡 Klikk på lenkene under for å laste ned PDF-fakturaer enkeltvis.
-            Eller bruk knappen over for å laste ned alle fakturaer som en ZIP-fil.
+            💡 Klikk på lenkene under for å laste ned PDF-fakturaer direkte. 
+            Fakturaene vil lastes ned automatisk når du klikker på linken.
             """)
 
             # Create columns for better layout of download links

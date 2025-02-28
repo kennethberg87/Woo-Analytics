@@ -7,9 +7,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-import requests
-from zipfile import ZipFile
-import io
+
 
 class ExportHandler:
 
@@ -158,97 +156,3 @@ class ExportHandler:
             filename += '.pdf'
             title = f"WooCommerce {name.capitalize()} Report"
             ExportHandler.to_pdf(df, filename, title)
-
-    @staticmethod
-    def download_invoices_zip(invoice_urls: list, filename: str = None) -> None:
-        """Download multiple invoices and create a ZIP file"""
-        if not invoice_urls:
-            st.warning("Ingen fakturaer tilgjengelig for nedlasting")
-            return
-
-        # Custom CSS for black button with proper sizing
-        st.markdown("""
-            <style>
-            div[data-testid="stDownloadButton"] button {
-                background-color: black !important;
-                color: white !important;
-                border: none !important;
-                padding: 0.5rem 1rem !important;
-                border-radius: 0.3rem !important;
-                width: auto !important;
-                max-width: 300px !important;
-            }
-            div[data-testid="stDownloadButton"] button:hover {
-                background-color: #333333 !important;
-                color: white !important;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-
-        # Create a BytesIO object to store the ZIP file
-        zip_buffer = io.BytesIO()
-
-        # Create a ZIP file
-        success_count = 0
-        error_count = 0
-
-        with ZipFile(zip_buffer, 'w') as zip_file:
-            with st.spinner('Laster ned fakturaer...'):
-                progress_bar = st.progress(0)
-
-                for idx, (invoice_number, url) in enumerate(invoice_urls, 1):
-                    try:
-                        # Get URL and auth credentials
-                        url, auth = url if isinstance(url, tuple) else (url, None)
-
-                        # Download the PDF with authentication
-                        response = requests.get(
-                            url,
-                            auth=auth,
-                            verify=False,
-                            timeout=30,
-                            headers={
-                                'User-Agent': 'Mozilla/5.0',
-                                'Accept': 'application/pdf'
-                            }
-                        )
-
-                        if response.status_code == 200 and response.content:
-                            # Verify it's actually a PDF
-                            if response.headers.get('content-type', '').lower().startswith('application/pdf'):
-                                zip_file.writestr(f"{invoice_number}.pdf", response.content)
-                                success_count += 1
-                            else:
-                                error_count += 1
-                                st.warning(f"Faktura {invoice_number} er ikke i PDF-format")
-                        else:
-                            error_count += 1
-                            st.warning(f"Kunne ikke laste ned faktura {invoice_number} (Status: {response.status_code})")
-
-                    except requests.exceptions.Timeout:
-                        error_count += 1
-                        st.warning(f"Tidsavbrudd ved nedlasting av faktura {invoice_number}")
-                    except Exception as e:
-                        error_count += 1
-                        st.warning(f"Feil ved nedlasting av faktura {invoice_number}: {str(e)}")
-
-                    # Update progress
-                    progress = (idx / len(invoice_urls))
-                    progress_bar.progress(progress)
-
-                progress_bar.empty()
-
-        if success_count > 0:
-            # Create the download button if we have any successful downloads
-            st.download_button(
-                label=f"⬇️ Last ned fakturaer ({success_count} av {len(invoice_urls)})",
-                data=zip_buffer.getvalue(),
-                file_name=filename,
-                mime="application/zip",
-                use_container_width=False
-            )
-
-            if error_count > 0:
-                st.warning(f"{error_count} fakturaer kunne ikke lastes ned. Prøv igjen senere eller last ned enkeltvis.")
-        else:
-            st.error("Ingen fakturaer ble lastet ned. Prøv igjen senere.")
