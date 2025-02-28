@@ -19,8 +19,11 @@ class NotificationHandler:
             js_code = """
                 <script>
                 function playSound() {
-                    var audio = new Audio('/attached_assets/cash-register.mp3');
-                    audio.play();
+                    var audio = new Audio('attached_assets/cash-register.mp3');
+                    audio.volume = 1.0;  // Set volume to maximum
+                    audio.play().catch(function(error) {
+                        console.log("Error playing sound:", error);
+                    });
                 }
                 playSound();
                 </script>
