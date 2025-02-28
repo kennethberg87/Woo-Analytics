@@ -167,6 +167,12 @@ class WooCommerceClient:
 
             order_date = pd.to_datetime(date_str).tz_localize('UTC').tz_convert(oslo_tz)
 
+            # Process shipping lines
+            shipping_lines = order.get('shipping_lines', [])
+            shipping_base = sum(float(shipping.get('total', 0)) for shipping in shipping_lines)
+            shipping_tax = sum(float(shipping.get('total_tax', 0)) for shipping in shipping_lines)
+            shipping_total = shipping_base + shipping_tax
+
             # Process order details
             order_info = {
                 'date': order_date,
@@ -175,7 +181,9 @@ class WooCommerceClient:
                 'status': order.get('status', ''),
                 'total': float(order.get('total', 0)),
                 'subtotal': sum(float(item.get('subtotal', 0)) for item in order.get('line_items', [])),
-                'shipping_total': sum(float(s.get('total', 0)) for s in order.get('shipping_lines', [])),
+                'shipping_base': shipping_base,
+                'shipping_tax': shipping_tax,
+                'shipping_total': shipping_total,
                 'tax_total': float(order.get('total_tax', 0)),
                 'billing': order.get('billing', {}),
                 'meta_data': order.get('meta_data', [])
@@ -193,6 +201,8 @@ class WooCommerceClient:
                     'name': item.get('name'),
                     'quantity': quantity,
                     'total': float(item.get('total', 0)) + float(item.get('total_tax', 0)),
+                    'subtotal': float(item.get('subtotal', 0)),
+                    'tax': float(item.get('total_tax', 0)),
                     'stock_quantity': stock_quantities.get(product_id)
                 })
 
