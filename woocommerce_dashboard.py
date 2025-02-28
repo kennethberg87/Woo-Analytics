@@ -66,13 +66,13 @@ def main():
         help="Choose how to aggregate the data")
 
     # Date range selector
-    st.sidebar.subheader("Date Range Selection")
+    st.subheader("Date Range Selection")
 
     # Get today's date
     today = datetime.now().date()
 
     # Create two columns for date pickers
-    col1, col2 = st.sidebar.columns(2)
+    col1, col2 = st.columns(2)
 
     with col1:
         start_date = st.date_input(
