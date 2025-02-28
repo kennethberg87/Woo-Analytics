@@ -1,11 +1,17 @@
+
 [server]
 headless = true
 address = "0.0.0.0"
 port = 5000
 
 [theme]
+# Light mode settings
 primaryColor = "#FF4B4B"
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F0F2F6"
 textColor = "#262730"
 font = "sans serif"
+
+# Dark mode settings can be toggled through the app
+base = "light"
+enableColorSelector = false

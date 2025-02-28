@@ -17,6 +17,10 @@ st.set_page_config(page_title="WooCommerce Dashboard",
                    page_icon="📊",
                    layout="wide")
 
+# Initialize theme state
+if 'theme' not in st.session_state:
+    st.session_state.theme = "light"
+
 # Initialize session state
 if 'woo_client' not in st.session_state:
     try:
@@ -132,6 +136,17 @@ def render_invoice_section(df, selected_start_date, selected_end_date):
 def main():
     # Header
     st.title("📊 Salgsstatistikk nettbutikk")
+
+    # Dark mode toggle
+    st.session_state.theme = st.sidebar.radio(
+        "Tema", options=["Lys", "Mørk"],
+        index=0 if st.session_state.theme == "light" else 1)
+
+    if st.session_state.theme == "Mørk":
+        st.markdown("""<style>body {background-color: #333; color: #eee}</style>""", unsafe_allow_html=True)
+    else:
+        st.markdown("""<style>body {background-color: #fff; color: #333}</style>""", unsafe_allow_html=True)
+
 
     # Debug mode toggle
     debug_mode = st.sidebar.checkbox("Debug Mode", value=True)
