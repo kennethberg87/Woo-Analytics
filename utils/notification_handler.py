@@ -54,9 +54,8 @@ class NotificationHandler:
                 if order_date > st.session_state.last_check_time:
                     new_orders.append(order)
                     st.session_state.notifications.add(order_id)
-                    st.sidebar.info(f"Found new on-hold order: #{order_id} at {order_date}")
             except Exception as e:
-                st.sidebar.error(f"Error processing order date: {e}")
+                st.error(f"Error processing order date: {e}")
 
         st.session_state.last_check_time = current_time
         return new_orders
@@ -86,7 +85,7 @@ Time: {datetime.now().strftime('%H:%M:%S')}"""
             st.sidebar.success(message)
 
         except Exception as e:
-            st.sidebar.error(f"Error displaying notification: {e}")
+            st.error(f"Error displaying notification: {e}")
 
     def monitor_orders(self, woo_client, check_interval=30):
         """Monitor for new orders and display notifications"""
@@ -110,5 +109,5 @@ Time: {datetime.now().strftime('%H:%M:%S')}"""
             return True  # Return True to indicate monitoring is active
 
         except Exception as e:
-            st.sidebar.error(f"Error monitoring orders: {e}")
+            st.error(f"Error monitoring orders: {e}")
             return False
