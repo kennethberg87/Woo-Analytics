@@ -10,11 +10,11 @@ import pytz
 import logging
 from functools import lru_cache
 import concurrent.futures
+from threading import Lock
 
 logging.basicConfig(level=logging.DEBUG)
 
 class WooCommerceClient:
-
     def __init__(self):
         try:
             store_url = os.getenv('WOOCOMMERCE_URL')
@@ -34,44 +34,102 @@ class WooCommerceClient:
                 timeout=30
             )
 
-            # Initialize cache
+            # Initialize caches with locks for thread safety
             self.stock_cache = {}
+            self.order_cache = {}
+            self.cache_lock = Lock()
             self.cache_timeout = 300  # 5 minutes
+            self.max_workers = 10  # Maximum number of parallel workers
 
         except Exception as e:
             st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
             raise
 
-    @lru_cache(maxsize=1000)
-    def get_stock_quantity(self, product_id):
-        """Get current stock quantity for a product with caching"""
+    def _fetch_orders_page(self, params):
+        """Helper function to fetch a single page of orders"""
         try:
+            response = self.wcapi.get("orders", params=params)
+            return response.json() if isinstance(response.json(), list) else []
+        except Exception as e:
+            logging.error(f"Error fetching orders page: {str(e)}")
+            return []
+
+    def get_orders(self, start_date, end_date):
+        """Fetch orders from WooCommerce API within the specified date range using parallel processing"""
+        try:
+            oslo_tz = pytz.timezone('Europe/Oslo')
+            utc_tz = pytz.UTC
+
+            start_date_oslo = oslo_tz.localize(datetime.combine(start_date, datetime.min.time()))
+            end_date_oslo = oslo_tz.localize(datetime.combine(end_date, datetime.max.time()))
+
+            start_date_utc = start_date_oslo.astimezone(utc_tz)
+            end_date_utc = end_date_oslo.astimezone(utc_tz)
+
             # Check cache first
-            cache_key = f"stock_{product_id}"
-            cached_data = self.stock_cache.get(cache_key)
+            cache_key = f"{start_date}_{end_date}"
+            with self.cache_lock:
+                if cache_key in self.order_cache:
+                    cache_time, cached_orders = self.order_cache[cache_key]
+                    if (datetime.now() - cache_time).total_seconds() < self.cache_timeout:
+                        return cached_orders
 
-            if cached_data:
-                timestamp, value = cached_data
-                if (datetime.now() - timestamp).total_seconds() < self.cache_timeout:
-                    return value
+            # Create progress bar
+            progress_bar = st.progress(0)
+            st.write("Henter ordrer - dette kan ta litt tid...")
 
-            response = self.wcapi.get(f"products/{product_id}")
-            product_data = response.json()
+            # First, get total number of orders
+            initial_params = {
+                "after": start_date_utc.isoformat(),
+                "before": end_date_utc.isoformat(),
+                "per_page": 100,
+                "page": 1
+            }
+            first_page = self._fetch_orders_page(initial_params)
+            total_pages = len(first_page) // 100 + 1
 
-            if 'stock_quantity' in product_data:
-                # Update cache
-                self.stock_cache[cache_key] = (datetime.now(), product_data['stock_quantity'])
-                return product_data['stock_quantity']
-            return None
+            # Prepare parameters for parallel fetching
+            all_params = [
+                {
+                    "after": start_date_utc.isoformat(),
+                    "before": end_date_utc.isoformat(),
+                    "per_page": 100,
+                    "page": page,
+                    "status": "any"
+                }
+                for page in range(1, total_pages + 1)
+            ]
+
+            all_orders = []
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                future_to_params = {executor.submit(self._fetch_orders_page, params): params for params in all_params}
+                completed = 0
+
+                for future in concurrent.futures.as_completed(future_to_params):
+                    orders_page = future.result()
+                    all_orders.extend(orders_page)
+                    completed += 1
+                    progress_bar.progress(min(1.0, completed / len(all_params)))
+
+            # Cache the results
+            with self.cache_lock:
+                self.order_cache[cache_key] = (datetime.now(), all_orders)
+
+            # Clear progress bar
+            progress_bar.empty()
+
+            return all_orders
 
         except Exception as e:
-            logging.error(f"Error fetching stock for product {product_id}: {str(e)}")
-            return None
+            logging.error(f"Error fetching orders: {str(e)}")
+            if 'progress_bar' in locals():
+                progress_bar.empty()
+            return []
 
     def batch_get_stock_quantities(self, product_ids):
         """Get stock quantities for multiple products in parallel"""
         stock_quantities = {}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             future_to_id = {
                 executor.submit(self.get_stock_quantity, product_id): product_id
                 for product_id in product_ids
@@ -84,6 +142,116 @@ class WooCommerceClient:
                     logging.error(f"Error fetching stock for product {product_id}: {str(e)}")
                     stock_quantities[product_id] = None
         return stock_quantities
+
+    @lru_cache(maxsize=1000)
+    def get_stock_quantity(self, product_id):
+        """Get current stock quantity for a product with caching"""
+        try:
+            # Check cache first
+            cache_key = f"stock_{product_id}"
+            with self.cache_lock:
+                cached_data = self.stock_cache.get(cache_key)
+                if cached_data:
+                    timestamp, value = cached_data
+                    if (datetime.now() - timestamp).total_seconds() < self.cache_timeout:
+                        return value
+
+            response = self.wcapi.get(f"products/{product_id}")
+            product_data = response.json()
+
+            if 'stock_quantity' in product_data:
+                # Update cache
+                with self.cache_lock:
+                    self.stock_cache[cache_key] = (datetime.now(), product_data['stock_quantity'])
+                return product_data['stock_quantity']
+            return None
+
+        except Exception as e:
+            logging.error(f"Error fetching stock for product {product_id}: {str(e)}")
+            return None
+
+    def process_orders_to_df(self, orders):
+        """Convert orders to pandas DataFrame with optimized processing"""
+        if not orders:
+            return pd.DataFrame(), pd.DataFrame()
+
+        oslo_tz = pytz.timezone('Europe/Oslo')
+        order_data = []
+        product_data = []
+
+        # Show processing progress
+        progress_bar = st.progress(0)
+        st.write("Behandler ordrer...")
+        total_orders = len(orders)
+
+        try:
+            # First collect all product IDs
+            product_ids = {
+                item.get('product_id')
+                for order in orders
+                for item in order.get('line_items', [])
+            }
+
+            # Batch fetch stock quantities
+            stock_quantities = self.batch_get_stock_quantities(product_ids)
+
+            # Process orders in parallel
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                future_to_order = {
+                    executor.submit(self._process_single_order, order, oslo_tz, stock_quantities): order
+                    for order in orders
+                }
+
+                completed = 0
+                for future in concurrent.futures.as_completed(future_to_order):
+                    try:
+                        order_info, products_info = future.result()
+                        if order_info:
+                            order_data.append(order_info)
+                        product_data.extend(products_info)
+
+                        completed += 1
+                        progress_bar.progress(min(1.0, completed / total_orders))
+                    except Exception as e:
+                        logging.error(f"Error processing order: {str(e)}")
+
+            # Create DataFrames
+            df_orders = pd.DataFrame(order_data)
+            df_products = pd.DataFrame(product_data)
+
+            # Clear progress
+            progress_bar.empty()
+
+            return df_orders, df_products
+
+        except Exception as e:
+            logging.error(f"Error in process_orders_to_df: {str(e)}")
+            if 'progress_bar' in locals():
+                progress_bar.empty()
+            return pd.DataFrame(), pd.DataFrame()
+
+    def _process_single_order(self, order, oslo_tz, stock_quantities):
+        """Process a single order and its line items"""
+        try:
+            # Process order date
+            date_str = order.get('date_created')
+            if not date_str:
+                return None, []
+
+            utc_date = pd.to_datetime(date_str)
+            order_date = utc_date.tz_localize('UTC').tz_convert(oslo_tz)
+
+            # Process order details
+            order_info = self._process_order_details(order, order_date)
+
+            # Process line items
+            product_info = self._process_line_items(order, order_date, stock_quantities)
+
+            return order_info, product_info
+
+        except Exception as e:
+            logging.error(f"Error processing order {order.get('id')}: {str(e)}")
+            return None, []
 
     def get_payment_method_display(self, payment_method):
         """Convert payment method code to display name"""
@@ -160,143 +328,6 @@ class WooCommerceClient:
             if meta.get('key') == '_order_number_formatted':
                 return meta.get('value', '')
         return ''
-
-    def get_orders(self, start_date, end_date):
-        """Fetch orders from WooCommerce API within the specified date range"""
-        try:
-            oslo_tz = pytz.timezone('Europe/Oslo')
-            utc_tz = pytz.UTC
-
-            start_date_oslo = oslo_tz.localize(datetime.combine(start_date, datetime.min.time()))
-            end_date_oslo = oslo_tz.localize(datetime.combine(end_date, datetime.max.time()))
-
-            start_date_utc = start_date_oslo.astimezone(utc_tz)
-            end_date_utc = end_date_oslo.astimezone(utc_tz)
-
-            all_orders = []
-            page = 1
-            per_page = 100  # Maximum allowed by WooCommerce API
-
-            # Create a progress bar
-            progress_text = "Henter ordrer..."
-            progress_bar = st.progress(0)
-
-            while True:
-                start_time = datetime.now()
-
-                try:
-                    params = {
-                        "after": start_date_utc.isoformat(),
-                        "before": end_date_utc.isoformat(),
-                        "per_page": per_page,
-                        "page": page,
-                        "status": "any"
-                    }
-
-                    response = self.wcapi.get("orders", params=params)
-                    data = response.json()
-
-                    if not isinstance(data, list):
-                        logging.error("Invalid response format")
-                        break
-
-                    if not data:  # No more orders
-                        break
-
-                    all_orders.extend(data)
-
-                    # Update progress
-                    progress = min(1.0, len(all_orders) / (per_page * page))
-                    progress_bar.progress(progress)
-
-                    # Check if we've received less than per_page items
-                    if len(data) < per_page:
-                        break
-
-                    page += 1
-
-                    # Log performance metrics
-                    duration = (datetime.now() - start_time).total_seconds()
-                    logging.debug(f"Page {page} fetched in {duration:.2f} seconds")
-
-                except Exception as e:
-                    logging.error(f"Error fetching page {page}: {str(e)}")
-                    break
-
-            # Remove progress bar
-            progress_bar.empty()
-
-            logging.debug(f"Total orders fetched: {len(all_orders)}")
-            return all_orders
-
-        except Exception as e:
-            logging.error(f"Error fetching orders: {str(e)}")
-            return []
-
-    def process_orders_to_df(self, orders):
-        """Convert orders to pandas DataFrame with optimized processing"""
-        if not orders:
-            return pd.DataFrame(), pd.DataFrame()
-
-        oslo_tz = pytz.timezone('Europe/Oslo')
-        order_data = []
-        product_data = []
-
-        # Show processing progress
-        progress_text = "Behandler ordrer..."
-        progress_bar = st.progress(0)
-        total_orders = len(orders)
-
-        try:
-            # Collect all product IDs first
-            product_ids = set()
-            for order in orders:
-                for item in order.get('line_items', []):
-                    product_ids.add(item.get('product_id'))
-
-            # Batch fetch stock quantities
-            stock_quantities = self.batch_get_stock_quantities(product_ids)
-
-            for idx, order in enumerate(orders):
-                try:
-                    # Update progress
-                    progress = min(1.0, (idx + 1) / total_orders)
-                    progress_bar.progress(progress)
-
-                    # Process order data
-                    date_str = order.get('date_created')
-                    if not date_str:
-                        continue
-
-                    utc_date = pd.to_datetime(date_str)
-                    order_date = utc_date.tz_localize('UTC').tz_convert(oslo_tz)
-
-                    # Process order details
-                    order_info = self._process_order_details(order, order_date)
-                    if order_info:
-                        order_data.append(order_info)
-
-                    # Process line items
-                    product_info = self._process_line_items(order, order_date, stock_quantities)
-                    product_data.extend(product_info)
-
-                except Exception as e:
-                    logging.error(f"Error processing order {order.get('id')}: {str(e)}")
-                    continue
-
-            # Remove progress bar
-            progress_bar.empty()
-
-            # Create DataFrames
-            df_orders = pd.DataFrame(order_data)
-            df_products = pd.DataFrame(product_data)
-
-            return df_orders, df_products
-
-        except Exception as e:
-            logging.error(f"Error in process_orders_to_df: {str(e)}")
-            progress_bar.empty()
-            return pd.DataFrame(), pd.DataFrame()
 
     def _process_order_details(self, order, order_date):
         """Helper method to process individual order details"""
