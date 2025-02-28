@@ -27,11 +27,11 @@ class WooCommerceClient:
 
             # Initialize API client with optimized settings
             self.wcapi = API(url=store_url,
-                              consumer_key=os.getenv('WOOCOMMERCE_KEY'),
-                              consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
-                              version="wc/v3",
-                              verify_ssl=False,
-                              timeout=30)
+                                  consumer_key=os.getenv('WOOCOMMERCE_KEY'),
+                                  consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
+                                  version="wc/v3",
+                                  verify_ssl=False,
+                                  timeout=30)
 
             # Initialize cache
             self.stock_cache = {}
@@ -367,6 +367,7 @@ class WooCommerceClient:
                         product_data.append({
                             'date': order_date,
                             'product_id': product_id,
+                            'sku': item.get('sku', ''),  # Add SKU field
                             'name': item.get('name'),
                             'quantity': quantity,
                             'total': float(item.get('total', 0)) + float(item.get('total_tax', 0)),

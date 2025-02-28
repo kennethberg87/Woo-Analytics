@@ -452,7 +452,7 @@ def main():
             st.subheader("Produktdata")
             if not df_products.empty:
                 # Create a display copy of the DataFrame without subtotal and tax columns
-                display_products_df = df_products.drop(columns=['subtotal', 'tax'])
+                display_products_df = df_products.drop(columns=['subtotal', 'tax', 'product_id'])  # Remove product_id from display
                 st.dataframe(display_products_df.style.format({
                     'total': 'kr {:,.2f}',
                     'cost': 'kr {:,.2f}'
@@ -462,7 +462,7 @@ def main():
                                     "Dato",
                                     format="DD.MM.YYYY HH:mm"
                                 ),
-                                "product_id": "Produkt-ID",
+                                "sku": "Varenummer",
                                 "name": "Produktnavn",
                                 "quantity": "Antall",
                                 "total": "Totalt",
