@@ -10,42 +10,9 @@ from utils.notification_handler import NotificationHandler
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
-# Initialize theme state if not exists
-if 'theme' not in st.session_state:
-    st.session_state.theme = "light"
-
-# Theme selection
-theme_mapping = {
-    "Lys": "light",
-    "Mørk": "dark"
-}
-
-# Page configuration with theme
-st.set_page_config(
-    page_title="WooCommerce Dashboard",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={
-        'Get Help': None,
-        'Report a bug': None,
-        'About': None
-    }
-)
-
-# Theme toggle in sidebar
-selected_theme = st.sidebar.radio(
-    "Tema",
-    options=["Lys", "Mørk"],
-    index=0 if st.session_state.theme == "light" else 1,
-    key="theme_selector"
-)
-
-# Update theme state and apply theme
-if theme_mapping[selected_theme] != st.session_state.theme:
-    logging.debug(f"Theme changed from {st.session_state.theme} to {theme_mapping[selected_theme]}")
-    st.session_state.theme = theme_mapping[selected_theme]
-    if selected_theme == "Mørk":
+def apply_theme(theme):
+    """Apply theme without page reload"""
+    if theme == "Mørk":
         st.markdown("""
             <style>
                 /* Main app background */
@@ -118,6 +85,19 @@ if theme_mapping[selected_theme] != st.session_state.theme:
                     color: #FAFAFA !important;
                 }
             </style>
+            <script>
+                // Apply dark theme to any dynamically loaded elements
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.addedNodes.length) {
+                            document.querySelectorAll('.stApp, .stMarkdown, .stText, .stTitle, h1, h2, h3, h4, h5, h6, p').forEach(el => {
+                                el.style.color = '#FAFAFA';
+                            });
+                        }
+                    });
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+            </script>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
@@ -167,7 +147,55 @@ if theme_mapping[selected_theme] != st.session_state.theme:
                     color: #262730 !important;
                 }
             </style>
+            <script>
+                // Apply light theme to any dynamically loaded elements
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.addedNodes.length) {
+                            document.querySelectorAll('.stApp, .stMarkdown, .stText, .stTitle, h1, h2, h3, h4, h5, h6, p').forEach(el => {
+                                el.style.color = '#262730';
+                            });
+                        }
+                    });
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+            </script>
         """, unsafe_allow_html=True)
+
+# Page configuration
+st.set_page_config(
+    page_title="WooCommerce Dashboard",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
+)
+
+# Initialize theme state if not exists
+if 'theme' not in st.session_state:
+    st.session_state.theme = "light"
+
+# Theme selection without rerun
+selected_theme = st.sidebar.radio(
+    "Tema",
+    options=["Lys", "Mørk"],
+    index=0 if st.session_state.theme == "light" else 1,
+    key="theme_selector"
+)
+
+# Update theme state and apply theme without rerun
+theme_mapping = {
+    "Lys": "light",
+    "Mørk": "dark"
+}
+
+if theme_mapping[selected_theme] != st.session_state.theme:
+    st.session_state.theme = theme_mapping[selected_theme]
+    apply_theme("Mørk" if selected_theme == "Mørk" else "Lys")
 
 # Initialize session state
 if 'woo_client' not in st.session_state:
