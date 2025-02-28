@@ -2,17 +2,15 @@ import streamlit as st
 from datetime import datetime, timedelta
 import time
 import base64
-import os
-import logging
 
-logging.basicConfig(level=logging.DEBUG) #Added logging configuration
 
 class NotificationHandler:
 
     def __init__(self):
         # Initialize notification state in session
         if 'notifications' not in st.session_state:
-            st.session_state.notifications = {}  # Changed to dict to store timestamps
+            st.session_state.notifications = {
+            }  # Changed to dict to store timestamps
         if 'last_check_time' not in st.session_state:
             st.session_state.last_check_time = datetime.now()
         if 'sound_enabled' not in st.session_state:
@@ -21,38 +19,19 @@ class NotificationHandler:
     def play_notification_sound(self):
         """Play notification sound if enabled"""
         if st.session_state.sound_enabled:
-            try:
-                # Get the absolute path to the audio file
-                audio_path = os.path.join('attached_assets', 'cash-register.mp3')
-                logging.debug(f"Looking for audio file at: {audio_path}")
-
-                if not os.path.exists(audio_path):
-                    logging.error(f"Audio file not found at: {audio_path}")
-                    return
-
-                # Read and encode the audio file
-                with open(audio_path, 'rb') as audio_file:
-                    audio_bytes = audio_file.read()
-                    audio_base64 = base64.b64encode(audio_bytes).decode()
-
-                # Create HTML with base64 encoded audio
-                js_code = f"""
-                    <script>
-                    function playSound() {{
-                        var audio = new Audio('data:audio/mp3;base64,{audio_base64}');
-                        audio.volume = 1.0;  // Set volume to maximum
-                        audio.play().catch(function(error) {{
-                            console.log("Error playing sound:", error);
-                        }});
-                    }}
-                    playSound();
-                    </script>
-                """
-                st.components.v1.html(js_code, height=0)
-                logging.debug("Audio playback code injected")
-
-            except Exception as e:
-                logging.error(f"Error playing notification sound: {e}")
+            js_code = """
+                <script>
+                function playSound() {
+                    var audio = new Audio('attached_assets/cash-register.mp3');
+                    audio.volume = 1.0;  // Set volume to maximum
+                    audio.play().catch(function(error) {
+                        console.log("Error playing sound:", error);
+                    });
+                }
+                playSound();
+                </script>
+            """
+            st.components.v1.html(js_code, height=0)
 
     def clean_old_notifications(self):
         """Remove notifications older than 60 minutes"""
@@ -86,10 +65,12 @@ class NotificationHandler:
 
             # Check if this is a new order
             try:
-                order_date = datetime.fromisoformat(date_created.replace('Z', '+00:00'))
+                order_date = datetime.fromisoformat(
+                    date_created.replace('Z', '+00:00'))
                 if order_date > st.session_state.last_check_time:
                     new_orders.append(order)
-                    st.session_state.notifications[order_id] = current_time  # Store timestamp
+                    st.session_state.notifications[
+                        order_id] = current_time  # Store timestamp
             except Exception as e:
                 st.error(f"Error processing order date: {e}")
 
@@ -112,11 +93,15 @@ Kunde: {customer_name}
 Totalbeløp: {currency} {total:,.2f}
 Fullført: {datetime.now().strftime('%H:%M:%S')}"""
 
+            # Display notification using Streamlit
+            st.toast(message, icon='🛍️')
+
             # Play notification sound
             self.play_notification_sound()
 
             # Display in sidebar if notification is less than 60 minutes old
-            if (datetime.now() - st.session_state.notifications.get(str(order_id), datetime.now())) < timedelta(minutes=60):
+            if (datetime.now() - st.session_state.notifications.get(
+                    str(order_id), datetime.now())) < timedelta(minutes=60):
                 st.sidebar.success(message)
 
         except Exception as e:
@@ -133,7 +118,8 @@ Fullført: {datetime.now().strftime('%H:%M:%S')}"""
 
             # Fetch recent orders
             orders = woo_client.get_orders(
-                start_date=(current_time - timedelta(minutes=check_interval)).date(),
+                start_date=(current_time -
+                            timedelta(minutes=check_interval)).date(),
                 end_date=current_time.date())
 
             # Check for new orders
