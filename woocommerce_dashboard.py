@@ -7,20 +7,75 @@ from utils.data_processor import DataProcessor
 from utils.export_handler import ExportHandler
 from utils.notification_handler import NotificationHandler
 
-# Configure logging
-logging.basicConfig(filename='woocommerce_api.log',
-                    level=logging.DEBUG,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
-
 # Page configuration
 st.set_page_config(page_title="WooCommerce Dashboard",
                    page_icon="📊",
                    layout="wide")
 
+# Initialize theme colors in session state if not present
+if 'theme_colors' not in st.session_state:
+    st.session_state.theme_colors = {
+        'primary': "#FF4B4B",
+        'background': "#FFFFFF",
+        'secondary_background': "#F0F2F6",
+        'text': "#262730"
+    }
+
 # Sidebar setup
 with st.sidebar:
     # Theme toggle using Streamlit's native functionality
     st.toggle("🌓 Mørkt tema", key="dark_theme", value=False)
+
+    # Color palette customization
+    st.subheader("🎨 Tilpass farger")
+    with st.expander("Endre dashboard farger"):
+        st.session_state.theme_colors['primary'] = st.color_picker(
+            "Primærfarge",
+            st.session_state.theme_colors['primary'],
+            help="Hovedfarge for interaktive elementer"
+        )
+
+        st.session_state.theme_colors['background'] = st.color_picker(
+            "Bakgrunnsfarge",
+            st.session_state.theme_colors['background'],
+            help="Bakgrunnsfarge for hovedinnhold"
+        )
+
+        st.session_state.theme_colors['secondary_background'] = st.color_picker(
+            "Sekundær bakgrunnsfarge",
+            st.session_state.theme_colors['secondary_background'],
+            help="Bakgrunnsfarge for sidepanel og widgeter"
+        )
+
+        st.session_state.theme_colors['text'] = st.color_picker(
+            "Tekstfarge",
+            st.session_state.theme_colors['text'],
+            help="Farge for all tekst"
+        )
+
+    # Apply custom theme
+    st.markdown(f"""
+        <style>
+            /* Custom theme colors */
+            :root {{
+                --primary-color: {st.session_state.theme_colors['primary']};
+                --background-color: {st.session_state.theme_colors['background']};
+                --secondary-background-color: {st.session_state.theme_colors['secondary_background']};
+                --text-color: {st.session_state.theme_colors['text']};
+            }}
+
+            /* Apply custom colors */
+            .stButton button {{
+                background-color: var(--primary-color) !important;
+            }}
+            .stTextInput input {{
+                border-color: var(--primary-color) !important;
+            }}
+            .stSelectbox select {{
+                border-color: var(--primary-color) !important;
+            }}
+        </style>
+    """, unsafe_allow_html=True)
 
     # Debug mode toggle
     debug_mode = st.checkbox("Debug Mode", value=True)
@@ -45,8 +100,8 @@ with st.sidebar:
         notification_placeholder = st.sidebar.empty()
 
         # Check for new orders every 30 seconds if all components are initialized
-        if ('notification_handler' in st.session_state and 
-            'woo_client' in st.session_state and 
+        if ('notification_handler' in st.session_state and
+            'woo_client' in st.session_state and
             st.session_state.notification_handler.monitor_orders(st.session_state.woo_client)):
             notification_placeholder.success(
                 "✨ Aktivert varsler - Du får beskjed når det kommer inn en ny bestilling!"
