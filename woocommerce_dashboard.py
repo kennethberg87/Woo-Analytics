@@ -36,6 +36,7 @@ if 'woo_client' not in st.session_state:
 if 'notification_handler' not in st.session_state:
     st.session_state.notification_handler = NotificationHandler()
 
+
 def get_date_range(view_period):
     """Calculate date range based on view period"""
     today = datetime.now().date()
@@ -53,6 +54,7 @@ def get_date_range(view_period):
 
     return today, today  # Default to daily view
 
+
 def main():
     # Header
     st.title("📊 Salgsstatistikk nettbutikk")
@@ -66,7 +68,7 @@ def main():
 
     # Real-time notifications toggle
     notifications_enabled = st.sidebar.checkbox("Aktiver sanntidsvarsler",
-                                               value=True)
+                                                value=True)
 
     # Add sound toggle if notifications are enabled
     if notifications_enabled:
@@ -87,9 +89,9 @@ def main():
 
     # View period selector (before date range)
     view_period = st.selectbox("Velg visningsperiode",
-                              options=['Daglig', 'Ukentlig', 'Månedlig'],
-                              index=0,
-                              help="Velg hvordan dataene skal aggregeres")
+                               options=['Daglig', 'Ukentlig', 'Månedlig'],
+                               index=0,
+                               help="Velg hvordan dataene skal aggregeres")
 
     # Calculate date range based on view period
     start_date, end_date = get_date_range(view_period)
@@ -119,11 +121,13 @@ def main():
         st.error("Error: End date must be after start date")
         return
 
-    st.info(f"Henter bestillinger fra {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}")
+    st.info(
+        f"Basert på ordre fra {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
+    )
 
     # Fetch and process data
     try:
-        with st.spinner("Henter bestillinger fra WooCommerce..."):
+        with st.spinner("Henter bestillinger fra nettbutikken..."):
             orders = st.session_state.woo_client.get_orders(
                 selected_start_date, selected_end_date)
 
@@ -151,7 +155,8 @@ def main():
 
     if df.empty:
         st.warning(
-            f"Ingen ordre funnet fra perioden {selected_start_date} and {selected_end_date}")
+            f"Ingen ordre funnet fra perioden {selected_start_date} and {selected_end_date}"
+        )
         return
 
     # Convert view_period to lowercase for processing
@@ -210,27 +215,32 @@ def main():
 
     # Display Top 10 Products
     st.header("10 mest solgte produkter basert på antall")
-    st.caption(f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}")
+    st.caption(
+        f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
+    )
 
     top_products = DataProcessor.get_top_products(df_products)
     if not top_products.empty:
         st.dataframe(
             top_products,
             column_config={
-                "name": "Produktnavn",
-                "product_id": st.column_config.NumberColumn(
+                "name":
+                "Produktnavn",
+                "product_id":
+                st.column_config.NumberColumn(
                     "Produkt ID",
                     help="Unik identifikator for produktet",
                     format="%d"  # Format as plain integer without commas
                 ),
-                "Total Quantity": st.column_config.NumberColumn(
+                "Total Quantity":
+                st.column_config.NumberColumn(
                     "Antall solgt",
-                    help="Totalt antall solgt av dette produkter innenfor valg periode"
+                    help=
+                    "Totalt antall solgt av dette produkter innenfor valg periode"
                 ),
-                "Stock Quantity": st.column_config.NumberColumn(
-                    "På lager",
-                    help="Nåværende lagerbeholdning"
-                )
+                "Stock Quantity":
+                st.column_config.NumberColumn("På lager",
+                                              help="Nåværende lagerbeholdning")
             },
             hide_index=False,
             use_container_width=True)
@@ -245,7 +255,9 @@ def main():
 
     # Customer List
     st.header("Ovesikt over kunder")
-    st.caption(f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}")
+    st.caption(
+        f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
+    )
 
     customers_df = DataProcessor.get_customer_list(df)
     if not customers_df.empty:
@@ -258,7 +270,7 @@ def main():
                 "E-postadresse",
                 "Order Date":
                 st.column_config.DatetimeColumn("Ordre utført",
-                                                 format="DD.MM.YYYY HH:mm"),
+                                                format="DD.MM.YYYY HH:mm"),
                 "Payment Method":
                 "Betalingsmetode",
                 "Shipping Method":
@@ -281,7 +293,9 @@ def main():
 
     # Invoice Section
     st.header("Fakturaer")
-    st.caption(f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}")
+    st.caption(
+        f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
+    )
 
     if not df.empty:
         invoice_data = []
