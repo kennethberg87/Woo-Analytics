@@ -7,7 +7,7 @@ class NotificationHandler:
     def __init__(self):
         # Initialize notification state in session
         if 'notifications' not in st.session_state:
-            st.session_state.notifications = set()
+            st.session_state.notifications = {}  # Changed to dict to store timestamps
         if 'last_check_time' not in st.session_state:
             st.session_state.last_check_time = datetime.now()
         if 'sound_enabled' not in st.session_state:
@@ -29,6 +29,18 @@ class NotificationHandler:
                 </script>
             """
             st.components.v1.html(js_code, height=0)
+
+    def clean_old_notifications(self):
+        """Remove notifications older than 60 minutes"""
+        current_time = datetime.now()
+        expired_notifications = []
+
+        for order_id, timestamp in st.session_state.notifications.items():
+            if (current_time - timestamp) > timedelta(minutes=60):
+                expired_notifications.append(order_id)
+
+        for order_id in expired_notifications:
+            del st.session_state.notifications[order_id]
 
     def check_new_orders(self, orders):
         """Check for new orders since last check"""
@@ -53,7 +65,7 @@ class NotificationHandler:
                 order_date = datetime.fromisoformat(date_created.replace('Z', '+00:00'))
                 if order_date > st.session_state.last_check_time:
                     new_orders.append(order)
-                    st.session_state.notifications.add(order_id)
+                    st.session_state.notifications[order_id] = current_time  # Store timestamp
             except Exception as e:
                 st.error(f"Error processing order date: {e}")
 
@@ -81,8 +93,9 @@ Time: {datetime.now().strftime('%H:%M:%S')}"""
             # Play notification sound
             self.play_notification_sound()
 
-            # Also show in sidebar for better visibility
-            st.sidebar.success(message)
+            # Display in sidebar if notification is less than 60 minutes old
+            if (datetime.now() - st.session_state.notifications.get(str(order_id), datetime.now())) < timedelta(minutes=60):
+                st.sidebar.success(message)
 
         except Exception as e:
             st.error(f"Error displaying notification: {e}")
@@ -90,6 +103,9 @@ Time: {datetime.now().strftime('%H:%M:%S')}"""
     def monitor_orders(self, woo_client, check_interval=30):
         """Monitor for new orders and display notifications"""
         try:
+            # Clean up old notifications first
+            self.clean_old_notifications()
+
             # Get current time
             current_time = datetime.now()
 
