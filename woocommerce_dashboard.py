@@ -255,7 +255,7 @@ def main():
     if not df.empty:
         invoice_data = []
         for _, order in df.iterrows():
-            invoice_details = st.session_state.woo_client.get_invoice_details(order.get('meta_data', []))
+            invoice_details = st.session_state.woo_client.get_invoice_details(order['meta_data'])
             if invoice_details['invoice_number']:
                 invoice_url = st.session_state.woo_client.get_invoice_url(order['order_id'])
                 invoice_data.append({

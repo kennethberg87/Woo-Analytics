@@ -222,7 +222,8 @@ class WooCommerceClient:
                     'dintero_payment_method': dintero_method,
                     'shipping_method': shipping_method,
                     'invoice_number': invoice_details['invoice_number'],
-                    'invoice_date': invoice_details['invoice_date']
+                    'invoice_date': invoice_details['invoice_date'],
+                    'meta_data': order.get('meta_data', [])  # Store complete meta_data
                 }
 
                 order_data.append(order_info)
