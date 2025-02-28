@@ -68,6 +68,40 @@ class WooCommerceClient:
             return shipping_lines[0].get('method_title', '')
         return ''
 
+    def get_invoice_details(self, meta_data):
+        """Extract invoice details from order meta data"""
+        invoice_details = {
+            'invoice_number': '',
+            'invoice_date': None,
+            'order_number': ''
+        }
+
+        for meta in meta_data:
+            if meta.get('key') == '_wcpdf_invoice_number':
+                invoice_details['invoice_number'] = meta.get('value', '')
+            elif meta.get('key') == '_wcpdf_invoice_date_formatted':
+                invoice_details['invoice_date'] = meta.get('value', '')
+            elif meta.get('key') == '_order_number_formatted':
+                invoice_details['order_number'] = meta.get('value', '')
+
+        return invoice_details
+
+    def get_invoice_url(self, order_id):
+        """Generate invoice download URL"""
+        try:
+            # Use WooCommerce REST API to get invoice download URL
+            endpoint = f"orders/{order_id}/notes"
+            params = {
+                "type": "wcpdf-invoice"
+            }
+            response = self.wcapi.get(endpoint, params=params)
+            if response.status_code == 200:
+                return f"{os.getenv('WOOCOMMERCE_URL')}/wp-admin/admin-ajax.php?action=generate_wpo_wcpdf&document_type=invoice&order_ids={order_id}&_wpnonce={response.json()[0].get('id', '')}"
+            return None
+        except Exception as e:
+            logging.error(f"Error getting invoice URL for order {order_id}: {str(e)}")
+            return None
+
     def get_order_number(self, meta_data):
         """Extract formatted order number from order meta data"""
         for meta in meta_data:
@@ -170,6 +204,7 @@ class WooCommerceClient:
                 dintero_method = self.get_dintero_payment_method(
                     order.get('meta_data', []))
                 shipping_method = self.get_shipping_method(shipping_lines)
+                invoice_details = self.get_invoice_details(order.get('meta_data', []))
 
                 # Create order record
                 order_info = {
@@ -185,7 +220,9 @@ class WooCommerceClient:
                     'tax_total': total_tax,
                     'billing': billing,
                     'dintero_payment_method': dintero_method,
-                    'shipping_method': shipping_method
+                    'shipping_method': shipping_method,
+                    'invoice_number': invoice_details['invoice_number'],
+                    'invoice_date': invoice_details['invoice_date']
                 }
 
                 order_data.append(order_info)

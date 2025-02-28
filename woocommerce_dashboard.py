@@ -227,7 +227,7 @@ def main():
                 "E-postadresse",
                 "Order Date":
                 st.column_config.DatetimeColumn("Ordre utført",
-                                                format="DD.MM.YYYY HH:mm"),
+                                                 format="DD.MM.YYYY HH:mm"),
                 "Payment Method":
                 "Betalingsmetode",
                 "Shipping Method":
@@ -247,6 +247,57 @@ def main():
     quantity_chart = DataProcessor.create_product_quantity_chart(df_products)
     if quantity_chart:
         st.plotly_chart(quantity_chart, use_container_width=True)
+
+    # Invoice Section
+    st.header("Fakturaer")
+    st.caption(f"For perioden: {start_date} til {end_date}")
+
+    if not df.empty:
+        invoice_data = []
+        for _, order in df.iterrows():
+            invoice_details = st.session_state.woo_client.get_invoice_details(order.get('meta_data', []))
+            if invoice_details['invoice_number']:
+                invoice_url = st.session_state.woo_client.get_invoice_url(order['order_id'])
+                invoice_data.append({
+                    'Fakturanummer': invoice_details['invoice_number'],
+                    'Ordrenummer': invoice_details['order_number'],
+                    'Fakturadato': invoice_details['invoice_date'],
+                    'Status': order['status'],
+                    'Total': order['total'],
+                    'URL': invoice_url
+                })
+
+        if invoice_data:
+            # Create DataFrame for invoices
+            invoices_df = pd.DataFrame(invoice_data)
+
+            # Display invoices in a table with download links
+            st.dataframe(
+                invoices_df.drop(columns=['URL']).style.format({
+                    'Total': 'kr {:,.2f}'
+                }),
+                column_config={
+                    "Fakturanummer": "Fakturanummer",
+                    "Ordrenummer": "Ordrenummer",
+                    "Fakturadato": st.column_config.DatetimeColumn(
+                        "Fakturadato",
+                        format="DD.MM.YYYY HH:mm"
+                    ),
+                    "Status": "Status",
+                    "Total": "Total",
+                },
+                hide_index=True
+            )
+
+            # Add download buttons for each invoice
+            st.subheader("Last ned fakturaer")
+            for idx, invoice in invoices_df.iterrows():
+                if invoice['URL']:
+                    st.markdown(f"[Last ned faktura {invoice['Fakturanummer']} (PDF)]({invoice['URL']})")
+        else:
+            st.info("Ingen fakturaer funnet for valgt periode")
+    else:
+        st.warning("Ingen ordredata tilgjengelig for valgt periode")
 
     # Export Section
     st.header("Eksporter data")
