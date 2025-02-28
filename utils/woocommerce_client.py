@@ -8,14 +8,15 @@ from requests.exceptions import SSLError, ConnectionError
 from urllib.parse import urlparse
 import pytz
 import logging
+from functools import lru_cache
+import concurrent.futures
 
-logging.basicConfig(level=logging.DEBUG) #Added logging configuration
+logging.basicConfig(level=logging.DEBUG)
 
 class WooCommerceClient:
 
     def __init__(self):
         try:
-            # Validate store URL
             store_url = os.getenv('WOOCOMMERCE_URL')
             if not store_url:
                 raise ValueError("WooCommerce store URL is not configured")
@@ -24,29 +25,65 @@ class WooCommerceClient:
             if not parsed_url.scheme or not parsed_url.netloc:
                 raise ValueError("Invalid WooCommerce store URL format")
 
-            # Initialize API client
-            self.wcapi = API(url=store_url,
-                          consumer_key=os.getenv('WOOCOMMERCE_KEY'),
-                          consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
-                          version="wc/v3",
-                          verify_ssl=False,
-                          timeout=30)
+            self.wcapi = API(
+                url=store_url,
+                consumer_key=os.getenv('WOOCOMMERCE_KEY'),
+                consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
+                version="wc/v3",
+                verify_ssl=False,
+                timeout=30
+            )
+
+            # Initialize cache
+            self.stock_cache = {}
+            self.cache_timeout = 300  # 5 minutes
 
         except Exception as e:
             st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
             raise
 
+    @lru_cache(maxsize=1000)
     def get_stock_quantity(self, product_id):
-        """Get current stock quantity for a product"""
+        """Get current stock quantity for a product with caching"""
         try:
+            # Check cache first
+            cache_key = f"stock_{product_id}"
+            cached_data = self.stock_cache.get(cache_key)
+
+            if cached_data:
+                timestamp, value = cached_data
+                if (datetime.now() - timestamp).total_seconds() < self.cache_timeout:
+                    return value
+
             response = self.wcapi.get(f"products/{product_id}")
             product_data = response.json()
+
             if 'stock_quantity' in product_data:
+                # Update cache
+                self.stock_cache[cache_key] = (datetime.now(), product_data['stock_quantity'])
                 return product_data['stock_quantity']
             return None
+
         except Exception as e:
             logging.error(f"Error fetching stock for product {product_id}: {str(e)}")
             return None
+
+    def batch_get_stock_quantities(self, product_ids):
+        """Get stock quantities for multiple products in parallel"""
+        stock_quantities = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_id = {
+                executor.submit(self.get_stock_quantity, product_id): product_id
+                for product_id in product_ids
+            }
+            for future in concurrent.futures.as_completed(future_to_id):
+                product_id = future_to_id[future]
+                try:
+                    stock_quantities[product_id] = future.result()
+                except Exception as e:
+                    logging.error(f"Error fetching stock for product {product_id}: {str(e)}")
+                    stock_quantities[product_id] = None
+        return stock_quantities
 
     def get_payment_method_display(self, payment_method):
         """Convert payment method code to display name"""
@@ -101,17 +138,13 @@ class WooCommerceClient:
     def get_invoice_url(self, order_id):
         """Generate invoice download URL"""
         try:
-            # Get base store URL
             store_url = os.getenv('WOOCOMMERCE_URL')
             if not store_url:
                 logging.error("WooCommerce store URL not configured")
                 return None
 
-            # Remove trailing slash if present
             store_url = store_url.rstrip('/')
 
-            # For PDF Invoices & Packing Slips plugin, we need to construct a URL that includes
-            # the direct download endpoint with a static hash
             invoice_url = f"{store_url}/wcpdf/invoice/{order_id}/9e9c036d2f/pdf"
 
             logging.debug(f"Generated invoice URL: {invoice_url}")
@@ -129,19 +162,13 @@ class WooCommerceClient:
         return ''
 
     def get_orders(self, start_date, end_date):
-        """
-        Fetch orders from WooCommerce API within the specified date range
-        """
+        """Fetch orders from WooCommerce API within the specified date range"""
         try:
-            # Convert dates to UTC for API request
             oslo_tz = pytz.timezone('Europe/Oslo')
             utc_tz = pytz.UTC
 
-            # Convert start and end dates to UTC
-            start_date_oslo = oslo_tz.localize(
-                datetime.combine(start_date, datetime.min.time()))
-            end_date_oslo = oslo_tz.localize(
-                datetime.combine(end_date, datetime.max.time()))
+            start_date_oslo = oslo_tz.localize(datetime.combine(start_date, datetime.min.time()))
+            end_date_oslo = oslo_tz.localize(datetime.combine(end_date, datetime.max.time()))
 
             start_date_utc = start_date_oslo.astimezone(utc_tz)
             end_date_utc = end_date_oslo.astimezone(utc_tz)
@@ -150,40 +177,54 @@ class WooCommerceClient:
             page = 1
             per_page = 100  # Maximum allowed by WooCommerce API
 
+            # Create a progress bar
+            progress_text = "Henter ordrer..."
+            progress_bar = st.progress(0)
+
             while True:
-                logging.debug(f"Fetching orders page {page}")
                 start_time = datetime.now()
 
-                params = {
-                    "after": start_date_utc.isoformat(),
-                    "before": end_date_utc.isoformat(),
-                    "per_page": per_page,
-                    "page": page,
-                    "status": "any"
-                }
+                try:
+                    params = {
+                        "after": start_date_utc.isoformat(),
+                        "before": end_date_utc.isoformat(),
+                        "per_page": per_page,
+                        "page": page,
+                        "status": "any"
+                    }
 
-                response = self.wcapi.get("orders", params=params)
-                data = response.json()
+                    response = self.wcapi.get("orders", params=params)
+                    data = response.json()
 
-                if not isinstance(data, list):
-                    logging.error("Invalid response format")
+                    if not isinstance(data, list):
+                        logging.error("Invalid response format")
+                        break
+
+                    if not data:  # No more orders
+                        break
+
+                    all_orders.extend(data)
+
+                    # Update progress
+                    progress = min(1.0, len(all_orders) / (per_page * page))
+                    progress_bar.progress(progress)
+
+                    # Check if we've received less than per_page items
+                    if len(data) < per_page:
+                        break
+
+                    page += 1
+
+                    # Log performance metrics
+                    duration = (datetime.now() - start_time).total_seconds()
+                    logging.debug(f"Page {page} fetched in {duration:.2f} seconds")
+
+                except Exception as e:
+                    logging.error(f"Error fetching page {page}: {str(e)}")
                     break
 
-                if not data:  # No more orders
-                    break
-
-                all_orders.extend(data)
-
-                # Check if we've received less than per_page items
-                if len(data) < per_page:
-                    break
-
-                page += 1
-
-                # Log performance metrics
-                end_time = datetime.now()
-                duration = (end_time - start_time).total_seconds()
-                logging.debug(f"Page {page} fetched in {duration:.2f} seconds")
+            # Remove progress bar
+            progress_bar.empty()
 
             logging.debug(f"Total orders fetched: {len(all_orders)}")
             return all_orders
@@ -193,9 +234,7 @@ class WooCommerceClient:
             return []
 
     def process_orders_to_df(self, orders):
-        """
-        Convert orders to pandas DataFrame with daily metrics and product information
-        """
+        """Convert orders to pandas DataFrame with optimized processing"""
         if not orders:
             return pd.DataFrame(), pd.DataFrame()
 
@@ -203,123 +242,131 @@ class WooCommerceClient:
         order_data = []
         product_data = []
 
-        # Collect all product IDs first
-        product_ids = set()
-        for order in orders:
-            for item in order.get('line_items', []):
-                product_ids.add(item.get('product_id'))
+        # Show processing progress
+        progress_text = "Behandler ordrer..."
+        progress_bar = st.progress(0)
+        total_orders = len(orders)
 
-        # Batch fetch stock quantities
-        stock_quantities = {}
-        for product_id in product_ids:
-            stock_quantities[product_id] = self.get_stock_quantity(product_id)
+        try:
+            # Collect all product IDs first
+            product_ids = set()
+            for order in orders:
+                for item in order.get('line_items', []):
+                    product_ids.add(item.get('product_id'))
 
-        logging.debug(f"Processing {len(orders)} orders")
-        start_time = datetime.now()
+            # Batch fetch stock quantities
+            stock_quantities = self.batch_get_stock_quantities(product_ids)
 
-        for order in orders:
-            try:
-                # Parse and convert date to Oslo timezone
-                date_str = order.get('date_created')
-                if not date_str:
+            for idx, order in enumerate(orders):
+                try:
+                    # Update progress
+                    progress = min(1.0, (idx + 1) / total_orders)
+                    progress_bar.progress(progress)
+
+                    # Process order data
+                    date_str = order.get('date_created')
+                    if not date_str:
+                        continue
+
+                    utc_date = pd.to_datetime(date_str)
+                    order_date = utc_date.tz_localize('UTC').tz_convert(oslo_tz)
+
+                    # Process order details
+                    order_info = self._process_order_details(order, order_date)
+                    if order_info:
+                        order_data.append(order_info)
+
+                    # Process line items
+                    product_info = self._process_line_items(order, order_date, stock_quantities)
+                    product_data.extend(product_info)
+
+                except Exception as e:
+                    logging.error(f"Error processing order {order.get('id')}: {str(e)}")
                     continue
 
-                utc_date = pd.to_datetime(date_str)
-                order_date = utc_date.tz_localize('UTC').tz_convert(oslo_tz)
+            # Remove progress bar
+            progress_bar.empty()
 
-                # Initialize order info
-                order_id = order.get('id')
-                total = float(order.get('total', 0))
-                status = order.get('status', '')
-                shipping_base = 0
-                shipping_tax = 0
+            # Create DataFrames
+            df_orders = pd.DataFrame(order_data)
+            df_products = pd.DataFrame(product_data)
 
-                # Process shipping lines
-                shipping_lines = order.get('shipping_lines', [])
-                for shipping in shipping_lines:
-                    base = float(shipping.get('total', 0))
-                    tax = float(shipping.get('total_tax', 0))
-                    shipping_base += base
-                    shipping_tax += tax
+            return df_orders, df_products
 
-                # Calculate total shipping
-                total_shipping = shipping_base + shipping_tax
-                total_tax = float(order.get('total_tax', 0))
-                subtotal = sum(float(item.get('subtotal', 0))
-                              for item in order.get('line_items', []))
+        except Exception as e:
+            logging.error(f"Error in process_orders_to_df: {str(e)}")
+            progress_bar.empty()
+            return pd.DataFrame(), pd.DataFrame()
 
-                # Get billing information
-                billing = order.get('billing', {})
+    def _process_order_details(self, order, order_date):
+        """Helper method to process individual order details"""
+        try:
+            order_id = order.get('id')
+            total = float(order.get('total', 0))
+            status = order.get('status', '')
 
-                # Get order number, payment method and shipping method
-                order_number = self.get_order_number(order.get('meta_data', []))
-                dintero_method = self.get_dintero_payment_method(
-                    order.get('meta_data', []))
-                shipping_method = self.get_shipping_method(shipping_lines)
-                invoice_details = self.get_invoice_details(order.get('meta_data', []))
+            # Process shipping
+            shipping_lines = order.get('shipping_lines', [])
+            shipping_base = sum(float(shipping.get('total', 0)) for shipping in shipping_lines)
+            shipping_tax = sum(float(shipping.get('total_tax', 0)) for shipping in shipping_lines)
+            total_shipping = shipping_base + shipping_tax
 
-                # Create order record
-                order_info = {
+            # Calculate totals
+            total_tax = float(order.get('total_tax', 0))
+            subtotal = sum(float(item.get('subtotal', 0)) for item in order.get('line_items', []))
+
+            return {
+                'date': order_date,
+                'order_id': order_id,
+                'order_number': self.get_order_number(order.get('meta_data', [])),
+                'status': status,
+                'total': total,
+                'subtotal': subtotal,
+                'shipping_base': shipping_base,
+                'shipping_total': total_shipping,
+                'shipping_tax': shipping_tax,
+                'tax_total': total_tax,
+                'billing': order.get('billing', {}),
+                'dintero_payment_method': self.get_dintero_payment_method(order.get('meta_data', [])),
+                'shipping_method': self.get_shipping_method(shipping_lines),
+                'meta_data': order.get('meta_data', [])
+            }
+        except Exception as e:
+            logging.error(f"Error processing order details for {order.get('id')}: {str(e)}")
+            return None
+
+    def _process_line_items(self, order, order_date, stock_quantities):
+        """Helper method to process line items from an order"""
+        product_info = []
+        try:
+            for item in order.get('line_items', []):
+                quantity = int(item.get('quantity', 0))
+                cost = 0
+
+                # Get cost from meta data
+                for meta in item.get('meta_data', []):
+                    if meta.get('key') == '_yith_cog_item_cost':
+                        try:
+                            cost = float(meta.get('value', 0))
+                        except (ValueError, TypeError):
+                            cost = 0
+                        break
+
+                product_id = item.get('product_id')
+                stock_quantity = stock_quantities.get(product_id)
+
+                product_info.append({
                     'date': order_date,
-                    'order_id': order_id,
-                    'order_number': order_number,
-                    'status': status,
-                    'total': total,
-                    'subtotal': subtotal,
-                    'shipping_base': shipping_base,
-                    'shipping_total': total_shipping,
-                    'shipping_tax': shipping_tax,
-                    'tax_total': total_tax,
-                    'billing': billing,
-                    'dintero_payment_method': dintero_method,
-                    'shipping_method': shipping_method,
-                    'invoice_number': invoice_details['invoice_number'],
-                    'invoice_date': invoice_details['invoice_date'],
-                    'meta_data': order.get('meta_data', [])  # Store complete meta_data
-                }
+                    'product_id': product_id,
+                    'name': item.get('name'),
+                    'quantity': quantity,
+                    'total': float(item.get('total', 0)) + float(item.get('total_tax', 0)),
+                    'subtotal': float(item.get('subtotal', 0)),
+                    'tax': float(item.get('total_tax', 0)),
+                    'cost': cost * quantity,
+                    'stock_quantity': stock_quantity
+                })
+        except Exception as e:
+            logging.error(f"Error processing line items: {str(e)}")
 
-                order_data.append(order_info)
-
-                # Process line items
-                for item in order.get('line_items', []):
-                    quantity = int(item.get('quantity', 0))
-                    cost = 0
-                    for meta in item.get('meta_data', []):
-                        if meta.get('key') == '_yith_cog_item_cost':
-                            try:
-                                # Store base cost without VAT
-                                cost = float(meta.get('value', 0))
-                            except (ValueError, TypeError):
-                                cost = 0
-                            break
-
-                    # Get stock quantity from cached data
-                    product_id = item.get('product_id')
-                    stock_quantity = stock_quantities.get(product_id)
-
-                    product_data.append({
-                        'date': order_date,
-                        'product_id': product_id,
-                        'name': item.get('name'),
-                        'quantity': quantity,
-                        'total': float(item.get('total', 0)) + float(item.get('total_tax', 0)),  # Total including tax
-                        'subtotal': float(item.get('subtotal', 0)),
-                        'tax': float(item.get('total_tax', 0)),
-                        'cost': cost * quantity,  # Cost excluding VAT * quantity
-                        'stock_quantity': stock_quantity  # Add stock quantity
-                    })
-
-            except Exception as e:
-                logging.error(f"Error processing order {order.get('id')}: {str(e)}")
-                continue
-
-        # Log processing duration
-        end_time = datetime.now()
-        duration = (end_time - start_time).total_seconds()
-        logging.debug(f"Processed {len(orders)} orders in {duration:.2f} seconds")
-
-        # Create DataFrames from collected data
-        df_orders = pd.DataFrame(order_data)
-        df_products = pd.DataFrame(product_data)
-
-        return df_orders, df_products
+        return product_info
