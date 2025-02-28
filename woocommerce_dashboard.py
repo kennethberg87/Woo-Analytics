@@ -17,21 +17,10 @@ st.set_page_config(page_title="WooCommerce Dashboard",
                    page_icon="📊",
                    layout="wide")
 
-# Theme handling in sidebar
+# Sidebar setup
 with st.sidebar:
-    # Add theme toggle at the top
-    theme = "dark" if st.toggle("🌓 Mørkt tema") else "light"
-
-    # Set theme config
-    st.markdown(f"""
-        <script>
-            currentTheme = window.localStorage.getItem('theme');
-            if (currentTheme !== "{theme}") {{
-                window.localStorage.setItem('theme', "{theme}");
-                window.location.reload();
-            }}
-        </script>
-        """, unsafe_allow_html=True)
+    # Theme toggle using Streamlit's native functionality
+    st.toggle("🌓 Mørkt tema", key="dark_theme", value=False)
 
     # Debug mode toggle
     debug_mode = st.checkbox("Debug Mode", value=True)
@@ -42,7 +31,7 @@ with st.sidebar:
 
     # Real-time notifications toggle
     notifications_enabled = st.checkbox("Aktiver sanntidsvarsler", value=True)
-    st.session_state.notifications_enabled = notifications_enabled #Added this line
+    st.session_state.notifications_enabled = notifications_enabled
 
     # Add notification controls to sidebar if notifications are enabled
     if 'notifications_enabled' in st.session_state and st.session_state.notifications_enabled:
@@ -62,7 +51,6 @@ with st.sidebar:
             notification_placeholder.success(
                 "✨ Aktivert varsler - Du får beskjed når det kommer inn en ny bestilling!"
             )
-
 
 
 # Initialize session state
