@@ -8,54 +8,121 @@ from utils.export_handler import ExportHandler
 from utils.notification_handler import NotificationHandler
 
 # Configure logging
-logging.basicConfig(filename='woocommerce_api.log',
-                    level=logging.DEBUG,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG)
 
-# Page configuration
-st.set_page_config(page_title="WooCommerce Dashboard",
-                   page_icon="📊",
-                   layout="wide")
-
-# Initialize theme state
+# Initialize theme state if not exists
 if 'theme' not in st.session_state:
     st.session_state.theme = "light"
 
+# Theme selection
+theme_mapping = {
+    "Lys": "light",
+    "Mørk": "dark"
+}
+
+# Page configuration with theme
+st.set_page_config(
+    page_title="WooCommerce Dashboard",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
+)
+
 # Theme toggle in sidebar
-theme = st.sidebar.radio(
+selected_theme = st.sidebar.radio(
     "Tema",
     options=["Lys", "Mørk"],
     index=0 if st.session_state.theme == "light" else 1,
-    key="theme_toggle"
+    key="theme_selector"
 )
 
-# Update theme based on selection
-if theme == "Mørk":
-    st.markdown("""
-        <style>
-            :root {
-                --primary-color: #FF4B4B;
-                --background-color: #0E1117;
-                --secondary-background-color: #262730;
-                --text-color: #FAFAFA;
-                --font: sans-serif;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-    st.session_state.theme = "dark"
-else:
-    st.markdown("""
-        <style>
-            :root {
-                --primary-color: #FF4B4B;
-                --background-color: #FFFFFF;
-                --secondary-background-color: #F0F2F6;
-                --text-color: #262730;
-                --font: sans-serif;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-    st.session_state.theme = "light"
+# Update theme state and apply theme
+if theme_mapping[selected_theme] != st.session_state.theme:
+    logging.debug(f"Theme changed from {st.session_state.theme} to {theme_mapping[selected_theme]}")
+    st.session_state.theme = theme_mapping[selected_theme]
+    if selected_theme == "Mørk":
+        st.markdown("""
+            <style>
+                /* Main app background */
+                .stApp {
+                    background-color: #0E1117 !important;
+                    color: #FAFAFA !important;
+                }
+
+                /* Sidebar */
+                .css-1d391kg {
+                    background-color: #262730 !important;
+                }
+
+                /* Text elements */
+                .stMarkdown, .stText, .stTitle, h1, h2, h3, h4, h5, h6, p {
+                    color: #FAFAFA !important;
+                }
+
+                /* Metric cards */
+                [data-testid="stMetricValue"] {
+                    color: #FAFAFA !important;
+                }
+
+                /* DataTable styles */
+                .stDataFrame {
+                    background-color: #262730 !important;
+                }
+
+                /* Inputs and widgets */
+                .stSelectbox, .stDateInput {
+                    background-color: #262730 !important;
+                    color: #FAFAFA !important;
+                }
+
+                /* Charts */
+                .js-plotly-plot .plotly {
+                    background-color: #262730 !important;
+                }
+
+                /* Alerts and messages */
+                .stAlert {
+                    background-color: #262730 !important;
+                    color: #FAFAFA !important;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+            <style>
+                /* Main app background */
+                .stApp {
+                    background-color: #FFFFFF !important;
+                    color: #262730 !important;
+                }
+
+                /* Sidebar */
+                .css-1d391kg {
+                    background-color: #F0F2F6 !important;
+                }
+
+                /* Text elements */
+                .stMarkdown, .stText, .stTitle, h1, h2, h3, h4, h5, h6, p {
+                    color: #262730 !important;
+                }
+
+                /* DataTable styles */
+                .stDataFrame {
+                    background-color: #FFFFFF !important;
+                }
+
+                /* Charts */
+                .js-plotly-plot .plotly {
+                    background-color: #FFFFFF !important;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+    st.experimental_rerun()
 
 
 # Initialize session state

@@ -4,15 +4,20 @@ address = "0.0.0.0"
 port = 5000
 
 [theme]
-# Primary colors
+# Primary accent color for interactive elements
 primaryColor = "#FF4B4B"
 
-# Light mode settings
+# Background color for the main content area
 backgroundColor = "#FFFFFF"
+
+# Background color used for the sidebar and most interactive widgets
 secondaryBackgroundColor = "#F0F2F6"
+
+# Color used for almost all text
 textColor = "#262730"
+
+# Font family for all text in the app, except code blocks
 font = "sans serif"
 
-# Dark mode settings
+# Base theme
 base = "light"
-enableColorSelector = true
