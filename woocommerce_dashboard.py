@@ -383,28 +383,29 @@ def main():
                                       export_format_products)
 
         # Raw data tables (moved from Dashboard tab)
-        st.header("Rådata tabeller")
+        with st.expander("Vis ordredata"):
+            st.header("Rådata tabeller")
 
-        # Order data table
-        st.subheader("Ordredata")
-        # Create a display copy of the DataFrame without unwanted columns
-        display_df = df.drop(columns=[
-            'shipping_base', 'subtotal', 'shipping_tax',
-            'revenue_no_shipping', 'tax_total', 'order_id', 'meta_data'
-        ])
+            # Order data table
+            st.subheader("Ordredata")
+            # Create a display copy of the DataFrame without unwanted columns
+            display_df = df.drop(columns=[
+                'shipping_base', 'subtotal', 'shipping_tax',
+                'revenue_no_shipping', 'tax_total', 'order_id', 'meta_data'
+            ])
 
-        # Add customer name column
-        display_df['customer_name'] = display_df['billing'].apply(
-            lambda x: f"{x.get('first_name', '')} {x.get('last_name', '')}".
-            strip())
+            # Add customer name column
+            display_df['customer_name'] = display_df['billing'].apply(
+                lambda x: f"{x.get('first_name', '')} {x.get('last_name', '')}".
+                strip())
 
-        # Remove the original billing column and reorder
-        display_df = display_df.drop(columns=['billing'])
+            # Remove the original billing column and reorder
+            display_df = display_df.drop(columns=['billing'])
 
-        st.dataframe(display_df.style.format({
-            'total': 'kr {:,.2f}',
-            'shipping_total': 'kr {:,.2f}'
-        }),
+            st.dataframe(display_df.style.format({
+                'total': 'kr {:,.2f}',
+                'shipping_total': 'kr {:,.2f}'
+            }),
                     column_config={
                         "date": "Dato",
                         "order_number": "Ordrenummer",
@@ -417,15 +418,15 @@ def main():
                     },
                     hide_index=True)
 
-        # Product data table
-        st.subheader("Produktdata")
-        if not df_products.empty:
-            # Create a display copy of the DataFrame without subtotal and tax columns
-            display_products_df = df_products.drop(columns=['subtotal', 'tax'])
-            st.dataframe(display_products_df.style.format({
-                'total': 'kr {:,.2f}',
-                'cost': 'kr {:,.2f}'
-            }),
+            # Product data table
+            st.subheader("Produktdata")
+            if not df_products.empty:
+                # Create a display copy of the DataFrame without subtotal and tax columns
+                display_products_df = df_products.drop(columns=['subtotal', 'tax'])
+                st.dataframe(display_products_df.style.format({
+                    'total': 'kr {:,.2f}',
+                    'cost': 'kr {:,.2f}'
+                }),
                         column_config={
                             "date": "Dato",
                             "product_id": "Produkt-ID",
