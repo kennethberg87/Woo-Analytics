@@ -407,7 +407,10 @@ def main():
                 'shipping_total': 'kr {:,.2f}'
             }),
                     column_config={
-                        "date": "Dato",
+                        "date": st.column_config.DatetimeColumn(
+                            "Dato",
+                            format="DD.MM.YYYY HH:mm"
+                        ),
                         "order_number": "Ordrenummer",
                         "status": "Status",
                         "customer_name": "Kundenavn",
@@ -428,7 +431,10 @@ def main():
                     'cost': 'kr {:,.2f}'
                 }),
                         column_config={
-                            "date": "Dato",
+                            "date": st.column_config.DatetimeColumn(
+                                "Dato",
+                                format="DD.MM.YYYY HH:mm"
+                            ),
                             "product_id": "Produkt-ID",
                             "name": "Produktnavn",
                             "quantity": "Antall",
