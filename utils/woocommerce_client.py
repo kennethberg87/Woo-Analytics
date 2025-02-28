@@ -7,7 +7,9 @@ import requests
 from requests.exceptions import SSLError, ConnectionError
 from urllib.parse import urlparse
 import pytz
+import logging
 
+logging.basicConfig(level=logging.DEBUG) #Added logging configuration
 
 class WooCommerceClient:
 
@@ -98,22 +100,22 @@ class WooCommerceClient:
                 "status": "any"
             }
 
-            st.sidebar.write(f"API Request Parameters: {params}")
+            # Log API request parameters instead of showing in sidebar
+            logging.debug(f"API Request Parameters: {params}")
             response = self.wcapi.get("orders", params=params)
             data = response.json()
 
             if isinstance(data, list):
-                st.sidebar.write(f"Number of orders returned: {len(data)}")
+                logging.debug(f"Number of orders returned: {len(data)}")
                 if len(data) > 0:
-                    st.sidebar.write("\nFirst order sample:")
-                    st.sidebar.write(data[0])
+                    logging.debug(f"First order sample: {data[0]}")
                 return data
             else:
-                st.sidebar.error("Invalid response format")
+                logging.error("Invalid response format")
                 return []
 
         except Exception as e:
-            st.sidebar.error(f"Error fetching orders: {str(e)}")
+            logging.error(f"Error fetching orders: {str(e)}")
             return []
 
     def process_orders_to_df(self, orders):

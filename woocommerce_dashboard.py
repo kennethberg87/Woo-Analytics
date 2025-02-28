@@ -1,10 +1,18 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
+import logging
 from utils.woocommerce_client import WooCommerceClient
 from utils.data_processor import DataProcessor
 from utils.export_handler import ExportHandler
 from utils.notification_handler import NotificationHandler
+
+# Configure logging
+logging.basicConfig(
+    filename='woocommerce_api.log',
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 # Page configuration
 st.set_page_config(page_title="WooCommerce Dashboard",
@@ -30,16 +38,15 @@ if 'woo_client' not in st.session_state:
 if 'notification_handler' not in st.session_state:
     st.session_state.notification_handler = NotificationHandler()
 
-
 def main():
     # Header
     st.title("📊 Salgsstatistikk nettbutikk")
 
-    # Debug mode toggle
+    # Debug mode toggle (keeping this in sidebar but removing API details display)
     debug_mode = st.sidebar.checkbox("Debug Mode", value=True)
     if debug_mode:
         st.sidebar.info(
-            "Debug mode is enabled. You will see detailed API responses and error messages."
+            "Debug mode is enabled. API responses and error messages are being logged to woocommerce_api.log"
         )
 
     # Real-time notifications toggle
@@ -98,26 +105,24 @@ def main():
             orders = st.session_state.woo_client.get_orders(
                 start_date, end_date)
 
+            # Log API details instead of showing in sidebar
             if debug_mode:
-                st.sidebar.write("Raw order count:", len(orders))
+                logging.debug(f"Raw order count: {len(orders)}")
                 if len(orders) > 0:
-                    st.sidebar.write(
-                        "Sample order data:", {
-                            k: v
-                            for k, v in orders[0].items()
-                            if k in ['id', 'status', 'date_created', 'total']
-                        })
+                    logging.debug("Sample order data: " + 
+                        str({k: v for k, v in orders[0].items() 
+                             if k in ['id', 'status', 'date_created', 'total']}))
 
             df, df_products = st.session_state.woo_client.process_orders_to_df(
                 orders)
 
             if debug_mode and not df.empty:
-                st.sidebar.write("Processed data shape:", df.shape)
+                logging.debug(f"Processed data shape: {df.shape}")
 
     except Exception as e:
         st.error(f"Error: {str(e)}")
         if debug_mode:
-            st.sidebar.error(f"Detailed error: {str(e)}")
+            logging.error(f"Detailed error: {str(e)}")
         return
 
     if df.empty:
