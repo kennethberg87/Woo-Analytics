@@ -71,16 +71,20 @@ def main():
     # Get today's date
     today = datetime.now().date()
 
-    with st.columns(2)[0]:
+    # Create two columns for date pickers
+    col1, col2 = st.sidebar.columns(2)
+
+    with col1:
         start_date = st.date_input(
             "Startdato",
             value=today,
             help="Select start date (defaults to today)")
 
-    with st.columns(2)[1]:
-        end_date = st.date_input("Sluttdato",
-                                value=today,
-                                help="Select end date (defaults to today)")
+    with col2:
+        end_date = st.date_input(
+            "Sluttdato",
+            value=today,
+            help="Select end date (defaults to today)")
 
     # Validate date range
     if start_date > end_date:
