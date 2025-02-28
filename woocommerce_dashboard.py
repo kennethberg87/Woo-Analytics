@@ -52,7 +52,14 @@ def main():
     notifications_enabled = st.sidebar.checkbox(
         "Enable Real-time Notifications", value=True)
 
+    # Add sound toggle if notifications are enabled
     if notifications_enabled:
+        st.session_state.sound_enabled = st.sidebar.checkbox(
+            "🔔 Enable Notification Sound",
+            value=st.session_state.get('sound_enabled', True),
+            help="Play a cash register sound for new orders"
+        )
+
         # Add a placeholder for notifications
         notification_placeholder = st.empty()
 
