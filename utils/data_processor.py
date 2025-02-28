@@ -3,7 +3,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-
 class DataProcessor:
 
     @staticmethod
@@ -40,7 +39,7 @@ class DataProcessor:
             }
 
         # Calculate totals
-        total_cost = df_products['cost'].sum() if 'cost' in df_products.columns else 0
+        total_cost = df_products['cost'].sum() if 'cost' in df_products.columns else 0  # Cost is now excluding VAT
         shipping_base = df['shipping_base'].sum()  # Base shipping excluding VAT
         shipping_tax = df['shipping_tax'].sum()  # Shipping VAT
         total_tax = df['tax_total'].sum()  # Total VAT (including shipping VAT)
@@ -52,7 +51,7 @@ class DataProcessor:
         total_revenue_incl_vat = df['total'].sum() - df['shipping_total'].sum()  # Total revenue excluding shipping
         total_revenue_excl_vat = total_revenue_incl_vat - (total_tax - shipping_tax)  # Revenue excluding VAT and shipping
 
-        # Calculate profit (using revenue excluding VAT)
+        # Calculate profit using revenue and cost excluding VAT
         total_profit = total_revenue_excl_vat - total_cost
         profit_margin = (total_profit / total_revenue_excl_vat * 100) if total_revenue_excl_vat > 0 else 0
 
@@ -75,7 +74,7 @@ class DataProcessor:
             'total_tax': total_tax,
             'total_profit': total_profit,
             'profit_margin': profit_margin,
-            'total_cogs': total_cost,
+            'total_cogs': total_cost,  # Now represents cost excluding VAT
             'order_count': order_count
         }
 
