@@ -27,11 +27,11 @@ class WooCommerceClient:
 
             # Initialize API client with optimized settings
             self.wcapi = API(url=store_url,
-                          consumer_key=os.getenv('WOOCOMMERCE_KEY'),
-                          consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
-                          version="wc/v3",
-                          verify_ssl=False,
-                          timeout=30)
+                              consumer_key=os.getenv('WOOCOMMERCE_KEY'),
+                              consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
+                              version="wc/v3",
+                              verify_ssl=False,
+                              timeout=30)
 
             # Initialize cache
             self.stock_cache = {}
@@ -59,26 +59,50 @@ class WooCommerceClient:
                 batch_ids = list(product_ids)[i:i + batch_size]
                 products_query = ",".join(map(str, batch_ids))
 
-                response = self.wcapi.get("products", params={
-                    "include": products_query,
-                    "per_page": batch_size
-                })
+                try:
+                    response = self.wcapi.get("products", params={
+                        "include": products_query,
+                        "per_page": batch_size,
+                        "status": "any"  # Include all product statuses
+                    })
 
-                products = response.json()
+                    products = response.json()
 
-                for product in products:
-                    pid = product.get('id')
-                    stock = product.get('stock_quantity')
-                    all_stock[pid] = stock
-                    self.stock_cache[pid] = stock  # Update cache
+                    if not isinstance(products, list):
+                        logging.error(f"Invalid response format for products: {products}")
+                        continue
+
+                    for product in products:
+                        pid = product.get('id')
+                        if pid is None:
+                            continue
+
+                        stock = product.get('stock_quantity')
+                        # If stock is None, try to get it from the parent product
+                        if stock is None and product.get('parent_id'):
+                            parent_response = self.wcapi.get(f"products/{product['parent_id']}")
+                            parent_product = parent_response.json()
+                            stock = parent_product.get('stock_quantity')
+
+                        logging.debug(f"Product {pid} stock quantity: {stock}")
+                        all_stock[pid] = 0 if stock is None else stock
+                        self.stock_cache[pid] = 0 if stock is None else stock  # Update cache
+
+                except Exception as e:
+                    logging.error(f"Error fetching batch {i}: {str(e)}")
+                    continue
 
             # Update cache timestamp
             self.cache_timestamp = now
+
+            # Log the final stock quantities
+            logging.debug(f"Final stock quantities: {all_stock}")
             return all_stock
 
         except Exception as e:
             logging.error(f"Error fetching stock quantities: {str(e)}")
-            return {pid: None for pid in product_ids}
+            # Return 0 instead of None for missing stock quantities
+            return {pid: 0 for pid in product_ids}
 
     def get_payment_method_display(self, payment_method):
         """Convert payment method code to display name"""
@@ -290,7 +314,7 @@ class WooCommerceClient:
                     total_shipping = shipping_base + shipping_tax
                     total_tax = float(order.get('total_tax', 0))
                     subtotal = sum(float(item.get('subtotal', 0))
-                                for item in order.get('line_items', []))
+                                   for item in order.get('line_items', []))
 
                     # Get billing information
                     billing = order.get('billing', {})
