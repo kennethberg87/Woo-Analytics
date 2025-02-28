@@ -313,7 +313,7 @@ def main():
                     'Fakturadato':
                     invoice_details['invoice_date'],
                     'Status':
-                    order['status'],
+                    st.session_state.woo_client.get_order_status_display(order['status']),
                     'Total':
                     order['total'],
                     'URL':
@@ -325,22 +325,20 @@ def main():
             invoices_df = pd.DataFrame(invoice_data)
 
             # Display invoices in a table
-            st.dataframe(invoices_df.drop(columns=['URL']).style.format(
-                {'Total': 'kr {:,.2f}'}),
-                         column_config={
-                             "Fakturanummer":
-                             "Fakturanummer",
-                             "Ordrenummer":
-                             "Ordrenummer",
-                             "Fakturadato":
-                             st.column_config.DatetimeColumn(
-                                 "Fakturadato", format="DD.MM.YYYY HH:mm"),
-                             "Status":
-                             "Status",
-                             "Total":
-                             "Total",
-                         },
-                         hide_index=True)
+            st.dataframe(
+                invoices_df.drop(columns=['URL']).style.format({
+                    'Total': 'kr {:,.2f}'
+                }),
+                column_config={
+                    "Fakturanummer": "Fakturanummer",
+                    "Ordrenummer": "Ordrenummer",
+                    "Fakturadato":
+                    st.column_config.DatetimeColumn("Fakturadato",
+                                                  format="DD.MM.YYYY HH:mm"),
+                    "Status": "Status",
+                    "Total": "Total",
+                },
+                hide_index=True)
 
             # Add download section with improved styling
             st.subheader("Last ned fakturaer")

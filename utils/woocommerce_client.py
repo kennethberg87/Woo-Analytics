@@ -331,7 +331,7 @@ class WooCommerceClient:
                         'date': order_date,
                         'order_id': order_id,
                         'order_number': order_number,
-                        'status': status,
+                        'status': self.get_order_status_display(status), # Apply translation here
                         'total': total,
                         'subtotal': subtotal,
                         'shipping_base': shipping_base,
@@ -392,3 +392,16 @@ class WooCommerceClient:
         df_products = pd.DataFrame(product_data)
 
         return df_orders, df_products
+
+    def get_order_status_display(self, status):
+        """Convert order status to Norwegian display text"""
+        status_mapping = {
+            'completed': 'Fullført',
+            'processing': 'Under behandling',
+            'on-hold': 'På vent',
+            'pending': 'Venter',
+            'cancelled': 'Kansellert',
+            'refunded': 'Refundert',
+            'failed': 'Mislykket'
+        }
+        return status_mapping.get(status, status)  # Return original if no mapping found
