@@ -215,17 +215,20 @@ def main():
         st.dataframe(
             top_products,
             column_config={
-                "name":
-                "Produktnavn",
-                "Total Quantity":
-                st.column_config.NumberColumn(
-                    "Antall solgt",
-                    help=
-                    "Totalt antall solgt av dette produkter innenfor valg periode"
+                "name": "Produktnavn",
+                "product_id": st.column_config.NumberColumn(
+                    "Produkt ID",
+                    help="Unik identifikator for produktet",
+                    format="%d"  # Format as plain integer without commas
                 ),
-                "Stock Quantity":
-                st.column_config.NumberColumn("På lager",
-                                              help="Nåværende lagerbeholdning")
+                "Total Quantity": st.column_config.NumberColumn(
+                    "Antall solgt",
+                    help="Totalt antall solgt av dette produkter innenfor valg periode"
+                ),
+                "Stock Quantity": st.column_config.NumberColumn(
+                    "På lager",
+                    help="Nåværende lagerbeholdning"
+                )
             },
             hide_index=False,
             use_container_width=True)
