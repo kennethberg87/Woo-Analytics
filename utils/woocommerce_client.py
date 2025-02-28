@@ -26,11 +26,11 @@ class WooCommerceClient:
 
             # Initialize API client
             self.wcapi = API(url=store_url,
-                            consumer_key=os.getenv('WOOCOMMERCE_KEY'),
-                            consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
-                            version="wc/v3",
-                            verify_ssl=False,
-                            timeout=30)
+                          consumer_key=os.getenv('WOOCOMMERCE_KEY'),
+                          consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
+                          version="wc/v3",
+                          verify_ssl=False,
+                          timeout=30)
 
         except Exception as e:
             st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
@@ -146,26 +146,47 @@ class WooCommerceClient:
             start_date_utc = start_date_oslo.astimezone(utc_tz)
             end_date_utc = end_date_oslo.astimezone(utc_tz)
 
-            params = {
-                "after": start_date_utc.isoformat(),
-                "before": end_date_utc.isoformat(),
-                "per_page": 100,
-                "status": "any"
-            }
+            all_orders = []
+            page = 1
+            per_page = 100  # Maximum allowed by WooCommerce API
 
-            # Log API request parameters instead of showing in sidebar
-            logging.debug(f"API Request Parameters: {params}")
-            response = self.wcapi.get("orders", params=params)
-            data = response.json()
+            while True:
+                logging.debug(f"Fetching orders page {page}")
+                start_time = datetime.now()
 
-            if isinstance(data, list):
-                logging.debug(f"Number of orders returned: {len(data)}")
-                if len(data) > 0:
-                    logging.debug(f"First order sample: {data[0]}")
-                return data
-            else:
-                logging.error("Invalid response format")
-                return []
+                params = {
+                    "after": start_date_utc.isoformat(),
+                    "before": end_date_utc.isoformat(),
+                    "per_page": per_page,
+                    "page": page,
+                    "status": "any"
+                }
+
+                response = self.wcapi.get("orders", params=params)
+                data = response.json()
+
+                if not isinstance(data, list):
+                    logging.error("Invalid response format")
+                    break
+
+                if not data:  # No more orders
+                    break
+
+                all_orders.extend(data)
+
+                # Check if we've received less than per_page items
+                if len(data) < per_page:
+                    break
+
+                page += 1
+
+                # Log performance metrics
+                end_time = datetime.now()
+                duration = (end_time - start_time).total_seconds()
+                logging.debug(f"Page {page} fetched in {duration:.2f} seconds")
+
+            logging.debug(f"Total orders fetched: {len(all_orders)}")
+            return all_orders
 
         except Exception as e:
             logging.error(f"Error fetching orders: {str(e)}")
@@ -182,7 +203,19 @@ class WooCommerceClient:
         order_data = []
         product_data = []
 
-        st.sidebar.write("\n=== Processing Orders ===")
+        # Collect all product IDs first
+        product_ids = set()
+        for order in orders:
+            for item in order.get('line_items', []):
+                product_ids.add(item.get('product_id'))
+
+        # Batch fetch stock quantities
+        stock_quantities = {}
+        for product_id in product_ids:
+            stock_quantities[product_id] = self.get_stock_quantity(product_id)
+
+        logging.debug(f"Processing {len(orders)} orders")
+        start_time = datetime.now()
 
         for order in orders:
             try:
@@ -213,7 +246,7 @@ class WooCommerceClient:
                 total_shipping = shipping_base + shipping_tax
                 total_tax = float(order.get('total_tax', 0))
                 subtotal = sum(float(item.get('subtotal', 0))
-                               for item in order.get('line_items', []))
+                              for item in order.get('line_items', []))
 
                 # Get billing information
                 billing = order.get('billing', {})
@@ -260,9 +293,9 @@ class WooCommerceClient:
                                 cost = 0
                             break
 
-                    # Get current stock quantity
+                    # Get stock quantity from cached data
                     product_id = item.get('product_id')
-                    stock_quantity = self.get_stock_quantity(product_id)
+                    stock_quantity = stock_quantities.get(product_id)
 
                     product_data.append({
                         'date': order_date,
@@ -277,9 +310,13 @@ class WooCommerceClient:
                     })
 
             except Exception as e:
-                st.sidebar.error(
-                    f"Error processing order {order.get('id')}: {str(e)}")
+                logging.error(f"Error processing order {order.get('id')}: {str(e)}")
                 continue
+
+        # Log processing duration
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        logging.debug(f"Processed {len(orders)} orders in {duration:.2f} seconds")
 
         # Create DataFrames from collected data
         df_orders = pd.DataFrame(order_data)
