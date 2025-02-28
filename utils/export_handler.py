@@ -7,6 +7,9 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
+import requests
+from zipfile import ZipFile
+import io
 
 
 class ExportHandler:
@@ -156,3 +159,54 @@ class ExportHandler:
             filename += '.pdf'
             title = f"WooCommerce {name.capitalize()} Report"
             ExportHandler.to_pdf(df, filename, title)
+
+    @staticmethod
+    def download_invoices_zip(invoice_urls: list, filename: str = None) -> None:
+        """Download multiple invoices and create a ZIP file"""
+        if not invoice_urls:
+            st.warning("Ingen fakturaer tilgjengelig for nedlasting")
+            return
+
+        # Create a BytesIO object to store the ZIP file
+        zip_buffer = io.BytesIO()
+
+        # Create a ZIP file
+        with ZipFile(zip_buffer, 'w') as zip_file:
+            for idx, (invoice_number, url) in enumerate(invoice_urls, 1):
+                try:
+                    # Download the PDF
+                    response = requests.get(url, verify=False)
+                    if response.status_code == 200:
+                        # Add the PDF to the ZIP file
+                        zip_file.writestr(f"{invoice_number}.pdf", response.content)
+                except Exception as e:
+                    st.error(f"Feil ved nedlasting av faktura {invoice_number}: {str(e)}")
+
+        # Create the download button
+        if not filename:
+            filename = f"fakturaer_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.zip"
+
+        # Custom CSS for black button
+        st.markdown("""
+            <style>
+            .stDownloadButton {
+                background-color: black !important;
+                color: white !important;
+                border: none !important;
+                padding: 0.5rem 1rem !important;
+                border-radius: 0.3rem !important;
+            }
+            .stDownloadButton:hover {
+                background-color: #333333 !important;
+                color: white !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+        st.download_button(
+            label="⬇️ Last ned alle fakturaer (ZIP)",
+            data=zip_buffer.getvalue(),
+            file_name=filename,
+            mime="application/zip",
+            use_container_width=True
+        )
