@@ -122,7 +122,7 @@ if theme_mapping[selected_theme] != st.session_state.theme:
                 }
             </style>
         """, unsafe_allow_html=True)
-    st.experimental_rerun()
+    st.rerun()
 
 
 # Initialize session state
