@@ -150,7 +150,7 @@ class WooCommerceClient:
                     if invoice_number:
                         invoice_details['invoice_number'] = invoice_number
                         logging.debug(f"Found invoice number: {invoice_number}")
-                elif meta.get('key') == '_wcpdf_invoice_date_formatted':
+                elif meta.get('key') == '_wcpdf_invoice_date':
                     invoice_date = meta.get('value', '')
                     if invoice_date:
                         invoice_details['invoice_date'] = invoice_date
@@ -160,6 +160,13 @@ class WooCommerceClient:
                     if order_number:
                         invoice_details['order_number'] = order_number
                         logging.debug(f"Found order number: {order_number}")
+
+            # Add debug logging for meta_data analysis
+            logging.debug(f"Processing meta_data for invoice details: {meta_data}")
+            if not invoice_details['invoice_number']:
+                logging.warning("No invoice number found in meta_data")
+            if not invoice_details['invoice_date']:
+                logging.warning("No invoice date found in meta_data")
 
         except Exception as e:
             logging.error(f"Error extracting invoice details: {str(e)}")
@@ -348,7 +355,7 @@ class WooCommerceClient:
                     total_shipping = shipping_base + shipping_tax
                     total_tax = float(order.get('total_tax', 0))
                     subtotal = sum(float(item.get('subtotal', 0))
-                                for item in order.get('line_items', []))
+                                   for item in order.get('line_items', []))
 
                     # Get billing information
                     billing = order.get('billing', {})

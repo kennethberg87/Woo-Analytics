@@ -299,28 +299,28 @@ def main():
     if not df.empty:
         invoice_data = []
         invoice_urls = []  # List to store invoice URLs for bulk download
-        for _, order in df.iterrows():
-            invoice_details = st.session_state.woo_client.get_invoice_details(
-                order['meta_data'])
-            if invoice_details['invoice_number']:
-                invoice_url = st.session_state.woo_client.get_invoice_url(
-                    order['order_id'])
-                invoice_data.append({
-                    'Fakturanummer':
-                    invoice_details['invoice_number'],
-                    'Ordrenummer':
-                    invoice_details['order_number'],
-                    'Fakturadato':
-                    invoice_details['invoice_date'],
-                    'Status':
-                    st.session_state.woo_client.get_order_status_display(order['status']),
-                    'Total':
-                    order['total'],
-                    'URL':
-                    invoice_url
-                })
-                if invoice_url:
-                    invoice_urls.append((invoice_details['invoice_number'], invoice_url))
+
+        with st.spinner('Henter fakturaer...'):
+            for _, order in df.iterrows():
+                # Get invoice details
+                invoice_details = st.session_state.woo_client.get_invoice_details(
+                    order['meta_data'])
+
+                # Only process if we have an invoice number
+                if invoice_details['invoice_number']:
+                    invoice_url = st.session_state.woo_client.get_invoice_url(
+                        order['order_id'])
+
+                    if invoice_url:
+                        invoice_data.append({
+                            'Fakturanummer': invoice_details['invoice_number'],
+                            'Ordrenummer': invoice_details['order_number'],
+                            'Fakturadato': invoice_details['invoice_date'],
+                            'Status': st.session_state.woo_client.get_order_status_display(order['status']),
+                            'Total': order['total'],
+                            'URL': invoice_url
+                        })
+                        invoice_urls.append((invoice_details['invoice_number'], invoice_url))
 
         if invoice_data:
             # Create DataFrame for invoices
