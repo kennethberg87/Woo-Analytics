@@ -9,8 +9,9 @@ from urllib.parse import urlparse
 import pytz
 import logging
 import concurrent.futures
+import base64
 
-logging.basicConfig(level=logging.DEBUG) #Added logging configuration
+logging.basicConfig(level=logging.DEBUG)
 
 class WooCommerceClient:
 
@@ -27,19 +28,24 @@ class WooCommerceClient:
 
             # Initialize API client with optimized settings
             self.wcapi = API(url=store_url,
-                                  consumer_key=os.getenv('WOOCOMMERCE_KEY'),
-                                  consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
-                                  version="wc/v3",
-                                  verify_ssl=False,
-                                  timeout=30)
+                           consumer_key=os.getenv('WOOCOMMERCE_KEY'),
+                           consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
+                           version="wc/v3",
+                           verify_ssl=False,
+                           timeout=30)
+
+            # Store credentials for invoice downloads
+            self.consumer_key = os.getenv('WOOCOMMERCE_KEY')
+            self.consumer_secret = os.getenv('WOOCOMMERCE_SECRET')
+            self.store_url = store_url.rstrip('/')
 
             # Initialize cache
             self.stock_cache = {}
             self.cache_timestamp = None
-            self.cache_duration = timedelta(minutes=5)  # Cache valid for 5 minutes
+            self.cache_duration = timedelta(minutes=5)
 
         except Exception as e:
-            st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
+            st.error(f"Failed to initialize WooCommerce client: {str(e)}")
             raise
 
     def get_stock_quantities_batch(self, product_ids):
@@ -155,26 +161,17 @@ class WooCommerceClient:
         return invoice_details
 
     def get_invoice_url(self, order_id):
-        """Generate invoice download URL"""
+        """Generate authenticated invoice download URL"""
         try:
-            # Get base store URL
-            store_url = os.getenv('WOOCOMMERCE_URL')
-            if not store_url:
-                logging.error("WooCommerce store URL not configured")
-                return None
+            # Create an authenticated URL for invoice download
+            invoice_url = f"{self.store_url}/wc-api/v3/orders/{order_id}/notes"
 
-            # Remove trailing slash if present
-            store_url = store_url.rstrip('/')
-
-            # For PDF Invoices & Packing Slips plugin, construct the direct download URL
-            invoice_url = f"{store_url}/wc-api/pdfslip/{order_id}"
-
-            logging.debug(f"Generated invoice URL: {invoice_url}")
-            return invoice_url
+            # Return both URL and auth credentials
+            return invoice_url, (self.consumer_key, self.consumer_secret)
 
         except Exception as e:
             logging.error(f"Error getting invoice URL for order {order_id}: {str(e)}")
-            return None
+            return None, None
 
     def get_order_number(self, meta_data):
         """Extract formatted order number from order meta data"""

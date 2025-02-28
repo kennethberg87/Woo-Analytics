@@ -198,11 +198,15 @@ class ExportHandler:
 
                 for idx, (invoice_number, url) in enumerate(invoice_urls, 1):
                     try:
-                        # Download the PDF
+                        # Get URL and auth credentials
+                        url, auth = url if isinstance(url, tuple) else (url, None)
+
+                        # Download the PDF with authentication
                         response = requests.get(
                             url,
+                            auth=auth,
                             verify=False,
-                            timeout=30,  # Increased timeout
+                            timeout=30,
                             headers={
                                 'User-Agent': 'Mozilla/5.0',
                                 'Accept': 'application/pdf'
