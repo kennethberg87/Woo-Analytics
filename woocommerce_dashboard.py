@@ -104,20 +104,22 @@ def main():
         selected_start_date = st.date_input(
             "Startdato",
             value=start_date,
-            help=f"Startdato (standard: {start_date})")
+            help=f"Startdato (standard: {start_date.strftime('%d.%m.%Y')})",
+            format="DD.MM.YYYY")
 
     with col2:
         selected_end_date = st.date_input(
             "Sluttdato",
             value=end_date,
-            help=f"Sluttdato (standard: {end_date})")
+            help=f"Sluttdato (standard: {end_date.strftime('%d.%m.%Y')})",
+            format="DD.MM.YYYY")
 
     # Validate date range
     if selected_start_date > selected_end_date:
         st.error("Error: End date must be after start date")
         return
 
-    st.info(f"Henter bestillinger fra {selected_start_date} to {selected_end_date}")
+    st.info(f"Henter bestillinger fra {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}")
 
     # Fetch and process data
     try:
@@ -208,7 +210,7 @@ def main():
 
     # Display Top 10 Products
     st.header("10 mest solgte produkter basert på antall")
-    st.caption(f"For perioden: {selected_start_date} til {selected_end_date}")
+    st.caption(f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}")
 
     top_products = DataProcessor.get_top_products(df_products)
     if not top_products.empty:
@@ -243,7 +245,7 @@ def main():
 
     # Customer List
     st.header("Ovesikt over kunder")
-    st.caption(f"For perioden: {selected_start_date} til {selected_end_date}")
+    st.caption(f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}")
 
     customers_df = DataProcessor.get_customer_list(df)
     if not customers_df.empty:
@@ -256,7 +258,7 @@ def main():
                 "E-postadresse",
                 "Order Date":
                 st.column_config.DatetimeColumn("Ordre utført",
-                                                format="DD.MM.YYYY HH:mm"),
+                                                 format="DD.MM.YYYY HH:mm"),
                 "Payment Method":
                 "Betalingsmetode",
                 "Shipping Method":
@@ -279,7 +281,7 @@ def main():
 
     # Invoice Section
     st.header("Fakturaer")
-    st.caption(f"For perioden: {selected_start_date} til {selected_end_date}")
+    st.caption(f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}")
 
     if not df.empty:
         invoice_data = []
