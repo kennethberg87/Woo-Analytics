@@ -57,14 +57,6 @@ def main():
                 "✨ Aktivert varsler - Du får beskjed når det kommer inn en ny bestilling!"
             )
 
-    # View period selector
-    st.sidebar.subheader("View Settings")
-    view_period = st.sidebar.selectbox(
-        "Select View Period",
-        options=['Daglig', 'Ukentlig', 'Månedlig'],
-        index=0,
-        help="Choose how to aggregate the data")
-
     # Date range selector
     st.subheader("Date Range Selection")
 
@@ -85,6 +77,13 @@ def main():
             "Sluttdato",
             value=today,
             help="Select end date (defaults to today)")
+
+    # View period selector (moved from sidebar)
+    view_period = st.selectbox(
+        "Select View Period",
+        options=['Daglig', 'Ukentlig', 'Månedlig'],
+        index=0,
+        help="Choose how to aggregate the data")
 
     # Validate date range
     if start_date > end_date:
