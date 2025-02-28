@@ -167,46 +167,68 @@ class ExportHandler:
             st.warning("Ingen fakturaer tilgjengelig for nedlasting")
             return
 
-        # Create a BytesIO object to store the ZIP file
-        zip_buffer = io.BytesIO()
-
-        # Create a ZIP file
-        with ZipFile(zip_buffer, 'w') as zip_file:
-            for idx, (invoice_number, url) in enumerate(invoice_urls, 1):
-                try:
-                    # Download the PDF
-                    response = requests.get(url, verify=False)
-                    if response.status_code == 200:
-                        # Add the PDF to the ZIP file
-                        zip_file.writestr(f"{invoice_number}.pdf", response.content)
-                except Exception as e:
-                    st.error(f"Feil ved nedlasting av faktura {invoice_number}: {str(e)}")
-
-        # Create the download button
-        if not filename:
-            filename = f"fakturaer_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.zip"
-
-        # Custom CSS for black button
+        # Custom CSS for black button with proper sizing
         st.markdown("""
             <style>
-            .stDownloadButton {
+            div[data-testid="stDownloadButton"] > button {
                 background-color: black !important;
                 color: white !important;
                 border: none !important;
                 padding: 0.5rem 1rem !important;
                 border-radius: 0.3rem !important;
+                width: auto !important;
+                max-width: 300px !important;
             }
-            .stDownloadButton:hover {
+            div[data-testid="stDownloadButton"] > button:hover {
                 background-color: #333333 !important;
                 color: white !important;
             }
             </style>
         """, unsafe_allow_html=True)
 
-        st.download_button(
-            label="⬇️ Last ned alle fakturaer (ZIP)",
-            data=zip_buffer.getvalue(),
-            file_name=filename,
-            mime="application/zip",
-            use_container_width=True
-        )
+        # Create a BytesIO object to store the ZIP file
+        zip_buffer = io.BytesIO()
+
+        # Create a ZIP file
+        success_count = 0
+        error_count = 0
+
+        with ZipFile(zip_buffer, 'w') as zip_file:
+            with st.spinner('Laster ned fakturaer...'):
+                progress_bar = st.progress(0)
+
+                for idx, (invoice_number, url) in enumerate(invoice_urls, 1):
+                    try:
+                        # Download the PDF with verify=False since we're using internal URLs
+                        response = requests.get(url, verify=False, timeout=10)
+                        if response.status_code == 200 and response.content:
+                            # Add the PDF to the ZIP file
+                            zip_file.writestr(f"{invoice_number}.pdf", response.content)
+                            success_count += 1
+                        else:
+                            error_count += 1
+                            st.error(f"Kunne ikke laste ned faktura {invoice_number}: Status {response.status_code}")
+                    except Exception as e:
+                        error_count += 1
+                        st.error(f"Feil ved nedlasting av faktura {invoice_number}: {str(e)}")
+
+                    # Update progress
+                    progress = (idx / len(invoice_urls))
+                    progress_bar.progress(progress)
+
+                progress_bar.empty()
+
+        if success_count > 0:
+            # Create the download button if we have any successful downloads
+            st.download_button(
+                label=f"⬇️ Last ned fakturaer ({success_count} av {len(invoice_urls)})",
+                data=zip_buffer.getvalue(),
+                file_name=filename,
+                mime="application/zip",
+                use_container_width=False  # Changed to False for proper sizing
+            )
+
+            if error_count > 0:
+                st.warning(f"{error_count} fakturaer kunne ikke lastes ned. Prøv igjen senere eller last ned enkeltvis.")
+        else:
+            st.error("Ingen fakturaer ble lastet ned. Prøv igjen senere.")
