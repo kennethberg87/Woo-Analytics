@@ -350,56 +350,6 @@ def main():
         if quantity_chart:
             st.plotly_chart(quantity_chart, use_container_width=True)
 
-        # Raw data tables
-        with st.expander("Vis ordredata"):
-            st.subheader("Ordredata")
-            # Create a display copy of the DataFrame without unwanted columns
-            display_df = df.drop(columns=[
-                'shipping_base', 'subtotal', 'shipping_tax',
-                'revenue_no_shipping', 'tax_total', 'order_id', 'meta_data'
-            ])
-
-            # Add customer name column
-            display_df['customer_name'] = display_df['billing'].apply(
-                lambda x: f"{x.get('first_name', '')} {x.get('last_name', '')}".
-                strip())
-
-            # Remove the original billing column and reorder
-            display_df = display_df.drop(columns=['billing'])
-
-            st.dataframe(display_df.style.format({
-                'total': 'kr {:,.2f}',
-                'shipping_total': 'kr {:,.2f}'
-            }),
-                        column_config={
-                            "date": "Dato",
-                            "order_number": "Ordrenummer",
-                            "status": "Status",
-                            "customer_name": "Kundenavn",
-                            "total": "Totalt",
-                            "shipping_total": "Frakt (inkl. MVA)",
-                            "dintero_payment_method": "Betalingsmetode",
-                            "shipping_method": "Leveringsmetode"
-                        },
-                        hide_index=True)
-
-            st.subheader("Produktdata")
-            if not df_products.empty:
-                # Create a display copy of the DataFrame without subtotal and tax columns
-                display_products_df = df_products.drop(columns=['subtotal', 'tax'])
-                st.dataframe(display_products_df.style.format({
-                    'total': 'kr {:,.2f}',
-                    'cost': 'kr {:,.2f}'
-                }),
-                            column_config={
-                                "date": "Dato",
-                                "product_id": "Produkt-ID",
-                                "name": "Produktnavn",
-                                "quantity": "Antall",
-                                "total": "Totalt",
-                                "cost": "Kostnad"
-                            },
-                            hide_index=True)
 
     with tab2:
         # Render invoice section in the second tab
@@ -431,6 +381,60 @@ def main():
                 key='products_export_format')
             ExportHandler.export_data(df_products, "products",
                                       export_format_products)
+
+        # Raw data tables (moved from Dashboard tab)
+        st.header("Rådata tabeller")
+
+        # Order data table
+        st.subheader("Ordredata")
+        # Create a display copy of the DataFrame without unwanted columns
+        display_df = df.drop(columns=[
+            'shipping_base', 'subtotal', 'shipping_tax',
+            'revenue_no_shipping', 'tax_total', 'order_id', 'meta_data'
+        ])
+
+        # Add customer name column
+        display_df['customer_name'] = display_df['billing'].apply(
+            lambda x: f"{x.get('first_name', '')} {x.get('last_name', '')}".
+            strip())
+
+        # Remove the original billing column and reorder
+        display_df = display_df.drop(columns=['billing'])
+
+        st.dataframe(display_df.style.format({
+            'total': 'kr {:,.2f}',
+            'shipping_total': 'kr {:,.2f}'
+        }),
+                    column_config={
+                        "date": "Dato",
+                        "order_number": "Ordrenummer",
+                        "status": "Status",
+                        "customer_name": "Kundenavn",
+                        "total": "Totalt",
+                        "shipping_total": "Frakt (inkl. MVA)",
+                        "dintero_payment_method": "Betalingsmetode",
+                        "shipping_method": "Leveringsmetode"
+                    },
+                    hide_index=True)
+
+        # Product data table
+        st.subheader("Produktdata")
+        if not df_products.empty:
+            # Create a display copy of the DataFrame without subtotal and tax columns
+            display_products_df = df_products.drop(columns=['subtotal', 'tax'])
+            st.dataframe(display_products_df.style.format({
+                'total': 'kr {:,.2f}',
+                'cost': 'kr {:,.2f}'
+            }),
+                        column_config={
+                            "date": "Dato",
+                            "product_id": "Produkt-ID",
+                            "name": "Produktnavn",
+                            "quantity": "Antall",
+                            "total": "Totalt",
+                            "cost": "Kostnad"
+                        },
+                        hide_index=True)
 
 if __name__ == "__main__":
     main()
