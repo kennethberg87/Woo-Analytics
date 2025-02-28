@@ -36,12 +36,28 @@ if 'woo_client' not in st.session_state:
 if 'notification_handler' not in st.session_state:
     st.session_state.notification_handler = NotificationHandler()
 
+def get_date_range(view_period):
+    """Calculate date range based on view period"""
+    today = datetime.now().date()
+
+    if view_period == 'Daglig':
+        return today, today
+    elif view_period == 'Ukentlig':
+        # Get the start of the current week (Monday)
+        start_of_week = today - timedelta(days=today.weekday())
+        return start_of_week, today
+    elif view_period == 'Månedlig':
+        # Get the start of the current month
+        start_of_month = today.replace(day=1)
+        return start_of_month, today
+
+    return today, today  # Default to daily view
 
 def main():
     # Header
     st.title("📊 Salgsstatistikk nettbutikk")
 
-    # Debug mode toggle (keeping this in sidebar but removing API details display)
+    # Debug mode toggle
     debug_mode = st.sidebar.checkbox("Debug Mode", value=True)
     if debug_mode:
         st.sidebar.info(
@@ -49,16 +65,15 @@ def main():
         )
 
     # Real-time notifications toggle
-    notifications_enabled = st.sidebar.checkbox(
-        "Enable Real-time Notifications", value=True)
+    notifications_enabled = st.sidebar.checkbox("Aktiver sanntidsvarsler",
+                                               value=True)
 
     # Add sound toggle if notifications are enabled
     if notifications_enabled:
         st.session_state.sound_enabled = st.sidebar.checkbox(
-            "🔔 Enable Notification Sound",
+            "🔔 Aktiver lydvarsling",
             value=st.session_state.get('sound_enabled', True),
-            help="Play a cash register sound for new orders"
-        )
+            help="Spiller av Ca-Ching lyd når en ny ordre er mottatt.")
 
         # Add a placeholder for notifications
         notification_placeholder = st.empty()
@@ -70,44 +85,45 @@ def main():
                 "✨ Aktivert varsler - Du får beskjed når det kommer inn en ny bestilling!"
             )
 
-    # Date range selector
-    st.subheader("Date Range Selection")
+    # View period selector (before date range)
+    view_period = st.selectbox("Velg visningsperiode",
+                              options=['Daglig', 'Ukentlig', 'Månedlig'],
+                              index=0,
+                              help="Velg hvordan dataene skal aggregeres")
 
-    # Get today's date
-    today = datetime.now().date()
+    # Calculate date range based on view period
+    start_date, end_date = get_date_range(view_period)
+
+    # Date range selector with calculated defaults
+    st.subheader("Valg av ordreperiode")
 
     # Create two columns for date pickers
     col1, col2 = st.columns(2)
 
     with col1:
-        start_date = st.date_input(
+        selected_start_date = st.date_input(
             "Startdato",
-            value=today,
-            help="Select start date (defaults to today)")
+            value=start_date,
+            help=f"Startdato (standard: {start_date})")
 
     with col2:
-        end_date = st.date_input("Sluttdato",
-                                 value=today,
-                                 help="Select end date (defaults to today)")
-
-    # View period selector (moved from sidebar)
-    view_period = st.selectbox("Select View Period",
-                               options=['Daglig', 'Ukentlig', 'Månedlig'],
-                               index=0,
-                               help="Choose how to aggregate the data")
+        selected_end_date = st.date_input(
+            "Sluttdato",
+            value=end_date,
+            help=f"Sluttdato (standard: {end_date})")
 
     # Validate date range
-    if start_date > end_date:
+    if selected_start_date > selected_end_date:
         st.error("Error: End date must be after start date")
         return
 
-    st.info(f"Henter bestillinger fra {start_date} to {end_date}")
+    st.info(f"Henter bestillinger fra {selected_start_date} to {selected_end_date}")
 
     # Fetch and process data
     try:
         with st.spinner("Henter bestillinger fra WooCommerce..."):
             orders = st.session_state.woo_client.get_orders(
-                start_date, end_date)
+                selected_start_date, selected_end_date)
 
             # Log API details instead of showing in sidebar
             if debug_mode:
@@ -133,7 +149,7 @@ def main():
 
     if df.empty:
         st.warning(
-            f"Ingen ordre funnet fra perioden {start_date} and {end_date}")
+            f"Ingen ordre funnet fra perioden {selected_start_date} and {selected_end_date}")
         return
 
     # Convert view_period to lowercase for processing
@@ -192,22 +208,24 @@ def main():
 
     # Display Top 10 Products
     st.header("10 mest solgte produkter basert på antall")
-    st.caption(f"For perioden: {start_date} til {end_date}")
+    st.caption(f"For perioden: {selected_start_date} til {selected_end_date}")
 
     top_products = DataProcessor.get_top_products(df_products)
     if not top_products.empty:
         st.dataframe(
             top_products,
             column_config={
-                "name": "Produktnavn",
-                "Total Quantity": st.column_config.NumberColumn(
+                "name":
+                "Produktnavn",
+                "Total Quantity":
+                st.column_config.NumberColumn(
                     "Antall solgt",
-                    help="Totalt antall solgt av dette produkter innenfor valg periode"
+                    help=
+                    "Totalt antall solgt av dette produkter innenfor valg periode"
                 ),
-                "Stock Quantity": st.column_config.NumberColumn(
-                    "På lager",
-                    help="Nåværende lagerbeholdning"
-                )
+                "Stock Quantity":
+                st.column_config.NumberColumn("På lager",
+                                              help="Nåværende lagerbeholdning")
             },
             hide_index=False,
             use_container_width=True)
@@ -222,7 +240,7 @@ def main():
 
     # Customer List
     st.header("Ovesikt over kunder")
-    st.caption(f"For perioden: {start_date} til {end_date}")
+    st.caption(f"For perioden: {selected_start_date} til {selected_end_date}")
 
     customers_df = DataProcessor.get_customer_list(df)
     if not customers_df.empty:
@@ -235,7 +253,7 @@ def main():
                 "E-postadresse",
                 "Order Date":
                 st.column_config.DatetimeColumn("Ordre utført",
-                                                 format="DD.MM.YYYY HH:mm"),
+                                                format="DD.MM.YYYY HH:mm"),
                 "Payment Method":
                 "Betalingsmetode",
                 "Shipping Method":
@@ -258,21 +276,29 @@ def main():
 
     # Invoice Section
     st.header("Fakturaer")
-    st.caption(f"For perioden: {start_date} til {end_date}")
+    st.caption(f"For perioden: {selected_start_date} til {selected_end_date}")
 
     if not df.empty:
         invoice_data = []
         for _, order in df.iterrows():
-            invoice_details = st.session_state.woo_client.get_invoice_details(order['meta_data'])
+            invoice_details = st.session_state.woo_client.get_invoice_details(
+                order['meta_data'])
             if invoice_details['invoice_number']:
-                invoice_url = st.session_state.woo_client.get_invoice_url(order['order_id'])
+                invoice_url = st.session_state.woo_client.get_invoice_url(
+                    order['order_id'])
                 invoice_data.append({
-                    'Fakturanummer': invoice_details['invoice_number'],
-                    'Ordrenummer': invoice_details['order_number'],
-                    'Fakturadato': invoice_details['invoice_date'],
-                    'Status': order['status'],
-                    'Total': order['total'],
-                    'URL': invoice_url
+                    'Fakturanummer':
+                    invoice_details['invoice_number'],
+                    'Ordrenummer':
+                    invoice_details['order_number'],
+                    'Fakturadato':
+                    invoice_details['invoice_date'],
+                    'Status':
+                    order['status'],
+                    'Total':
+                    order['total'],
+                    'URL':
+                    invoice_url
                 })
 
         if invoice_data:
@@ -280,22 +306,22 @@ def main():
             invoices_df = pd.DataFrame(invoice_data)
 
             # Display invoices in a table
-            st.dataframe(
-                invoices_df.drop(columns=['URL']).style.format({
-                    'Total': 'kr {:,.2f}'
-                }),
-                column_config={
-                    "Fakturanummer": "Fakturanummer",
-                    "Ordrenummer": "Ordrenummer",
-                    "Fakturadato": st.column_config.DatetimeColumn(
-                        "Fakturadato",
-                        format="DD.MM.YYYY HH:mm"
-                    ),
-                    "Status": "Status",
-                    "Total": "Total",
-                },
-                hide_index=True
-            )
+            st.dataframe(invoices_df.drop(columns=['URL']).style.format(
+                {'Total': 'kr {:,.2f}'}),
+                         column_config={
+                             "Fakturanummer":
+                             "Fakturanummer",
+                             "Ordrenummer":
+                             "Ordrenummer",
+                             "Fakturadato":
+                             st.column_config.DatetimeColumn(
+                                 "Fakturadato", format="DD.MM.YYYY HH:mm"),
+                             "Status":
+                             "Status",
+                             "Total":
+                             "Total",
+                         },
+                         hide_index=True)
 
             # Add download section with improved styling
             st.subheader("Last ned fakturaer")
@@ -344,8 +370,13 @@ def main():
         st.subheader("Ordredata")
         # Create a display copy of the DataFrame without unwanted columns
         display_df = df.drop(columns=[
-            'shipping_base', 'subtotal', 'shipping_tax', 'revenue_no_shipping',
-            'tax_total', 'order_id', 'meta_data'  # Added meta_data to dropped columns
+            'shipping_base',
+            'subtotal',
+            'shipping_tax',
+            'revenue_no_shipping',
+            'tax_total',
+            'order_id',
+            'meta_data'  # Added meta_data to dropped columns
         ])
 
         # Add customer name column
