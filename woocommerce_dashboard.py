@@ -338,7 +338,7 @@ def main():
         # Create a display copy of the DataFrame without unwanted columns
         display_df = df.drop(columns=[
             'shipping_base', 'subtotal', 'shipping_tax', 'revenue_no_shipping',
-            'tax_total', 'order_id'
+            'tax_total', 'order_id', 'meta_data'  # Added meta_data to dropped columns
         ])
 
         # Add customer name column
