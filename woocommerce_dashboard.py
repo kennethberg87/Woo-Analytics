@@ -223,7 +223,7 @@ def main():
         return
 
     # Create tabs
-    tab1, tab2 = st.tabs(["📊 Dashboard", "🧾 Fakturaer"])
+    tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "🧾 Fakturaer", "📤 Eksporter"])
 
     with tab1:
         # Convert view_period to lowercase for processing
@@ -350,29 +350,6 @@ def main():
         if quantity_chart:
             st.plotly_chart(quantity_chart, use_container_width=True)
 
-        # Export Section
-        st.header("Eksporter data")
-
-        # Create two columns for export options
-        export_col1, export_col2 = st.columns(2)
-
-        with export_col1:
-            st.subheader("Eksporter ordredata")
-            export_format = st.selectbox(
-                "Velg filformat for eksport av ordredata",
-                options=['CSV', 'Excel', 'JSON', 'PDF'],
-                key='orders_export_format')
-            ExportHandler.export_data(df, "orders", export_format)
-
-        with export_col2:
-            st.subheader("Eksporter produktdata")
-            export_format_products = st.selectbox(
-                "Velg filformat for eksport av produktdata",
-                options=['CSV', 'Excel', 'JSON', 'PDF'],
-                key='products_export_format')
-            ExportHandler.export_data(df_products, "products",
-                                      export_format_products)
-
         # Raw data tables
         with st.expander("Vis ordredata"):
             st.subheader("Ordredata")
@@ -394,40 +371,66 @@ def main():
                 'total': 'kr {:,.2f}',
                 'shipping_total': 'kr {:,.2f}'
             }),
-                         column_config={
-                             "date": "Dato",
-                             "order_number": "Ordrenummer",
-                             "status": "Status",
-                             "customer_name": "Kundenavn",
-                             "total": "Totalt",
-                             "shipping_total": "Frakt (inkl. MVA)",
-                             "dintero_payment_method": "Betalingsmetode",
-                             "shipping_method": "Leveringsmetode"
-                         },
-                         hide_index=True)
+                        column_config={
+                            "date": "Dato",
+                            "order_number": "Ordrenummer",
+                            "status": "Status",
+                            "customer_name": "Kundenavn",
+                            "total": "Totalt",
+                            "shipping_total": "Frakt (inkl. MVA)",
+                            "dintero_payment_method": "Betalingsmetode",
+                            "shipping_method": "Leveringsmetode"
+                        },
+                        hide_index=True)
 
             st.subheader("Produktdata")
             if not df_products.empty:
                 # Create a display copy of the DataFrame without subtotal and tax columns
-                display_products_df = df_products.drop(
-                    columns=['subtotal', 'tax'])
+                display_products_df = df_products.drop(columns=['subtotal', 'tax'])
                 st.dataframe(display_products_df.style.format({
                     'total': 'kr {:,.2f}',
                     'cost': 'kr {:,.2f}'
                 }),
-                             column_config={
-                                 "date": "Dato",
-                                 "product_id": "Produkt-ID",
-                                 "name": "Produktnavn",
-                                 "quantity": "Antall",
-                                 "total": "Totalt",
-                                 "cost": "Kostnad"
-                             },
-                             hide_index=True)
+                            column_config={
+                                "date": "Dato",
+                                "product_id": "Produkt-ID",
+                                "name": "Produktnavn",
+                                "quantity": "Antall",
+                                "total": "Totalt",
+                                "cost": "Kostnad"
+                            },
+                            hide_index=True)
 
     with tab2:
         # Render invoice section in the second tab
         render_invoice_section(df, selected_start_date, selected_end_date)
+
+    with tab3:
+        # Export Section
+        st.header("Eksporter data")
+        st.caption(
+            f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
+        )
+
+        # Create two columns for export options
+        export_col1, export_col2 = st.columns(2)
+
+        with export_col1:
+            st.subheader("Eksporter ordredata")
+            export_format = st.selectbox(
+                "Velg filformat for eksport av ordredata",
+                options=['CSV', 'Excel', 'JSON', 'PDF'],
+                key='orders_export_format')
+            ExportHandler.export_data(df, "orders", export_format)
+
+        with export_col2:
+            st.subheader("Eksporter produktdata")
+            export_format_products = st.selectbox(
+                "Velg filformat for eksport av produktdata",
+                options=['CSV', 'Excel', 'JSON', 'PDF'],
+                key='products_export_format')
+            ExportHandler.export_data(df_products, "products",
+                                      export_format_products)
 
 if __name__ == "__main__":
     main()
