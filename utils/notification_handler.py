@@ -2,8 +2,11 @@ import streamlit as st
 from datetime import datetime, timedelta
 import time
 import base64
+import os
+
 
 class NotificationHandler:
+
     def __init__(self):
         # Initialize notification state in session
         if 'notifications' not in st.session_state:
@@ -16,19 +19,29 @@ class NotificationHandler:
     def play_notification_sound(self):
         """Play notification sound if enabled"""
         if st.session_state.sound_enabled:
-            js_code = """
-                <script>
-                function playSound() {
-                    var audio = new Audio('attached_assets/cash-register.mp3');
-                    audio.volume = 1.0;  // Set volume to maximum
-                    audio.play().catch(function(error) {
-                        console.log("Error playing sound:", error);
-                    });
-                }
-                playSound();
-                </script>
-            """
-            st.components.v1.html(js_code, height=0)
+            try:
+                # Read the audio file and encode it
+                audio_path = os.path.join('attached_assets', 'cash-register.mp3')
+                with open(audio_path, 'rb') as audio_file:
+                    audio_bytes = audio_file.read()
+                    audio_base64 = base64.b64encode(audio_bytes).decode()
+
+                # Create HTML with base64 encoded audio
+                js_code = f"""
+                    <script>
+                    function playSound() {{
+                        var audio = new Audio('data:audio/mp3;base64,{audio_base64}');
+                        audio.volume = 1.0;
+                        audio.play().catch(function(error) {{
+                            console.log("Error playing sound:", error);
+                        }});
+                    }}
+                    playSound();
+                    </script>
+                """
+                st.components.v1.html(js_code, height=0)
+            except Exception as e:
+                st.error(f"Error playing notification sound: {e}")
 
     def clean_old_notifications(self):
         """Remove notifications older than 60 minutes"""
@@ -82,10 +95,11 @@ class NotificationHandler:
             customer_name = f"{order.get('billing', {}).get('first_name', '')} {order.get('billing', {}).get('last_name', '')}"
 
             # Create notification message with more details
-            message = f"""🛍️ New On-Hold Order! #{order_id}
-Customer: {customer_name}
-Total: {currency} {total:,.2f}
-Time: {datetime.now().strftime('%H:%M:%S')}"""
+            message = f"""🛍️ Ny ordre mottatt!
+Ordrenummer: {order_id}
+Kunde: {customer_name}
+Totalbeløp: {currency} {total:,.2f}
+Fullført: {datetime.now().strftime('%H:%M:%S')}"""
 
             # Display notification using Streamlit
             st.toast(message, icon='🛍️')
@@ -112,8 +126,7 @@ Time: {datetime.now().strftime('%H:%M:%S')}"""
             # Fetch recent orders
             orders = woo_client.get_orders(
                 start_date=(current_time - timedelta(minutes=check_interval)).date(),
-                end_date=current_time.date()
-            )
+                end_date=current_time.date())
 
             # Check for new orders
             new_orders = self.check_new_orders(orders)
