@@ -8,11 +8,9 @@ from utils.export_handler import ExportHandler
 from utils.notification_handler import NotificationHandler
 
 # Configure logging
-logging.basicConfig(
-    filename='woocommerce_api.log',
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(filename='woocommerce_api.log',
+                    level=logging.DEBUG,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Page configuration
 st.set_page_config(page_title="WooCommerce Dashboard",
@@ -37,6 +35,7 @@ if 'woo_client' not in st.session_state:
 # Initialize notification handler
 if 'notification_handler' not in st.session_state:
     st.session_state.notification_handler = NotificationHandler()
+
 
 def main():
     # Header
@@ -80,17 +79,15 @@ def main():
             help="Select start date (defaults to today)")
 
     with col2:
-        end_date = st.date_input(
-            "Sluttdato",
-            value=today,
-            help="Select end date (defaults to today)")
+        end_date = st.date_input("Sluttdato",
+                                 value=today,
+                                 help="Select end date (defaults to today)")
 
     # View period selector (moved from sidebar)
-    view_period = st.selectbox(
-        "Select View Period",
-        options=['Daglig', 'Ukentlig', 'Månedlig'],
-        index=0,
-        help="Choose how to aggregate the data")
+    view_period = st.selectbox("Select View Period",
+                               options=['Daglig', 'Ukentlig', 'Månedlig'],
+                               index=0,
+                               help="Choose how to aggregate the data")
 
     # Validate date range
     if start_date > end_date:
@@ -109,9 +106,11 @@ def main():
             if debug_mode:
                 logging.debug(f"Raw order count: {len(orders)}")
                 if len(orders) > 0:
-                    logging.debug("Sample order data: " + 
-                        str({k: v for k, v in orders[0].items() 
-                             if k in ['id', 'status', 'date_created', 'total']}))
+                    logging.debug("Sample order data: " + str({
+                        k: v
+                        for k, v in orders[0].items()
+                        if k in ['id', 'status', 'date_created', 'total']
+                    }))
 
             df, df_products = st.session_state.woo_client.process_orders_to_df(
                 orders)
@@ -177,13 +176,11 @@ def main():
 
     # Add explanation about calculations
     st.info("""
-    💡 Revenue and Profit Calculation Details:
-    - Revenue (incl. VAT): Total product sales including VAT, excluding shipping
-    - Revenue (excl. VAT): Product revenue after removing VAT
-    - Shipping costs are shown excluding VAT
-    - COGS: Total cost of products sold (excl. VAT)
-    - Profit: Revenue (excl. VAT) - COGS
-    - Product costs are already VAT-exclusive
+    💡 Kalkulasjon av omsetning og profit:
+    - Total omsetning (ink. MVA): Totalt produktsalg inkludert MVA, eks. frakt
+    - Total omsetning (eks. MVA): Total omsetning eks. MVA og frakt.
+    - Fraktkostnader vises ekskl. mva
+    - Kostnad: Total varekostnad (eks. MVA)
     """)
 
     # Display Top 10 Products
@@ -230,7 +227,7 @@ def main():
                 "E-postadresse",
                 "Order Date":
                 st.column_config.DatetimeColumn("Ordre utført",
-                                                 format="DD.MM.YYYY HH:mm"),
+                                                format="DD.MM.YYYY HH:mm"),
                 "Payment Method":
                 "Betalingsmetode",
                 "Shipping Method":
@@ -260,8 +257,8 @@ def main():
     with export_col1:
         st.subheader("Eksporter ordredata")
         export_format = st.selectbox("Velg filformat for eksport av ordredata",
-                                      options=['CSV', 'Excel', 'JSON', 'PDF'],
-                                      key='orders_export_format')
+                                     options=['CSV', 'Excel', 'JSON', 'PDF'],
+                                     key='orders_export_format')
         ExportHandler.export_data(df, "orders", export_format)
 
     with export_col2:
@@ -270,58 +267,60 @@ def main():
             "Velg filformat for eksport av produktdata",
             options=['CSV', 'Excel', 'JSON', 'PDF'],
             key='products_export_format')
-        ExportHandler.export_data(df_products, "products", export_format_products)
+        ExportHandler.export_data(df_products, "products",
+                                  export_format_products)
 
     # Raw data tables
     with st.expander("Vis ordredata"):
         st.subheader("Ordredata")
         # Create a display copy of the DataFrame without unwanted columns
-        display_df = df.drop(columns=['shipping_base', 'subtotal', 'shipping_tax', 'revenue_no_shipping', 'tax_total', 'order_id'])
+        display_df = df.drop(columns=[
+            'shipping_base', 'subtotal', 'shipping_tax', 'revenue_no_shipping',
+            'tax_total', 'order_id'
+        ])
 
         # Add customer name column
         display_df['customer_name'] = display_df['billing'].apply(
-            lambda x: f"{x.get('first_name', '')} {x.get('last_name', '')}".strip()
-        )
+            lambda x: f"{x.get('first_name', '')} {x.get('last_name', '')}".
+            strip())
 
         # Remove the original billing column and reorder
         display_df = display_df.drop(columns=['billing'])
 
-        st.dataframe(
-            display_df.style.format({
-                'total': 'kr {:,.2f}',
-                'shipping_total': 'kr {:,.2f}'
-            }),
-            column_config={
-                "date": "Dato",
-                "order_number": "Ordrenummer",
-                "status": "Status",
-                "customer_name": "Kundenavn",
-                "total": "Totalt",
-                "shipping_total": "Frakt (inkl. MVA)",
-                "dintero_payment_method": "Betalingsmetode",
-                "shipping_method": "Leveringsmetode"
-            },
-            hide_index=True)
+        st.dataframe(display_df.style.format({
+            'total': 'kr {:,.2f}',
+            'shipping_total': 'kr {:,.2f}'
+        }),
+                     column_config={
+                         "date": "Dato",
+                         "order_number": "Ordrenummer",
+                         "status": "Status",
+                         "customer_name": "Kundenavn",
+                         "total": "Totalt",
+                         "shipping_total": "Frakt (inkl. MVA)",
+                         "dintero_payment_method": "Betalingsmetode",
+                         "shipping_method": "Leveringsmetode"
+                     },
+                     hide_index=True)
 
         st.subheader("Produktdata")
         if not df_products.empty:
             # Create a display copy of the DataFrame without subtotal and tax columns
             display_products_df = df_products.drop(columns=['subtotal', 'tax'])
-            st.dataframe(
-                display_products_df.style.format({
-                    'total': 'kr {:,.2f}',
-                    'cost': 'kr {:,.2f}'
-                }),
-                column_config={
-                    "date": "Dato",
-                    "product_id": "Produkt-ID",
-                    "name": "Produktnavn",
-                    "quantity": "Antall",
-                    "total": "Totalt",
-                    "cost": "Kostnad"
-                },
-                hide_index=True
-            )
+            st.dataframe(display_products_df.style.format({
+                'total': 'kr {:,.2f}',
+                'cost': 'kr {:,.2f}'
+            }),
+                         column_config={
+                             "date": "Dato",
+                             "product_id": "Produkt-ID",
+                             "name": "Produktnavn",
+                             "quantity": "Antall",
+                             "total": "Totalt",
+                             "cost": "Kostnad"
+                         },
+                         hide_index=True)
+
 
 if __name__ == "__main__":
     main()
