@@ -11,7 +11,6 @@ import requests
 from zipfile import ZipFile
 import io
 
-
 class ExportHandler:
 
     @staticmethod
@@ -170,7 +169,7 @@ class ExportHandler:
         # Custom CSS for black button with proper sizing
         st.markdown("""
             <style>
-            div[data-testid="stDownloadButton"] > button {
+            div[data-testid="stDownloadButton"] button {
                 background-color: black !important;
                 color: white !important;
                 border: none !important;
@@ -179,7 +178,7 @@ class ExportHandler:
                 width: auto !important;
                 max-width: 300px !important;
             }
-            div[data-testid="stDownloadButton"] > button:hover {
+            div[data-testid="stDownloadButton"] button:hover {
                 background-color: #333333 !important;
                 color: white !important;
             }
@@ -199,18 +198,35 @@ class ExportHandler:
 
                 for idx, (invoice_number, url) in enumerate(invoice_urls, 1):
                     try:
-                        # Download the PDF with verify=False since we're using internal URLs
-                        response = requests.get(url, verify=False, timeout=10)
+                        # Download the PDF
+                        response = requests.get(
+                            url,
+                            verify=False,
+                            timeout=30,  # Increased timeout
+                            headers={
+                                'User-Agent': 'Mozilla/5.0',
+                                'Accept': 'application/pdf'
+                            }
+                        )
+
                         if response.status_code == 200 and response.content:
-                            # Add the PDF to the ZIP file
-                            zip_file.writestr(f"{invoice_number}.pdf", response.content)
-                            success_count += 1
+                            # Verify it's actually a PDF
+                            if response.headers.get('content-type', '').lower().startswith('application/pdf'):
+                                zip_file.writestr(f"{invoice_number}.pdf", response.content)
+                                success_count += 1
+                            else:
+                                error_count += 1
+                                st.warning(f"Faktura {invoice_number} er ikke i PDF-format")
                         else:
                             error_count += 1
-                            st.error(f"Kunne ikke laste ned faktura {invoice_number}: Status {response.status_code}")
+                            st.warning(f"Kunne ikke laste ned faktura {invoice_number} (Status: {response.status_code})")
+
+                    except requests.exceptions.Timeout:
+                        error_count += 1
+                        st.warning(f"Tidsavbrudd ved nedlasting av faktura {invoice_number}")
                     except Exception as e:
                         error_count += 1
-                        st.error(f"Feil ved nedlasting av faktura {invoice_number}: {str(e)}")
+                        st.warning(f"Feil ved nedlasting av faktura {invoice_number}: {str(e)}")
 
                     # Update progress
                     progress = (idx / len(invoice_urls))
@@ -225,7 +241,7 @@ class ExportHandler:
                 data=zip_buffer.getvalue(),
                 file_name=filename,
                 mime="application/zip",
-                use_container_width=False  # Changed to False for proper sizing
+                use_container_width=False
             )
 
             if error_count > 0:

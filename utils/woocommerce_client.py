@@ -166,9 +166,8 @@ class WooCommerceClient:
             # Remove trailing slash if present
             store_url = store_url.rstrip('/')
 
-            # For PDF Invoices & Packing Slips plugin, we need to construct a URL that includes
-            # the direct download endpoint with a static hash
-            invoice_url = f"{store_url}/wcpdf/invoice/{order_id}/9e9c036d2f/pdf"
+            # For PDF Invoices & Packing Slips plugin, construct the direct download URL
+            invoice_url = f"{store_url}/wc-api/pdfslip/{order_id}"
 
             logging.debug(f"Generated invoice URL: {invoice_url}")
             return invoice_url
