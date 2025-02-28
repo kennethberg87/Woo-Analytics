@@ -7,7 +7,9 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-
+import requests
+import zipfile
+import io
 
 class ExportHandler:
 
@@ -132,6 +134,46 @@ class ExportHandler:
             data=pdf_data,
             file_name=filename,
             mime='application/pdf'
+        )
+
+    @staticmethod
+    def download_invoices_as_zip(invoice_urls: list, period_str: str) -> None:
+        """Download multiple invoices and create a zip file"""
+        if not invoice_urls:
+            st.warning("Ingen fakturaer funnet for nedlasting")
+            return
+
+        # Create ZIP file in memory
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Show progress
+            progress_bar = st.progress(0)
+            for i, (invoice_number, url) in enumerate(invoice_urls):
+                try:
+                    # Download invoice PDF
+                    response = requests.get(url, verify=False)
+                    if response.status_code == 200:
+                        # Add PDF to ZIP
+                        zip_file.writestr(f"{invoice_number}.pdf", response.content)
+                    else:
+                        st.warning(f"Kunne ikke laste ned faktura {invoice_number}")
+                except Exception as e:
+                    st.error(f"Feil ved nedlasting av faktura {invoice_number}: {str(e)}")
+
+                # Update progress
+                progress = (i + 1) / len(invoice_urls)
+                progress_bar.progress(progress)
+
+            progress_bar.empty()
+
+        # Create download button for ZIP file
+        zip_buffer.seek(0)
+        st.download_button(
+            label="🗂️ Last ned alle fakturaer (ZIP)",
+            data=zip_buffer,
+            file_name=f"fakturaer_{period_str}.zip",
+            mime="application/zip",
+            help="Last ned alle fakturaer for valgt periode i en ZIP-fil"
         )
 
     @staticmethod

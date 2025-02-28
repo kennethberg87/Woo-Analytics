@@ -10,10 +10,9 @@ import pytz
 import logging
 import concurrent.futures
 
-logging.basicConfig(level=logging.DEBUG) #Added logging configuration
+logging.basicConfig(level=logging.DEBUG)
 
 class WooCommerceClient:
-
     def __init__(self):
         try:
             # Validate store URL
@@ -25,13 +24,15 @@ class WooCommerceClient:
             if not parsed_url.scheme or not parsed_url.netloc:
                 raise ValueError("Invalid WooCommerce store URL format")
 
-            # Initialize API client with optimized settings
-            self.wcapi = API(url=store_url,
-                              consumer_key=os.getenv('WOOCOMMERCE_KEY'),
-                              consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
-                              version="wc/v3",
-                              verify_ssl=False,
-                              timeout=30)
+            # Initialize API client
+            self.wcapi = API(
+                url=store_url,
+                consumer_key=os.getenv('WOOCOMMERCE_KEY'),
+                consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
+                version="wc/v3",
+                verify_ssl=False,
+                timeout=30
+            )
 
             # Initialize cache
             self.stock_cache = {}
@@ -82,11 +83,13 @@ class WooCommerceClient:
                         if stock is None and product.get('parent_id'):
                             parent_response = self.wcapi.get(f"products/{product['parent_id']}")
                             parent_product = parent_response.json()
-                            stock = parent_product.get('stock_quantity')
+                            stock = parent_product.get('stock_quantity', 0)
 
+                        # Convert None to 0 for display
+                        stock = 0 if stock is None else stock
                         logging.debug(f"Product {pid} stock quantity: {stock}")
-                        all_stock[pid] = 0 if stock is None else stock
-                        self.stock_cache[pid] = 0 if stock is None else stock  # Update cache
+                        all_stock[pid] = stock
+                        self.stock_cache[pid] = stock  # Update cache
 
                 except Exception as e:
                     logging.error(f"Error fetching batch {i}: {str(e)}")
@@ -94,15 +97,87 @@ class WooCommerceClient:
 
             # Update cache timestamp
             self.cache_timestamp = now
-
-            # Log the final stock quantities
-            logging.debug(f"Final stock quantities: {all_stock}")
             return all_stock
 
         except Exception as e:
             logging.error(f"Error fetching stock quantities: {str(e)}")
-            # Return 0 instead of None for missing stock quantities
             return {pid: 0 for pid in product_ids}
+
+    def get_invoice_url(self, order_id):
+        """Generate and validate invoice download URL"""
+        try:
+            # Get base store URL
+            store_url = os.getenv('WOOCOMMERCE_URL')
+            if not store_url:
+                logging.error("WooCommerce store URL not configured")
+                return None
+
+            # Remove trailing slash if present
+            store_url = store_url.rstrip('/')
+
+            # Generate invoice URL for PDF Invoices & Packing Slips plugin
+            invoice_url = f"{store_url}/wcpdf/invoice/{order_id}/9e9c036d2f/pdf"
+
+            # Validate URL accessibility
+            try:
+                response = requests.head(invoice_url, verify=False, timeout=5)
+                if response.status_code == 200:
+                    logging.debug(f"Invoice URL validated for order {order_id}: {invoice_url}")
+                    return invoice_url
+                else:
+                    logging.warning(f"Invoice URL not accessible for order {order_id}. Status code: {response.status_code}")
+                    return None
+            except requests.exceptions.RequestException as e:
+                logging.error(f"Error validating invoice URL for order {order_id}: {str(e)}")
+                return None
+
+        except Exception as e:
+            logging.error(f"Error generating invoice URL for order {order_id}: {str(e)}")
+            return None
+
+    def get_invoice_details(self, meta_data):
+        """Extract invoice details from order meta data with validation"""
+        invoice_details = {
+            'invoice_number': '',
+            'invoice_date': None,
+            'order_number': ''
+        }
+
+        try:
+            for meta in meta_data:
+                if meta.get('key') == '_wcpdf_invoice_number':
+                    invoice_number = meta.get('value', '')
+                    if invoice_number:
+                        invoice_details['invoice_number'] = invoice_number
+                        logging.debug(f"Found invoice number: {invoice_number}")
+                elif meta.get('key') == '_wcpdf_invoice_date_formatted':
+                    invoice_date = meta.get('value', '')
+                    if invoice_date:
+                        invoice_details['invoice_date'] = invoice_date
+                        logging.debug(f"Found invoice date: {invoice_date}")
+                elif meta.get('key') == '_order_number_formatted':
+                    order_number = meta.get('value', '')
+                    if order_number:
+                        invoice_details['order_number'] = order_number
+                        logging.debug(f"Found order number: {order_number}")
+
+        except Exception as e:
+            logging.error(f"Error extracting invoice details: {str(e)}")
+
+        return invoice_details
+
+    def get_order_status_display(self, status):
+        """Convert order status to Norwegian display text"""
+        status_mapping = {
+            'completed': 'Fullført',
+            'processing': 'Under behandling',
+            'on-hold': 'På vent',
+            'pending': 'Venter',
+            'cancelled': 'Kansellert',
+            'refunded': 'Refundert',
+            'failed': 'Mislykket'
+        }
+        return status_mapping.get(status, status)
 
     def get_payment_method_display(self, payment_method):
         """Convert payment method code to display name"""
@@ -135,47 +210,6 @@ class WooCommerceClient:
         if shipping_lines and len(shipping_lines) > 0:
             return shipping_lines[0].get('method_title', '')
         return ''
-
-    def get_invoice_details(self, meta_data):
-        """Extract invoice details from order meta data"""
-        invoice_details = {
-            'invoice_number': '',
-            'invoice_date': None,
-            'order_number': ''
-        }
-
-        for meta in meta_data:
-            if meta.get('key') == '_wcpdf_invoice_number':
-                invoice_details['invoice_number'] = meta.get('value', '')
-            elif meta.get('key') == '_wcpdf_invoice_date_formatted':
-                invoice_details['invoice_date'] = meta.get('value', '')
-            elif meta.get('key') == '_order_number_formatted':
-                invoice_details['order_number'] = meta.get('value', '')
-
-        return invoice_details
-
-    def get_invoice_url(self, order_id):
-        """Generate invoice download URL"""
-        try:
-            # Get base store URL
-            store_url = os.getenv('WOOCOMMERCE_URL')
-            if not store_url:
-                logging.error("WooCommerce store URL not configured")
-                return None
-
-            # Remove trailing slash if present
-            store_url = store_url.rstrip('/')
-
-            # For PDF Invoices & Packing Slips plugin, we need to construct a URL that includes
-            # the direct download endpoint with a static hash
-            invoice_url = f"{store_url}/wcpdf/invoice/{order_id}/9e9c036d2f/pdf"
-
-            logging.debug(f"Generated invoice URL: {invoice_url}")
-            return invoice_url
-
-        except Exception as e:
-            logging.error(f"Error getting invoice URL for order {order_id}: {str(e)}")
-            return None
 
     def get_order_number(self, meta_data):
         """Extract formatted order number from order meta data"""
@@ -314,7 +348,7 @@ class WooCommerceClient:
                     total_shipping = shipping_base + shipping_tax
                     total_tax = float(order.get('total_tax', 0))
                     subtotal = sum(float(item.get('subtotal', 0))
-                                   for item in order.get('line_items', []))
+                                for item in order.get('line_items', []))
 
                     # Get billing information
                     billing = order.get('billing', {})
@@ -331,7 +365,7 @@ class WooCommerceClient:
                         'date': order_date,
                         'order_id': order_id,
                         'order_number': order_number,
-                        'status': self.get_order_status_display(status), # Apply translation here
+                        'status': self.get_order_status_display(status),
                         'total': total,
                         'subtotal': subtotal,
                         'shipping_base': shipping_base,
@@ -392,16 +426,3 @@ class WooCommerceClient:
         df_products = pd.DataFrame(product_data)
 
         return df_orders, df_products
-
-    def get_order_status_display(self, status):
-        """Convert order status to Norwegian display text"""
-        status_mapping = {
-            'completed': 'Fullført',
-            'processing': 'Under behandling',
-            'on-hold': 'På vent',
-            'pending': 'Venter',
-            'cancelled': 'Kansellert',
-            'refunded': 'Refundert',
-            'failed': 'Mislykket'
-        }
-        return status_mapping.get(status, status)  # Return original if no mapping found

@@ -294,11 +294,11 @@ def main():
     # Invoice Section
     st.header("Fakturaer")
     st.caption(
-        f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
-    )
+        f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}")
 
     if not df.empty:
         invoice_data = []
+        invoice_urls = []  # List to store invoice URLs for bulk download
         for _, order in df.iterrows():
             invoice_details = st.session_state.woo_client.get_invoice_details(
                 order['meta_data'])
@@ -319,6 +319,8 @@ def main():
                     'URL':
                     invoice_url
                 })
+                if invoice_url:
+                    invoice_urls.append((invoice_details['invoice_number'], invoice_url))
 
         if invoice_data:
             # Create DataFrame for invoices
@@ -334,7 +336,7 @@ def main():
                     "Ordrenummer": "Ordrenummer",
                     "Fakturadato":
                     st.column_config.DatetimeColumn("Fakturadato",
-                                                  format="DD.MM.YYYY HH:mm"),
+                                                   format="DD.MM.YYYY HH:mm"),
                     "Status": "Status",
                     "Total": "Total",
                 },
@@ -342,9 +344,15 @@ def main():
 
             # Add download section with improved styling
             st.subheader("Last ned fakturaer")
+
+            # Add bulk download option
+            period_str = f"{selected_start_date.strftime('%Y%m%d')}_{selected_end_date.strftime('%Y%m%d')}"
+            ExportHandler.download_invoices_as_zip(invoice_urls, period_str)
+
             st.info("""
-            💡 Klikk på lenkene under for å laste ned PDF-fakturaer direkte. 
-            Fakturaene vil lastes ned automatisk når du klikker på linken.
+            💡 Velg mellom å:
+            - Laste ned alle fakturaer som ZIP-fil ved å klikke på knappen over
+            - Laste ned enkeltfakturaer ved å klikke på lenkene under
             """)
 
             # Create columns for better layout of download links
