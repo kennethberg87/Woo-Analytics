@@ -168,8 +168,6 @@ if theme_mapping[selected_theme] != st.session_state.theme:
                 }
             </style>
         """, unsafe_allow_html=True)
-    st.rerun()
-
 
 # Initialize session state
 if 'woo_client' not in st.session_state:
