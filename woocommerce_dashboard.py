@@ -90,6 +90,33 @@ if theme_mapping[selected_theme] != st.session_state.theme:
                     background-color: #262730 !important;
                     color: #FAFAFA !important;
                 }
+
+                /* Additional dark mode elements */
+                .element-container, div[data-testid="stVerticalBlock"] {
+                    background-color: #0E1117 !important;
+                }
+
+                .stSpinner > div {
+                    border-color: #FAFAFA !important;
+                }
+
+                .stProgress > div > div {
+                    background-color: #FF4B4B !important;
+                }
+
+                .stDownloadButton, .stButton > button {
+                    background-color: #262730 !important;
+                    color: #FAFAFA !important;
+                    border-color: #4F4F4F !important;
+                }
+
+                .stCheckbox label {
+                    color: #FAFAFA !important;
+                }
+
+                .stRadio label {
+                    color: #FAFAFA !important;
+                }
             </style>
         """, unsafe_allow_html=True)
     else:
@@ -119,6 +146,25 @@ if theme_mapping[selected_theme] != st.session_state.theme:
                 /* Charts */
                 .js-plotly-plot .plotly {
                     background-color: #FFFFFF !important;
+                }
+
+                /* Additional light mode elements */
+                .element-container, div[data-testid="stVerticalBlock"] {
+                    background-color: #FFFFFF !important;
+                }
+
+                .stDownloadButton, .stButton > button {
+                    background-color: #FFFFFF !important;
+                    color: #262730 !important;
+                    border-color: #E0E0E0 !important;
+                }
+
+                .stCheckbox label {
+                    color: #262730 !important;
+                }
+
+                .stRadio label {
+                    color: #262730 !important;
                 }
             </style>
         """, unsafe_allow_html=True)
