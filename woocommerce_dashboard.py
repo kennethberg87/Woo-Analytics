@@ -271,7 +271,7 @@ def main():
             # Create DataFrame for invoices
             invoices_df = pd.DataFrame(invoice_data)
 
-            # Display invoices in a table with download links
+            # Display invoices in a table
             st.dataframe(
                 invoices_df.drop(columns=['URL']).style.format({
                     'Total': 'kr {:,.2f}'
@@ -289,11 +289,18 @@ def main():
                 hide_index=True
             )
 
-            # Add download buttons for each invoice
+            # Add download section with improved styling
             st.subheader("Last ned fakturaer")
-            for idx, invoice in invoices_df.iterrows():
+            st.info("Klikk på lenkene under for å laste ned PDF-fakturaer.")
+
+            # Create columns for better layout of download links
+            cols = st.columns(3)
+            for idx, invoice in enumerate(invoice_data):
+                col_idx = idx % 3
                 if invoice['URL']:
-                    st.markdown(f"[Last ned faktura {invoice['Fakturanummer']} (PDF)]({invoice['URL']})")
+                    cols[col_idx].markdown(
+                        f"📄 [{invoice['Fakturanummer']} - {invoice['Ordrenummer']}]({invoice['URL']})"
+                    )
         else:
             st.info("Ingen fakturaer funnet for valgt periode")
     else:
