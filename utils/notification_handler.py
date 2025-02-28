@@ -13,25 +13,33 @@ class NotificationHandler:
         if 'sound_enabled' not in st.session_state:
             st.session_state.sound_enabled = True
 
-        # Ca-ching sound effect (base64 encoded WAV)
+        # Cash register sound effect (base64 encoded WAV)
         self.sound_data = base64.b64decode("""
-        UklGRvQFAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YdAFAACBhYqFbF5NODAyPVBh
-        eJO2ydLOyMrS1Mnj7vP89fv8/Pz9/v79/Pz7+vj39PPx7u3q6efl4+Lh4ODg4uXp6+/z9/r8/v7+
-        /v79/Pv6+ff18/Dt6+nm5OLh4ODh4+Xn6+3x9Pf6/P3+/v79/Pv5+Pb08e/s6ufl4+Lh4OHi5Ofp
-        7O/z9vn7/f7+/v38+/n39PLv7Orn5OPi4eHi4+Xo6u3x8/b5+/39/v79/Pr49vTy7+zp5+Ti4eDh
-        4uTm6evt8PP19/n7/P39/fz7+ff18/Dua1tLLyIjLz9Na36UsMfTzMvP1dLK5O/z/Pb8/f39/v7+
-        /fz7+vn39fPx7uzp5+Xj4uHg4OHj5unr7/P2+fv9/v7+/v38+/n39PPw7evp5uTi4eHh4uTm6Ovt
-        8PP1+Pr8/f7+/v38+vj29PHu6+nm5OLh4OHi4+Xn6uzv8vX3+vz9/v79/Pv5+PXz8O3r6Obl4uHh
-        4ePl5+ns7/Hz9ff5+/z9/f38+vj29PLv7Orn5OPi4eHi4+Xn6ezv8vT2+fr8/f39/Pv5+PXz8O7r
-        Z1dHLR4dJzM8SWB0kKzF0czM0tfUzOXw9Pz3/P39/f7+/v38+/r49vTy8O3r6Obl4+Lh4eLj5ujr
-        7vH09vn7/P39/f38+vn39PPw7evo5ePi4eHi4+Xn6ezv8fP19/n6/P39/fz6+ff18/Dv7Ojm5OPi
-        4eHj5Ofp7O7x8/X3+fr8/f39/Pr49vTx7+xoWEgtHhwlLzdDWm+Lp8DPys3T2dbO5/H0/Pf8/f39
-        /v7+/fz7+vj29PLw7evo5uTj4uHi4+Xn6u3w8/X3+vv8/f39/Pv5+PXz8e7s6efk4+Li4+Tm6Ort
-        8PL09vj6+/z9/f38+vn39fLw7evo5uTj4uHi4+Xn6ezv8fP19/n6/Pz9/fz7+fj18/Dv7Onm5OPi
-        4eLj5efq7O/x8/X3+fr7/P39/Pr59/Xy8O7r6efk4+Li4+Tm6Ort7/Hz9ff5+vv8/f38+/n39fLw
-        7utqWkwwIR4mMDhDWGuHorzLyc7V2tjQ6PL1/Pj8/f39/v7+/fz7+vj29PLw7uro5uTj4uLj5Obo
-        6+7x8/X3+fr8/P39/Pv5+Pb08e/s6efm5OPi4uPl5+ns7u/x8/X3+fr8/P39/Pr59/Xy8O7s6ef
-        m5OPj4+Tl5+ns7u/x8/T19/j5+vv7/Pv6+Pf18/Hw
+        UklGRiQEAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAEAADpAHwBtAKcA0cExwKMAhQCeAKNAp
+        UCpwKjApMCgQJvAlkCKgIDAuUBwgGfAXsBWQFBASwBGQEIAfcA5gDWAMQAswCiAJIAgwB0AGUAVwBHADkAKwAeABEA
+        BQD5/+7/4//Y/87/w/+6/7D/p/+f/5b/j/+I/4D/ef9y/2z/Zv9g/1r/VP9P/0r/Rf9B/z3/Of82/zP/MP8t/yr/KP8m
+        /yT/Iv8g/x//Hv8d/xz/HP8b/xr/Gv8Z/xr/Gv8b/xv/HP8c/x3/Hv8f/yD/If8i/yT/Jf8n/yn/K/8t/y//Mf80/zf/O
+        v89/0D/Q/9H/0v/T/9T/1j/XP9h/2b/a/9w/3X/e/+B/4f/jf+U/5r/of+o/6//tv+9/8X/zf/V/93/5v/u//f/AAAJABIA
+        GwAkAC0ANgA/AEkAUwBdAGYAcAB7AIUAjwCaAKQArgC5AMMAzgDZAOQA7wD6AAUBEAEbASYBMQE7AUYBUQFcAWcBcgF8AY
+        cBkQGcAaYBsQG7AcUBzwHZAeMB7QH3AQECCgITAhwCJQIuAjcCQAJJAlECWgJiAmoCcwJ7AoMCiwKTApoCogKqArECuAK/A
+        sYCzQLUAtoCpgKSAn4CagJWAkECLQIYAgQC7wHaAcUBsAGbAYUBcAFaAUUBLwEZAQMB7QDXAMEAqwCVAH4AaABSADwAJgAQA
+        PoA4wDNALYAoACJAHMATgBfAHAAggCTAKUAtgDIANoA6wD9AA8BIAEyAUMBVQFmAXgBiQGbAawBvQHPAeAB8QEDAhQCJgI3A
+        kgCWQJqAnsCjAKdAq4CvQLOAt8C7gIAAxEDIgMzA0QDVQNmA3YDhwOYA6gDuQPJA9oD6gP7AyYEFwQIBPkD6gPaA8sDuwOsA
+        5wDjQN9A24DXgNPAz8DMAMgAxEDAgPyAuMC0wLEArUCpQKWAocCVwKXArYC1QL0AhMDMQNQA28DjQOrA8kD6AMGBB8EPQRbB
+        HkElwS2BNMEhwR7BG4EYgRVBEkEPQQwBCQEGAQKBP4D8gPmA9kDzQPBA7UDqAOcA5ADgwN3A2oDXgNRA0UDOAMsAx8DEwMGA
+        /kC7QLgAtMCxwK6Aq0CoAKUAocCewJuAmICVQJJAjwCMAIjAhcCCgL+AfEB5QHYAcwBvwGyAaYBmQGMAYABcwFnAVoBTgFBA
+        TUBKAEcAQ8BAwH2AOoA3QDRAMUAuACsAKAAkwCHAHsAbgBiAFYASgA9ADEAJQAZAAwAAAAA9P/n/9v/z/+9/7L/pv+a/47/g
+        v92/2r/X/9T/0f/PP8w/yX/Gf8O/wL/9/7s/uD+1f7K/r/+tP6p/p7+lP6J/n/+dP5q/mD+Vv5M/kL+OP4u/iX+HP4S/gn+A
+        P73/e795P3b/dP9yv3C/br9sv2q/aP9m/2U/Y39hv1//Xj9cv1r/WX9X/1Z/VP9Tf1I/UP9Pv05/TX9MP0s/Sj9JP0g/Rz9G
+        P0V/RH9Dv0L/Qj9Bf0D/QD9/vz8/Pr8+Pz3/PX89Pzz/PL88fzw/PD87/zv/O/87/zv/O/88Pzw/PH88vz0/PX89vz4/Pr8/
+        Pz+/AD9Av0E/Qf9Cf0M/Q/9Ev0V/Rj9HP0f/SL9Jv0p/S39MP00/Tj9PP1A/UT9SP1N/VH9Vv1a/V/9Y/1o/W39cv13/Xz9g
+        P2F/Yr9j/2U/Zn9nv2j/aj9rf2y/bf9vP3B/cf9zP3R/db92/3h/eb96/3w/fb9+/0A/gX+C/4Q/hX+G/4g/ib+K/4x/jb+P
+        P5B/kf+Tf5S/lj+Xv5j/mn+b/51/nr+gP6G/oz+kf6X/p3+o/6p/q/+tP66/sD+xv7M/tL+1/7d/uP+6f7v/vX++v4A/wb/D
+        P8S/xj/Hv8j/yn/L/81/zr/QP9G/0z/Uf9X/13/Y/9o/27/dP95/3//hf+K/5D/lv+b/6H/p/+s/7L/t/+9/8P/yP/O/9P/2
+        f/e/+T/6f/v//T/+v8AABAACAANABMAGAAeACMAKQAuADQAOQA/AEQASgBPAFUAWgBgAGUAawBwAHUAewCAAIYAiwCRAJYAn
+        ACgAKYAqwCxALYAvADBAMYAzADRANYA3ADhAOYA7ADxAPYA+wABAQYBCwEQARUBGwEgASUBKgEvATQBOQE+AUMBSAFNAVIBVwF
+        cAWABZQFqAW8BdAF4AX0BggGHAYsBkAGVAZkBngGiAacBrAGwAbUBuQG+AcIBxgHLAc8B0wHYAdwB4AHkAegB7AHwAfQB+AH8
+        AQACACQD
         """)
 
     def play_notification_sound(self):
