@@ -192,13 +192,14 @@ def main():
         st.dataframe(
             top_products,
             column_config={
-                "name":
-                "Produktnavn",
-                "Total Quantity":
-                st.column_config.NumberColumn(
+                "name": "Produktnavn",
+                "Total Quantity": st.column_config.NumberColumn(
                     "Antall solgt",
-                    help=
-                    "Totalt antall solgt av dette produkter innenfor valg periode"
+                    help="Totalt antall solgt av dette produkter innenfor valg periode"
+                ),
+                "Stock Quantity": st.column_config.NumberColumn(
+                    "På lager",
+                    help="Nåværende lagerbeholdning"
                 )
             },
             hide_index=False,

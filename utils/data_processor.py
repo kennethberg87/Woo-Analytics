@@ -90,15 +90,22 @@ class DataProcessor:
         if 'date' in df_products.columns:
             df_products['date'] = pd.to_datetime(df_products['date'])
 
-        # Group by product name and sum quantities
-        top_products = df_products.groupby('name')['quantity'].sum().reset_index()
-        top_products = top_products.sort_values('quantity',
-                                              ascending=False).head(limit)
+        # Group by product and aggregate data
+        top_products = df_products.groupby(['name', 'product_id']).agg({
+            'quantity': 'sum',
+            'stock_quantity': 'last'  # Take the most recent stock quantity
+        }).reset_index()
+
+        # Sort by quantity sold and get top products
+        top_products = top_products.sort_values('quantity', ascending=False).head(limit)
         top_products = top_products.reset_index(drop=True)
         top_products.index = top_products.index + 1  # Start index from 1
 
-        # Add total quantity column
-        top_products.rename(columns={'quantity': 'Total Quantity'}, inplace=True)
+        # Rename columns for display
+        top_products.rename(columns={
+            'quantity': 'Total Quantity',
+            'stock_quantity': 'Stock Quantity'
+        }, inplace=True)
 
         return top_products
 

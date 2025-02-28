@@ -36,6 +36,18 @@ class WooCommerceClient:
             st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
             raise
 
+    def get_stock_quantity(self, product_id):
+        """Get current stock quantity for a product"""
+        try:
+            response = self.wcapi.get(f"products/{product_id}")
+            product_data = response.json()
+            if 'stock_quantity' in product_data:
+                return product_data['stock_quantity']
+            return None
+        except Exception as e:
+            logging.error(f"Error fetching stock for product {product_id}: {str(e)}")
+            return None
+
     def get_payment_method_display(self, payment_method):
         """Convert payment method code to display name"""
         if not payment_method:
@@ -248,15 +260,20 @@ class WooCommerceClient:
                                 cost = 0
                             break
 
+                    # Get current stock quantity
+                    product_id = item.get('product_id')
+                    stock_quantity = self.get_stock_quantity(product_id)
+
                     product_data.append({
                         'date': order_date,
-                        'product_id': item.get('product_id'),
+                        'product_id': product_id,
                         'name': item.get('name'),
                         'quantity': quantity,
                         'total': float(item.get('total', 0)) + float(item.get('total_tax', 0)),  # Total including tax
                         'subtotal': float(item.get('subtotal', 0)),
                         'tax': float(item.get('total_tax', 0)),
-                        'cost': cost * quantity  # Cost excluding VAT * quantity
+                        'cost': cost * quantity,  # Cost excluding VAT * quantity
+                        'stock_quantity': stock_quantity  # Add stock quantity
                     })
 
             except Exception as e:
