@@ -99,9 +99,10 @@ class WooCommerceClient:
             store_url = store_url.rstrip('/')
 
             # For PDF Invoices & Packing Slips plugin, we need to construct a URL that includes
-            # the order payment page which will automatically trigger the PDF download
-            invoice_url = f"{store_url}/kasse/ordre-betaling/{order_id}/?download_document=invoice"
+            # the direct download endpoint
+            invoice_url = f"{store_url}/wpo_wcpdf/download/invoice/{order_id}"
 
+            logging.debug(f"Generated invoice URL: {invoice_url}")
             return invoice_url
 
         except Exception as e:

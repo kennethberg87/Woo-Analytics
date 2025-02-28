@@ -292,8 +292,8 @@ def main():
             # Add download section with improved styling
             st.subheader("Last ned fakturaer")
             st.info("""
-            Klikk på lenkene under for å laste ned PDF-fakturaer. 
-            Du vil bli omdirigert til ordresiden hvor fakturaen vil lastes ned automatisk.
+            💡 Klikk på lenkene under for å laste ned PDF-fakturaer direkte. 
+            Fakturaene vil lastes ned automatisk når du klikker på linken.
             """)
 
             # Create columns for better layout of download links
