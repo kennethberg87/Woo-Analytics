@@ -3,6 +3,87 @@ from datetime import datetime, timedelta
 import time
 import base64
 
+class NotificationHandler:
+
+    def __init__(self):
+        # Initialize notification state in session
+        if 'notifications' not in st.session_state:
+            st.session_state.notifications = {}  # Changed to dict to store timestamps
+        if 'last_check_time' not in st.session_state:
+            st.session_state.last_check_time = datetime.now()
+        if 'sound_enabled' not in st.session_state:
+            st.session_state.sound_enabled = True
+
+    def play_notification_sound(self):
+        """Play notification sound if enabled"""
+        if st.session_state.sound_enabled:
+            js_code = """
+                <script>
+                function playSound() {
+                    var audio = new Audio('attached_assets/cash-register.mp3');
+                    audio.volume = 1.0;  # Set volume to maximum
+                    audio.play().catch(function(error) {
+                        console.log("Error playing sound:", error);
+                    });
+                }
+                playSound();
+                </script>
+            """
+            st.components.v1.html(js_code, height=0)
+
+    def clean_old_notifications(self):
+        """Remove notifications older than 60 minutes"""
+        current_time = datetime.now()
+        expired_notifications = []
+
+        for order_id, timestamp in st.session_state.notifications.items():
+            if (current_time - timestamp) > timedelta(minutes=60):
+                expired_notifications.append(order_id)
+        
+        # Remove expired notifications
+        for order_id in expired_notifications:
+            del st.session_state.notifications[order_id]
+    
+    def monitor_orders(self, woocommerce_client):
+        """Monitor for new orders and notify"""
+        try:
+            current_time = datetime.now()
+            
+            # Only check for new orders every 30 seconds
+            if (current_time - st.session_state.last_check_time) < timedelta(seconds=30):
+                return False
+            
+            # Clean old notifications
+            self.clean_old_notifications()
+            
+            # Get recent orders
+            end_date = current_time
+            start_date = current_time - timedelta(minutes=5)
+            
+            new_orders = woocommerce_client.get_orders(start_date, end_date)
+            
+            # Check for new orders
+            new_order_found = False
+            for order in new_orders:
+                order_id = order.get('id')
+                if order_id and order_id not in st.session_state.notifications:
+                    # Store notification with timestamp
+                    st.session_state.notifications[order_id] = current_time
+                    new_order_found = True
+            
+            # Play sound if new order found
+            if new_order_found:
+                self.play_notification_sound()
+            
+            # Update last check time
+            st.session_state.last_check_time = current_time
+            
+            return True
+        except Exception as e:
+            # Log error but don't crash the app
+            st.error(f"Error monitoring orders: {str(e)}")
+            return False
+
 
 class NotificationHandler:
 
