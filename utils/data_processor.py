@@ -185,21 +185,3 @@ class DataProcessor:
                          yaxis_tickformat=',.2f')
 
         return fig
-
-    @staticmethod
-    def create_product_quantity_chart(df_products):
-        """Create a pie chart showing quantity sold by product"""
-        if df_products.empty:
-            return None
-
-        # Group by product and calculate total quantity
-        product_quantities = df_products.groupby('name')['quantity'].sum().reset_index()
-
-        fig = px.pie(product_quantities,
-                    values='quantity',
-                    names='name',
-                    title='Product Sales Distribution (by Quantity)')
-
-        fig.update_layout(height=400, template='plotly_white')
-
-        return fig

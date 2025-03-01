@@ -72,18 +72,18 @@ def render_invoice_section(df, selected_start_date, selected_end_date):
                     order['order_id'])
                 invoice_data.append({
                     'Fakturanummer':
-                    invoice_details['invoice_number'],
+                        invoice_details['invoice_number'],
                     'Ordrenummer':
-                    invoice_details['order_number'],
+                        invoice_details['order_number'],
                     'Fakturadato':
-                    invoice_details['invoice_date'],
+                        invoice_details['invoice_date'],
                     'Status':
-                    st.session_state.woo_client.get_order_status_display(
-                        order['status']),
+                        st.session_state.woo_client.get_order_status_display(
+                            order['status']),
                     'Total':
-                    order['total'],
+                        order['total'],
                     'URL':
-                    invoice_url
+                        invoice_url
                 })
 
         if invoice_data:
@@ -95,16 +95,16 @@ def render_invoice_section(df, selected_start_date, selected_end_date):
                 {'Total': 'kr {:,.2f}'}),
                          column_config={
                              "Fakturanummer":
-                             "Fakturanummer",
+                                 "Fakturanummer",
                              "Ordrenummer":
-                             "Ordrenummer",
+                                 "Ordrenummer",
                              "Fakturadato":
-                             st.column_config.DatetimeColumn(
-                                 "Fakturadato", format="DD.MM.YYYY HH:mm"),
+                                 st.column_config.DatetimeColumn(
+                                     "Fakturadato", format="DD.MM.YYYY HH:mm"),
                              "Status":
-                             "Status",
+                                 "Status",
                              "Total":
-                             "Total",
+                                 "Total",
                          },
                          hide_index=True)
 
@@ -304,22 +304,22 @@ def main():
                 top_products,
                 column_config={
                     "name":
-                    "Produktnavn",
+                        "Produktnavn",
                     "product_id":
-                    st.column_config.NumberColumn(
-                        "Produkt ID",
-                        help="Unik identifikator for produktet",
-                        format="%d"  # Format as plain integer without commas
-                    ),
+                        st.column_config.NumberColumn(
+                            "Produkt ID",
+                            help="Unik identifikator for produktet",
+                            format="%d"  # Format as plain integer without commas
+                        ),
                     "Total Quantity":
-                    st.column_config.NumberColumn(
-                        "Antall solgt",
-                        help=
-                        "Totalt antall solgt av dette produkter innenfor valg periode"
-                    ),
+                        st.column_config.NumberColumn(
+                            "Antall solgt",
+                            help=
+                            "Totalt antall solgt av dette produkter innenfor valg periode"
+                        ),
                     "Stock Quantity":
-                    st.column_config.NumberColumn(
-                        "På lager", help="Nåværende lagerbeholdning")
+                        st.column_config.NumberColumn(
+                            "På lager", help="Nåværende lagerbeholdning")
                 },
                 hide_index=False,
                 use_container_width=True)
@@ -344,33 +344,26 @@ def main():
                 customers_df,
                 column_config={
                     "Name":
-                    "Navn på kunde",
+                        "Navn på kunde",
                     "Email":
-                    "E-postadresse",
+                        "E-postadresse",
                     "Order Date":
-                    st.column_config.DatetimeColumn("Ordre utført",
-                                                    format="DD.MM.YYYY HH:mm"),
+                        st.column_config.DatetimeColumn("Ordre utført",
+                                                        format="DD.MM.YYYY HH:mm"),
                     "Payment Method":
-                    "Betalingsmetode",
+                        "Betalingsmetode",
                     "Shipping Method":
-                    "Fraktmetode",
+                        "Fraktmetode",
                     "Total Orders":
-                    st.column_config.NumberColumn("Ordretotal",
-                                                  help="Totalsum for ordren",
-                                                  format="kr %.2f")
+                        st.column_config.NumberColumn("Ordretotal",
+                                                      help="Totalsum for ordren",
+                                                      format="kr %.2f")
                 },
                 hide_index=True,
                 use_container_width=True)
         else:
             st.warning(
                 "No customer data available for the selected date range")
-
-        # Product Distribution
-        st.subheader("Product Distribution")
-        quantity_chart = DataProcessor.create_product_quantity_chart(
-            df_products)
-        if quantity_chart:
-            st.plotly_chart(quantity_chart, use_container_width=True)
 
     with tab2:
         # Render invoice section in the second tab
@@ -435,26 +428,26 @@ def main():
             }),
                          column_config={
                              "date":
-                             st.column_config.DatetimeColumn(
-                                 "Ordredato", format="DD.MM.YYYY HH:mm"),
+                                 st.column_config.DatetimeColumn(
+                                     "Ordredato", format="DD.MM.YYYY HH:mm"),
                              "order_number":
-                             "Ordrenummer",
+                                 "Ordrenummer",
                              "status":
-                             "Status",
+                                 "Status",
                              "customer_name":
-                             "Kundenavn",
+                                 "Kundenavn",
                              "total":
-                             "Totalt",
+                                 "Totalt",
                              "shipping_total":
-                             "Frakt (inkl. MVA)",
+                                 "Frakt (inkl. MVA)",
                              "dintero_payment_method":
-                             "Betalingsmetode",
+                                 "Betalingsmetode",
                              "shipping_method":
-                             "Leveringsmetode",
+                                 "Leveringsmetode",
                              "invoice_number":
-                             "Fakturanummer",
+                                 "Fakturanummer",
                              "invoice_date":
-                             "Fakturadato"
+                                 "Fakturadato"
                          },
                          hide_index=True)
 
@@ -467,24 +460,24 @@ def main():
                              'product_id'])  # Remove product_id from display
                 st.dataframe(display_products_df.style.format({
                     'total':
-                    'kr {:,.2f}',
+                        'kr {:,.2f}',
                     'cost':
-                    'kr {:,.2f}'
+                        'kr {:,.2f}'
                 }),
                              column_config={
                                  "date":
-                                 st.column_config.DatetimeColumn(
-                                     "Dato", format="DD.MM.YYYY HH:mm"),
+                                     st.column_config.DatetimeColumn(
+                                         "Dato", format="DD.MM.YYYY HH:mm"),
                                  "sku":
-                                 "Varenummer",
+                                     "Varenummer",
                                  "name":
-                                 "Produktnavn",
+                                     "Produktnavn",
                                  "quantity":
-                                 "Antall",
+                                     "Antall",
                                  "total":
-                                 "Totalt",
+                                     "Totalt",
                                  "cost":
-                                 "Kostnad",
+                                     "Kostnad",
                                  "stock_quantity": "Nåværende lagerantall"
                              },
                              hide_index=True)
