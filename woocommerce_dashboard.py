@@ -259,7 +259,7 @@ def main():
                 "Total fortjeneste",
                 f"kr {metrics['total_profit']:,.2f}",
                 help=
-                "Profit calculated using revenue (excl. VAT) minus product costs"
+                    "Profit calculated using revenue (excl. VAT) minus product costs"
             )
         with col4:
             pass
@@ -315,7 +315,7 @@ def main():
                         st.column_config.NumberColumn(
                             "Antall solgt",
                             help=
-                            "Totalt antall solgt av dette produkter innenfor valg periode"
+                                "Totalt antall solgt av dette produkter innenfor valg periode"
                         ),
                     "Stock Quantity":
                         st.column_config.NumberColumn(
@@ -417,12 +417,14 @@ def main():
 
             # Add customer name column
             display_df['customer_name'] = display_df['billing'].apply(
-                lambda x: f"{x.get('first_name', '')} {x.get('last_name', '')}".
-                strip())
+                lambda x: f"{x.get('first_name', '')} {x.get('last_name', '')}"
+                .strip())
 
             # Fill empty invoice values with friendly text
-            display_df['invoice_number'] = display_df['invoice_number'].fillna("Ikke fakturert")
-            display_df['invoice_date'] = display_df['invoice_date'].fillna("Ikke tilgjengelig")
+            display_df['invoice_number'] = display_df['invoice_number'].fillna(
+                "Ikke fakturert")
+            display_df['invoice_date'] = display_df['invoice_date'].fillna(
+                "Ikke tilgjengelig")
 
             # Remove the original billing column and reorder
             display_df = display_df.drop(columns=['billing'])
@@ -431,44 +433,55 @@ def main():
                 'total': 'kr {:,.2f}',
                 'shipping_total': 'kr {:,.2f}'
             }),
-                        column_config={
-                            "date": st.column_config.DatetimeColumn(
-                                "Dato",
-                                format="DD.MM.YYYY HH:mm"
-                            ),
-                            "order_number": "Ordrenummer",
-                            "status": "Status",
-                            "customer_name": "Kundenavn",
-                            "total": "Totalt",
-                            "shipping_total": "Frakt (inkl. MVA)",
-                            "dintero_payment_method": "Betalingsmetode",
-                            "shipping_method": "Leveringsmetode",
-                            "invoice_number": "Fakturanummer",
-                            "invoice_date": "Fakturadato"
-                        },
-                        hide_index=True)
+                         column_config={
+                             "date": st.column_config.DatetimeColumn(
+                                 "Dato",
+                                 format="DD.MM.YYYY HH:mm"
+                             ),
+                             "order_number": "Ordrenummer",
+                             "status": "Status",
+                             "customer_name": "Kundenavn",
+                             "total": "Totalt",
+                             "shipping_total": "Frakt (inkl. MVA)",
+                             "dintero_payment_method": "Betalingsmetode",
+                             "shipping_method": "Leveringsmetode",
+                             "invoice_number": "Fakturanummer",
+                             "invoice_date": st.column_config.TextColumn(
+                                 "Fakturadato",
+                                 help="Dato når fakturaen ble generert"
+                             )
+                         },
+                         hide_index=True)
 
             # Product data table
             st.subheader("Produktdata")
             if not df_products.empty:
                 # Create a display copy of the DataFrame without subtotal and tax columns
-                display_products_df = df_products.drop(columns=['subtotal', 'tax', 'product_id'])  # Remove product_id from display
+                display_products_df = df_products.drop(
+                    columns=['subtotal', 'tax',
+                             'product_id'])  # Remove product_id from display
                 st.dataframe(display_products_df.style.format({
-                    'total': 'kr {:,.2f}',
-                    'cost': 'kr {:,.2f}'
+                    'total':
+                        'kr {:,.2f}',
+                    'cost':
+                        'kr {:,.2f}'
                 }),
-                            column_config={
-                                "date": st.column_config.DatetimeColumn(
-                                    "Dato",
-                                    format="DD.MM.YYYY HH:mm"
-                                ),
-                                "sku": "Varenummer",
-                                "name": "Produktnavn",
-                                "quantity": "Antall",
-                                "total": "Totalt",
-                                "cost": "Kostnad"
-                            },
-                            hide_index=True)
+                             column_config={
+                                 "date":
+                                     st.column_config.DatetimeColumn(
+                                         "Dato", format="DD.MM.YYYY HH:mm"),
+                                 "sku":
+                                     "Varenummer",
+                                 "name":
+                                     "Produktnavn",
+                                 "quantity":
+                                     "Antall",
+                                 "total":
+                                     "Totalt",
+                                 "cost":
+                                     "Kostnad"
+                             },
+                             hide_index=True)
 
 
 if __name__ == "__main__":
