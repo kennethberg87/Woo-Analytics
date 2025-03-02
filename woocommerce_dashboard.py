@@ -150,10 +150,26 @@ try:
                     unsafe_allow_html=True
                 )
 
-            # Invisible button that spans the full width/height
-            if st.button("Click to show dashboard", key="invisible_button", help="Click to show dashboard"):
+            # Full width button with custom styling
+            st.markdown("""
+                <style>
+                .stButton>button {
+                    width: 100%;
+                    height: 100vh;
+                    background: none;
+                    border: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    opacity: 0;
+                    cursor: pointer;
+                }
+                </style>
+            """, unsafe_allow_html=True)
+
+            if st.button("Click anywhere", key="fullscreen_button"):
                 st.session_state.show_dashboard = True
-                st.experimental_rerun()  # Force a rerun to show the dashboard
+                st.rerun()
 
     def main():
         try:
