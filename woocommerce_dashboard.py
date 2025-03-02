@@ -7,30 +7,42 @@ from utils.data_processor import DataProcessor
 from utils.export_handler import ExportHandler
 from utils.notification_handler import NotificationHandler
 
-# Configure logging
-logging.basicConfig(filename='woocommerce_api.log',
-                    level=logging.DEBUG,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure logging with more details
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('streamlit_app.log')
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 # Page configuration
-st.set_page_config(page_title="WooCommerce Dashboard",
-                   page_icon="📊",
-                   layout="wide")
+st.set_page_config(
+    page_title="WooCommerce Dashboard",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # Initialize session state
-if 'woo_client' not in st.session_state:
-    try:
+try:
+    if 'woo_client' not in st.session_state:
+        logger.info("Initializing WooCommerce client")
         st.session_state.woo_client = WooCommerceClient()
         st.success("Koblet til WooCommerce API")
-    except Exception as e:
-        st.error(f"Failed to connect to WooCommerce: {str(e)}")
-        st.info("""
-        Please ensure you have set up the following environment variables:
-        - WOOCOMMERCE_URL: Your store URL (e.g., https://your-store.com)
-        - WOOCOMMERCE_KEY: Your API consumer key
-        - WOOCOMMERCE_SECRET: Your API consumer secret
-        """)
-        st.stop()
+except Exception as e:
+    logger.error(f"Failed to initialize WooCommerce client: {str(e)}")
+    st.error(f"Failed to connect to WooCommerce: {str(e)}")
+    st.info("""
+    Please ensure you have set up the following environment variables:
+    - WOOCOMMERCE_URL: Your store URL (e.g., https://your-store.com)
+    - WOOCOMMERCE_KEY: Your API consumer key
+    - WOOCOMMERCE_SECRET: Your API consumer secret
+    """)
+    st.stop()
 
 # Initialize notification handler
 if 'notification_handler' not in st.session_state:
@@ -233,16 +245,21 @@ def main():
         )
         return
 
-    # Create tabs
-    tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "🧾 Fakturaer", "📤 Eksporter"])
-
-    with tab1:
+    # Calculate metrics once, before creating tabs
+    try:
         # Convert view_period to lowercase for processing
         period = view_period.lower()
 
         # Calculate metrics including profit
         metrics = DataProcessor.calculate_metrics(df, df_products, period)
+    except Exception as e:
+        st.error(f"Error calculating metrics: {str(e)}")
+        return
 
+    # Create tabs
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "🧾 Fakturaer", "📈 Resultat", "📤 Eksporter"])
+
+    with tab1:
         # Display metrics in columns
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -370,7 +387,52 @@ def main():
         render_invoice_section(df, selected_start_date, selected_end_date)
 
     with tab3:
-        # Export Section
+        try:
+            # Resultat tab
+            st.header("📈 Resultatberegning")
+
+            total_profit = metrics['total_profit']
+            order_count = metrics['order_count']
+            ad_cost_per_order = 30
+            total_ad_cost = order_count * ad_cost_per_order
+            net_profit = total_profit - total_ad_cost
+
+            # Display the calculation components
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.metric(
+                    "Total fortjeneste",
+                    f"kr {total_profit:,.2f}",
+                    help="Total fortjeneste før annonsekostnader"
+                )
+
+            with col2:
+                st.metric(
+                    "Annonsekostnader",
+                    f"kr {total_ad_cost:,.2f}",
+                    help=f"Beregnet som kr {ad_cost_per_order} per ordre x {order_count} ordrer"
+                )
+
+            with col3:
+                st.metric(
+                    "Netto resultat",
+                    f"kr {net_profit:,.2f}",
+                    help="Total fortjeneste minus annonsekostnader"
+                )
+
+            # Add explanation
+            st.info("""
+            💡 Beregningsmetode:
+            - Total fortjeneste er brutto fortjeneste før annonsekostnader
+            - Annonsekostnad er beregnet som kr 30 per ordre
+            - Netto resultat er total fortjeneste minus annonsekostnader
+            """)
+        except Exception as e:
+            st.error(f"Error calculating result metrics: {str(e)}")
+
+    with tab4:
+        # Original Export tab content (moved from tab3)
         st.header("Eksporter data")
         st.caption(
             f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"

@@ -5,10 +5,10 @@ channel = "stable-24_05"
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["sh", "-c", "streamlit run woocommerce_dashboard.py"]
+run = ["sh", "-c", "python -m streamlit run woocommerce_dashboard.py --server.port=5000 --server.address=0.0.0.0"]
 
 [workflows]
-runButton = "Run"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Project"
@@ -31,16 +31,8 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "streamlit run woocommerce_dashboard.py"
+args = "python -m streamlit run woocommerce_dashboard.py --server.port=5000 --server.address=0.0.0.0"
 waitForPort = 5000
-
-[[workflows.workflow]]
-name = "Run"
-author = 40066158
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "streamlit run woocommerce_dashboard.py"
 
 [[ports]]
 localPort = 5000
