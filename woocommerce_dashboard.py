@@ -97,7 +97,6 @@ try:
             ad_cost_per_order = 30
             total_ad_cost = order_count * ad_cost_per_order
             return round(total_profit - total_ad_cost)  # Rounded to nearest krone
-
         except Exception as e:
             logger.error(f"Error calculating net profit: {str(e)}")
             return 0
@@ -142,7 +141,7 @@ try:
             with col2:
                 st.markdown(
                     f"""
-                    <div class="welcome-container" onclick="parent.window.location.href='#'">
+                    <div class="welcome-container">
                         <div class="welcome-text">Gratulerer! Så mye penger har du tjent i dag:</div>
                         <div class="profit-number">kr {net_profit:,}</div>
                         <div class="click-anywhere">(Klikk hvor som helst for å se dashbordet)</div>
@@ -151,9 +150,10 @@ try:
                     unsafe_allow_html=True
                 )
 
-            # Invisible button to handle the click
-            if st.button("", key="invisible_button", help="Click to show dashboard"):
-                switch_to_dashboard()
+            # Invisible button that spans the full width/height
+            if st.button("Click to show dashboard", key="invisible_button", help="Click to show dashboard"):
+                st.session_state.show_dashboard = True
+                st.experimental_rerun()  # Force a rerun to show the dashboard
 
     def main():
         try:
