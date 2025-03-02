@@ -36,7 +36,7 @@ try:
         page_title="WooCommerce Dashboard",
         page_icon="📊",
         layout="wide",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="collapsed"
     )
 
     # Initialize session state for page switching
@@ -53,7 +53,8 @@ try:
     if 'woo_client' not in st.session_state:
         logger.info("Initializing WooCommerce client")
         st.session_state.woo_client = WooCommerceClient()
-        st.success("Koblet til WooCommerce API")
+        if st.session_state.show_dashboard:  # Only show success message on dashboard
+            st.success("Koblet til WooCommerce API")
 
     # Initialize notification handler
     if 'notification_handler' not in st.session_state:
