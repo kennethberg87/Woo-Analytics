@@ -53,8 +53,6 @@ try:
     if 'woo_client' not in st.session_state:
         logger.info("Initializing WooCommerce client")
         st.session_state.woo_client = WooCommerceClient()
-        if st.session_state.show_dashboard:  # Only show success message on dashboard
-            st.success("Koblet til WooCommerce API")
 
     # Initialize notification handler
     if 'notification_handler' not in st.session_state:
@@ -177,6 +175,9 @@ try:
             if not st.session_state.show_dashboard:
                 show_welcome_page()
             else:
+                # Show WooCommerce connection status when dashboard is visible
+                st.success("Koblet til WooCommerce API")
+
                 # Header
                 st.title("📊 Salgsstatistikk nettbutikk")
 
