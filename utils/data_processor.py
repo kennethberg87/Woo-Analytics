@@ -50,7 +50,10 @@ class DataProcessor:
 
         # Calculate revenues
         total_revenue_incl_vat = df['total'].sum()  # Total revenue including shipping and VAT
-        total_revenue_excl_vat = total_revenue_incl_vat - total_tax  # Revenue excluding VAT
+
+        # Calculate revenue excluding VAT by subtracting total tax from total revenue
+        # This matches WooCommerce's calculation
+        total_revenue_excl_vat = df['subtotal'].sum()  # Use subtotal which is already excluding VAT
 
         # Calculate profit using revenue and cost excluding VAT
         total_profit = total_revenue_excl_vat - total_cost
