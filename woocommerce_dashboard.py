@@ -414,14 +414,14 @@ try:
                                         help=get_text('product_id_help', st.session_state.language),
                                         format="%d"  # Format as plain integer without commas
                                     ),
-                                "Total Quantity":
+                                "quantity_sold":
                                     st.column_config.NumberColumn(
-                                        get_text('total_quantity', st.session_state.language),
-                                        help=get_text('total_quantity_help', st.session_state.language)
+                                        get_text('quantity_sold', st.session_state.language),
+                                        help=get_text('quantity_sold_help', st.session_state.language)
                                     ),
-                                "Stock Quantity":
+                                "stock":
                                     st.column_config.NumberColumn(
-                                        get_text('stock_quantity', st.session_state.language),
+                                        get_text('stock', st.session_state.language),
                                         help=get_text('stock_quantity_help', st.session_state.language)
                                     )
                             },

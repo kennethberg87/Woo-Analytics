@@ -70,7 +70,6 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'payment_method': 'Betalingsmetode',
         'shipping_method': 'Fraktmetode',
         'order_total': 'Ordretotal',
-        # Add these missing help texts
         # Help texts
         'start_date_help': 'Velg startdato for perioden',
         'end_date_help': 'Velg sluttdato for perioden',
@@ -88,6 +87,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'order_total_help': 'Totalsum for ordren',
         'total_profit_before_costs': 'Total fortjeneste før annonsekostnader',
         'net_result_help': 'Total fortjeneste minus annonsekostnader',
+        'quantity_sold_help': 'Totalt antall solgt av dette produktet innenfor valgt periode',
 
         # Tab names
         'tab_dashboard': '📊 Dashboard',
@@ -203,6 +203,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'order_total_help': 'Total amount for the order',
         'total_profit_before_costs': 'Total profit before advertising costs',
         'net_result_help': 'Total profit minus advertising costs',
+        'quantity_sold_help': 'Total quantity sold of this product within the selected period',
 
         'tab_dashboard': '📊 Dashboard',
         'tab_invoices': '🧾 Invoices',
