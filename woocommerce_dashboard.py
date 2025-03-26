@@ -189,7 +189,22 @@ try:
                     index=0 if st.session_state.language == 'no' else 1,
                     key='sidebar_lang'
                 )
-                st.session_state.language = 'no' if lang == 'Norsk' else 'en'
+                new_language = 'no' if lang == 'Norsk' else 'en'
+
+                # Only update language if it changed
+                if new_language != st.session_state.language:
+                    st.session_state.language = new_language
+                    st.rerun()  # Rerun to update UI without refetching data
+
+                # Initialize data session state
+                if 'current_data' not in st.session_state:
+                    st.session_state.current_data = {
+                        'df': None,
+                        'df_products': None,
+                        'start_date': None,
+                        'end_date': None,
+                        'view_period': None
+                    }
 
                 # Debug mode toggle
                 debug_mode = st.sidebar.checkbox(get_text('debug_mode', st.session_state.language), value=True)
@@ -268,32 +283,36 @@ try:
                             end_date=selected_end_date.strftime('%d.%m.%Y'))
                 )
 
-                # Fetch and process data
-                try:
-                    with st.spinner(get_text('loading_orders', st.session_state.language)):
-                        orders = st.session_state.woo_client.get_orders(
-                            selected_start_date, selected_end_date)
+                # Only fetch new data if date range or view period changed
+                data_changed = (
+                    st.session_state.current_data['start_date'] != selected_start_date or
+                    st.session_state.current_data['end_date'] != selected_end_date or
+                    st.session_state.current_data['view_period'] != view_period
+                )
 
-                        # Log API details
+                if data_changed:
+                    try:
+                        with st.spinner(get_text('loading_orders', st.session_state.language)):
+                            orders = st.session_state.woo_client.get_orders(selected_start_date, selected_end_date)
+                            df, df_products = st.session_state.woo_client.process_orders_to_df(orders)
+
+                            # Update session state with new data
+                            st.session_state.current_data = {
+                                'df': df,
+                                'df_products': df_products,
+                                'start_date': selected_start_date,
+                                'end_date': selected_end_date,
+                                'view_period': view_period
+                            }
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
                         if debug_mode:
-                            logging.debug(f"Raw order count: {len(orders)}")
-                            if len(orders) > 0:
-                                logging.debug("Sample order data: " + str({
-                                    k: v
-                                    for k, v in orders[0].items()
-                                    if k in ['id', 'status', 'date_created', 'total']
-                                }))
-
-                        df, df_products = st.session_state.woo_client.process_orders_to_df(orders)
-
-                        if debug_mode and not df.empty:
-                            logging.debug(f"Processed data shape: {df.shape}")
-
-                except Exception as e:
-                    st.error(f"Error: {str(e)}")
-                    if debug_mode:
-                        logging.error(f"Detailed error: {str(e)}")
-                    return
+                            logging.error(f"Detailed error: {str(e)}")
+                        return
+                else:
+                    # Use cached data
+                    df = st.session_state.current_data['df']
+                    df_products = st.session_state.current_data['df_products']
 
                 if df.empty:
                     st.warning(
