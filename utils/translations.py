@@ -119,6 +119,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'ad_costs': 'Annonsekostnader',
         'ad_costs_help': 'Beregnet som kr {ad_cost_per_order} per ordre x {order_count} ordrer',
         'net_result': 'Netto resultat',
+        'invoice_number': 'Fakturanummer',
+        'order_number': 'Ordrenummer',
+        'invoice_date': 'Fakturadato',
+        'status': 'Status',
+        'total': 'Total'
     },
     'en': {
         # Welcome page
@@ -235,6 +240,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'ad_costs': 'Advertising Costs',
         'ad_costs_help': 'Calculated as kr {ad_cost_per_order} per order x {order_count} orders',
         'net_result': 'Net Result',
+        'invoice_number': 'Invoice Number',
+        'order_number': 'Order Number',
+        'invoice_date': 'Invoice Date',
+        'status': 'Status',
+        'total': 'Total'
     }
 }
 
