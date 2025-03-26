@@ -104,8 +104,8 @@ class DataProcessor:
 
         # Rename columns for display
         top_products.rename(columns={
-            'quantity': 'Total Quantity',
-            'stock_quantity': 'Stock Quantity'
+            'quantity': 'quantity_sold',
+            'stock_quantity': 'stock'
         }, inplace=True)
 
         return top_products
