@@ -352,11 +352,23 @@ class WooCommerceClient:
                     for item in order.get('line_items', []):
                         quantity = int(item.get('quantity', 0))
                         cost = 0
-                        for meta in item.get('meta_data', []):
+
+                        # Log meta data for debugging
+                        meta_data = item.get('meta_data', [])
+                        logging.debug(f"Line item meta data for product {item.get('name')}: {meta_data}")
+
+                        for meta in meta_data:
                             if meta.get('key') == '_wc_cog_cost':
                                 try:
-                                    cost = float(meta.get('value', 0))
-                                except (ValueError, TypeError):
+                                    cost_value = meta.get('value')
+                                    logging.debug(f"Found _wc_cog_cost value: {cost_value}")
+                                    if isinstance(cost_value, str):
+                                        cost = float(cost_value)
+                                    elif isinstance(cost_value, (int, float)):
+                                        cost = float(cost_value)
+                                    logging.debug(f"Converted cost: {cost}")
+                                except (ValueError, TypeError) as e:
+                                    logging.error(f"Error converting cost for {item.get('name')}: {str(e)}")
                                     cost = 0
                                 break
 
@@ -364,16 +376,20 @@ class WooCommerceClient:
                         product_id = item.get('product_id')
                         stock_quantity = stock_quantities.get(product_id)
 
+                        # Calculate total cost for this line item
+                        total_line_cost = cost * quantity
+                        logging.debug(f"Product: {item.get('name')}, Unit Cost: {cost}, Quantity: {quantity}, Total Cost: {total_line_cost}")
+
                         product_data.append({
                             'date': order_date,
                             'product_id': product_id,
-                            'sku': item.get('sku', ''),  # Add SKU field
+                            'sku': item.get('sku', ''),
                             'name': item.get('name'),
                             'quantity': quantity,
                             'total': float(item.get('total', 0)) + float(item.get('total_tax', 0)),
                             'subtotal': float(item.get('subtotal', 0)),
                             'tax': float(item.get('total_tax', 0)),
-                            'cost': cost * quantity,  # Total cost for this line item
+                            'cost': total_line_cost,
                             'stock_quantity': stock_quantity
                         })
 
