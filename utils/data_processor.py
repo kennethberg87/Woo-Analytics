@@ -51,11 +51,11 @@ class DataProcessor:
         # Calculate revenues
         total_revenue_incl_vat = df['total'].sum()  # Total revenue including shipping and VAT
 
-        # Calculate revenue excluding VAT by subtracting total tax from total revenue
-        # This matches WooCommerce's calculation
-        total_revenue_excl_vat = df['subtotal'].sum()  # Use subtotal which is already excluding VAT
+        # Calculate revenue excluding VAT using subtotal which is already excluding VAT
+        total_revenue_excl_vat = df['subtotal'].sum()  
 
-        # Calculate profit using revenue and cost excluding VAT
+        # Calculate profit from subtotal (already excluding VAT) minus costs
+        # Use subtotal which excludes both VAT and shipping
         total_profit = total_revenue_excl_vat - total_cost
         profit_margin = (total_profit / total_revenue_excl_vat * 100) if total_revenue_excl_vat > 0 else 0
 
@@ -74,7 +74,7 @@ class DataProcessor:
             'total_revenue_incl_vat': total_revenue_incl_vat,
             'total_revenue_excl_vat': total_revenue_excl_vat,
             'average_revenue': float(avg_revenue),
-            'shipping_total': shipping_total,  # Added total shipping costs
+            'shipping_total': shipping_total,  # Total shipping costs including VAT
             'total_tax': total_tax,
             'total_profit': total_profit,
             'profit_margin': profit_margin,
