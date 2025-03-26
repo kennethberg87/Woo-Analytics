@@ -452,7 +452,7 @@ try:
                                 "Name":
                                     get_text('customer_name', st.session_state.language),
                                 "Email":
-                                    get_text('customer_email', st.session_state.language),
+                                    get_text('email', st.session_state.language),
                                 "Order Date":
                                     st.column_config.DatetimeColumn(get_text('order_date', st.session_state.language),
                                                                     format="DD.MM.YYYY HH:mm"),

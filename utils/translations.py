@@ -116,6 +116,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 - Annonsekostnad er beregnet som kr 30 per ordre
 - Netto resultat er total fortjeneste minus annonsekostnader''',
         'select_export_format': 'Velg filformat for eksport av {data_type}',
+        'ad_costs': 'Annonsekostnader',
+        'ad_costs_help': 'Beregnet som kr {ad_cost_per_order} per ordre x {order_count} ordrer',
+        'net_result': 'Netto resultat',
     },
     'en': {
         # Welcome page
@@ -229,6 +232,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 - Advertising cost is calculated as kr 30 per order
 - Net result is total profit minus advertising costs''',
         'select_export_format': 'Select file format for export of {data_type}',
+        'ad_costs': 'Advertising Costs',
+        'ad_costs_help': 'Calculated as kr {ad_cost_per_order} per order x {order_count} orders',
+        'net_result': 'Net Result',
     }
 }
 
