@@ -296,8 +296,8 @@ try:
                 tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "🧾 Fakturaer", "📈 Resultat", "📤 Eksporter"])
 
                 with tab1:
-                    # Display metrics in columns
-                    col1, col2, col3, col4 = st.columns(4)
+                    # Display metrics in columns (change from 4 columns to 5)
+                    col1, col2, col3, col4, col5 = st.columns(5)
                     with col1:
                         st.metric(
                             "Total omsetning (ink. MVA)",
@@ -315,6 +315,12 @@ try:
                             "Profit calculated using revenue (excl. VAT) minus product costs"
                         )
                     with col4:
+                        st.metric(
+                            "Total frakt",
+                            f"kr {metrics['shipping_total']:,.2f}",
+                            help="Total shipping costs including VAT"
+                        )
+                    with col5:
                         pass
 
                     # Add second row of metrics

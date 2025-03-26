@@ -13,7 +13,7 @@ class DataProcessor:
                 'total_revenue_incl_vat': 0,
                 'total_revenue_excl_vat': 0,
                 'average_revenue': 0,
-                'shipping_base': 0,
+                'shipping_total': 0,
                 'total_tax': 0,
                 'total_profit': 0,
                 'profit_margin': 0,
@@ -30,7 +30,7 @@ class DataProcessor:
                 'total_revenue_incl_vat': 0,
                 'total_revenue_excl_vat': 0,
                 'average_revenue': 0,
-                'shipping_base': 0,
+                'shipping_total': 0,
                 'total_tax': 0,
                 'total_profit': 0,
                 'profit_margin': 0,
@@ -43,6 +43,7 @@ class DataProcessor:
         shipping_base = df['shipping_base'].sum()  # Base shipping excluding VAT
         shipping_tax = df['shipping_tax'].sum()  # Shipping VAT
         total_tax = df['tax_total'].sum()  # Total VAT (including shipping VAT)
+        shipping_total = shipping_base + shipping_tax  # Total shipping including VAT
 
         # Count orders excluding pending status
         order_count = len(df[df['status'] != 'pending'])  # Filter out pending orders
@@ -70,11 +71,11 @@ class DataProcessor:
             'total_revenue_incl_vat': total_revenue_incl_vat,
             'total_revenue_excl_vat': total_revenue_excl_vat,
             'average_revenue': float(avg_revenue),
-            'shipping_base': shipping_base,
+            'shipping_total': shipping_total,  # Added total shipping costs
             'total_tax': total_tax,
             'total_profit': total_profit,
             'profit_margin': profit_margin,
-            'total_cogs': total_cost,  # Now represents cost excluding VAT
+            'total_cogs': total_cost,
             'order_count': order_count
         }
 
