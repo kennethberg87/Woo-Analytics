@@ -353,7 +353,7 @@ class WooCommerceClient:
                         quantity = int(item.get('quantity', 0))
                         cost = 0
                         for meta in item.get('meta_data', []):
-                            if meta.get('key') == '_yith_cog_item_cost':
+                            if meta.get('key') == '_wc_cog_cost':
                                 try:
                                     cost = float(meta.get('value', 0))
                                 except (ValueError, TypeError):
@@ -373,7 +373,7 @@ class WooCommerceClient:
                             'total': float(item.get('total', 0)) + float(item.get('total_tax', 0)),
                             'subtotal': float(item.get('subtotal', 0)),
                             'tax': float(item.get('total_tax', 0)),
-                            'cost': cost * quantity,
+                            'cost': cost * quantity,  # Total cost for this line item
                             'stock_quantity': stock_quantity
                         })
 
