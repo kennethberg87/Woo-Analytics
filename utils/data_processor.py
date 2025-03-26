@@ -47,24 +47,24 @@ class DataProcessor:
         # Count orders excluding pending status
         order_count = len(df[df['status'] != 'pending'])  # Filter out pending orders
 
-        # Calculate revenues (excluding shipping)
-        total_revenue_incl_vat = df['total'].sum() - df['shipping_total'].sum()  # Total revenue excluding shipping
-        total_revenue_excl_vat = total_revenue_incl_vat - (total_tax - shipping_tax)  # Revenue excluding VAT and shipping
+        # Calculate revenues
+        total_revenue_incl_vat = df['total'].sum()  # Total revenue including shipping and VAT
+        total_revenue_excl_vat = total_revenue_incl_vat - total_tax  # Revenue excluding VAT
 
         # Calculate profit using revenue and cost excluding VAT
         total_profit = total_revenue_excl_vat - total_cost
         profit_margin = (total_profit / total_revenue_excl_vat * 100) if total_revenue_excl_vat > 0 else 0
 
         # Calculate average revenue based on period
-        df['revenue_no_shipping'] = df['total'] - df['shipping_total']
+        df['revenue'] = df['total']  # Include total revenue with shipping
         if period == 'weekly':
             df['period'] = df['date'].dt.strftime('%Y-W%U')
-            avg_revenue = df.groupby('period')['revenue_no_shipping'].sum().mean()
+            avg_revenue = df.groupby('period')['revenue'].sum().mean()
         elif period == 'monthly':
             df['period'] = df['date'].dt.strftime('%Y-%m')
-            avg_revenue = df.groupby('period')['revenue_no_shipping'].sum().mean()
+            avg_revenue = df.groupby('period')['revenue'].sum().mean()
         else:  # daily
-            avg_revenue = df.groupby('date')['revenue_no_shipping'].sum().mean()
+            avg_revenue = df.groupby('date')['revenue'].sum().mean()
 
         metrics = {
             'total_revenue_incl_vat': total_revenue_incl_vat,
