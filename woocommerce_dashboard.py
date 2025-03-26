@@ -6,7 +6,6 @@ from utils.woocommerce_client import WooCommerceClient
 from utils.data_processor import DataProcessor
 from utils.export_handler import ExportHandler
 from utils.notification_handler import NotificationHandler
-from utils.translations import get_text
 import os
 import sys
 
@@ -40,11 +39,9 @@ try:
         initial_sidebar_state="collapsed"
     )
 
-    # Initialize session state for page switching and language
+    # Initialize session state for page switching
     if 'show_dashboard' not in st.session_state:
         st.session_state.show_dashboard = False
-    if 'language' not in st.session_state:
-        st.session_state.language = 'no'  # Default to Norwegian
 
     # Function to switch to dashboard
     def switch_to_dashboard():
@@ -66,12 +63,14 @@ try:
         """Calculate date range based on view period"""
         today = datetime.now().date()
 
-        if view_period == get_text('daily', st.session_state.language):
+        if view_period == 'Daglig':
             return today, today
-        elif view_period == get_text('weekly', st.session_state.language):
+        elif view_period == 'Ukentlig':
+            # Get the start of the current week (Monday)
             start_of_week = today - timedelta(days=today.weekday())
             return start_of_week, today
-        elif view_period == get_text('monthly', st.session_state.language):
+        elif view_period == 'Månedlig':
+            # Get the start of the current month
             start_of_month = today.replace(day=1)
             return start_of_month, today
 
@@ -89,7 +88,7 @@ try:
                 return 0
 
             # Calculate metrics
-            metrics = DataProcessor.calculate_metrics(df, df_products, 'daily')
+            metrics = DataProcessor.calculate_metrics(df, df_products, 'daglig')
 
             # Calculate net profit
             total_profit = metrics['total_profit']
@@ -142,9 +141,9 @@ try:
                 st.markdown(
                     f"""
                     <div class="welcome-container">
-                        <div class="welcome-text">{get_text('welcome_greeting', st.session_state.language)}</div>
+                        <div class="welcome-text">Gratulerer! Så mye penger har du tjent i dag:</div>
                         <div class="profit-number">kr {net_profit:,}</div>
-                        <div class="click-anywhere">{get_text('click_anywhere', st.session_state.language)}</div>
+                        <div class="click-anywhere">(Klikk hvor som helst for å se dashbordet)</div>
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -177,53 +176,28 @@ try:
                 show_welcome_page()
             else:
                 # Show WooCommerce connection status when dashboard is visible
-                st.success(get_text('api_connected', st.session_state.language))
+                st.success("Koblet til WooCommerce API")
 
                 # Header
-                st.title(get_text('dashboard_title', st.session_state.language))
-
-                # Language selector in sidebar
-                lang = st.sidebar.selectbox(
-                    "Language / Språk",
-                    options=['Norsk', 'English'],
-                    index=0 if st.session_state.language == 'no' else 1,
-                    key='sidebar_lang'
-                )
-                new_language = 'no' if lang == 'Norsk' else 'en'
-
-                # Only update language if it changed
-                if new_language != st.session_state.language:
-                    st.session_state.language = new_language
-                    st.rerun()  # Rerun to update UI without refetching data
-
-                # Initialize data session state
-                if 'current_data' not in st.session_state:
-                    st.session_state.current_data = {
-                        'df': None,
-                        'df_products': None,
-                        'start_date': None,
-                        'end_date': None,
-                        'view_period': None
-                    }
+                st.title("📊 Salgsstatistikk nettbutikk")
 
                 # Debug mode toggle
-                debug_mode = st.sidebar.checkbox(get_text('debug_mode', st.session_state.language), value=True)
+                debug_mode = st.sidebar.checkbox("Debug Mode", value=True)
                 if debug_mode:
-                    st.sidebar.info(get_text('debug_info', st.session_state.language))
+                    st.sidebar.info(
+                        "Debug mode is enabled. API responses and error messages are being logged to woocommerce_api.log"
+                    )
 
                 # Real-time notifications toggle
-                notifications_enabled = st.sidebar.checkbox(
-                    get_text('enable_notifications', st.session_state.language),
-                    value=True
-                )
+                notifications_enabled = st.sidebar.checkbox("Aktiver sanntidsvarsler",
+                                                            value=True)
 
                 # Add sound toggle if notifications are enabled
                 if notifications_enabled:
                     st.session_state.sound_enabled = st.sidebar.checkbox(
-                        get_text('enable_sound', st.session_state.language),
+                        "🔔 Aktiver lydvarsling",
                         value=st.session_state.get('sound_enabled', True),
-                        help=get_text('sound_help', st.session_state.language)
-                    )
+                        help="Spiller av Ca-Ching lyd når en ny ordre er mottatt.")
 
                     # Add a placeholder for notifications
                     notification_placeholder = st.empty()
@@ -232,133 +206,119 @@ try:
                     if st.session_state.notification_handler.monitor_orders(
                             st.session_state.woo_client):
                         notification_placeholder.success(
-                            get_text('notifications_active', st.session_state.language)
+                            "✨ Aktivert varsler - Du får beskjed når det kommer inn en ny bestilling!"
                         )
 
-                # View period selector
-                view_period = st.selectbox(
-                    get_text('select_period', st.session_state.language),
-                    options=[
-                        get_text('daily', st.session_state.language),
-                        get_text('weekly', st.session_state.language),
-                        get_text('monthly', st.session_state.language)
-                    ],
-                    index=0,
-                    help=get_text('period_help', st.session_state.language)
-                )
+                # View period selector (before date range)
+                view_period = st.selectbox("Velg visningsperiode",
+                                           options=['Daglig', 'Ukentlig', 'Månedlig'],
+                                           index=0,
+                                           help="Velg hvordan dataene skal aggregeres")
 
                 # Calculate date range based on view period
                 start_date, end_date = get_date_range(view_period)
 
                 # Date range selector with calculated defaults
-                st.subheader(get_text('order_period', st.session_state.language))
+                st.subheader("Valg av ordreperiode")
 
                 # Create two columns for date pickers
                 col1, col2 = st.columns(2)
 
                 with col1:
                     selected_start_date = st.date_input(
-                        get_text('start_date', st.session_state.language),
+                        "Startdato",
                         value=start_date,
-                        help=f"{get_text('start_date_help', st.session_state.language)} (default: {start_date.strftime('%d.%m.%Y')})",
-                        format="DD.MM.YYYY"
-                    )
+                        help=f"Startdato (standard: {start_date.strftime('%d.%m.%Y')})",
+                        format="DD.MM.YYYY")
 
                 with col2:
                     selected_end_date = st.date_input(
-                        get_text('end_date', st.session_state.language),
+                        "Sluttdato",
                         value=end_date,
-                        help=f"{get_text('end_date_help', st.session_state.language)} (default: {end_date.strftime('%d.%m.%Y')})",
-                        format="DD.MM.YYYY"
-                    )
+                        help=f"Sluttdato (standard: {end_date.strftime('%d.%m.%Y')})",
+                        format="DD.MM.YYYY")
 
                 # Validate date range
                 if selected_start_date > selected_end_date:
-                    st.error(get_text('date_range_error', st.session_state.language))
+                    st.error("Error: End date must be after start date")
                     return
 
                 st.info(
-                    get_text('based_on_orders', st.session_state.language,
-                            start_date=selected_start_date.strftime('%d.%m.%Y'),
-                            end_date=selected_end_date.strftime('%d.%m.%Y'))
+                    f"Basert på ordre fra {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
                 )
 
-                # Only fetch new data if date range or view period changed
-                data_changed = (
-                    st.session_state.current_data['start_date'] != selected_start_date or
-                    st.session_state.current_data['end_date'] != selected_end_date or
-                    st.session_state.current_data['view_period'] != view_period
-                )
+                # Fetch and process data
+                try:
+                    with st.spinner("Henter bestillinger fra nettbutikken..."):
+                        orders = st.session_state.woo_client.get_orders(
+                            selected_start_date, selected_end_date)
 
-                if data_changed:
-                    try:
-                        with st.spinner(get_text('loading_orders', st.session_state.language)):
-                            orders = st.session_state.woo_client.get_orders(selected_start_date, selected_end_date)
-                            df, df_products = st.session_state.woo_client.process_orders_to_df(orders)
-
-                            # Update session state with new data
-                            st.session_state.current_data = {
-                                'df': df,
-                                'df_products': df_products,
-                                'start_date': selected_start_date,
-                                'end_date': selected_end_date,
-                                'view_period': view_period
-                            }
-                    except Exception as e:
-                        st.error(f"Error: {str(e)}")
+                        # Log API details instead of showing in sidebar
                         if debug_mode:
-                            logging.error(f"Detailed error: {str(e)}")
-                        return
-                else:
-                    # Use cached data
-                    df = st.session_state.current_data['df']
-                    df_products = st.session_state.current_data['df_products']
+                            logging.debug(f"Raw order count: {len(orders)}")
+                            if len(orders) > 0:
+                                logging.debug("Sample order data: " + str({
+                                    k: v
+                                    for k, v in orders[0].items()
+                                    if k in ['id', 'status', 'date_created', 'total']
+                                }))
+
+                        df, df_products = st.session_state.woo_client.process_orders_to_df(
+                            orders)
+
+                        if debug_mode and not df.empty:
+                            logging.debug(f"Processed data shape: {df.shape}")
+
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
+                    if debug_mode:
+                        logging.error(f"Detailed error: {str(e)}")
+                    return
 
                 if df.empty:
                     st.warning(
-                        get_text('no_orders', st.session_state.language,
-                                start_date=selected_start_date,
-                                end_date=selected_end_date)
+                        f"Ingen ordre funnet fra perioden {selected_start_date} and {selected_end_date}"
                     )
                     return
 
-                # Calculate metrics
+                # Calculate metrics once, before creating tabs
                 try:
+                    # Convert view_period to lowercase for processing
                     period = view_period.lower()
+
+                    # Calculate metrics including profit
                     metrics = DataProcessor.calculate_metrics(df, df_products, period)
                 except Exception as e:
                     st.error(f"Error calculating metrics: {str(e)}")
                     return
 
                 # Create tabs
-                tab1, tab2, tab3, tab4 = st.tabs([get_text('tab_dashboard', st.session_state.language), get_text('tab_invoices', st.session_state.language), get_text('tab_result', st.session_state.language), get_text('tab_export', st.session_state.language)])
+                tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "🧾 Fakturaer", "📈 Resultat", "📤 Eksporter"])
 
                 with tab1:
-                    # Display metrics in columns
+                    # Display metrics in columns (change from 4 columns to 5)
                     col1, col2, col3, col4, col5 = st.columns(5)
                     with col1:
                         st.metric(
-                            get_text('total_revenue_vat', st.session_state.language),
+                            "Total omsetning (ink. MVA)",
                             f"kr {metrics['total_revenue_incl_vat']:,.2f}",
-                            help=get_text('total_revenue_vat_help', st.session_state.language)
-                        )
+                            help="Total revenue including VAT, excluding shipping costs")
                     with col2:
-                        st.metric(
-                            get_text('total_revenue_ex_vat', st.session_state.language),
-                            f"kr {metrics['total_revenue_excl_vat']:,.2f}",
-                            help=get_text('total_revenue_ex_vat_help', st.session_state.language)
-                        )
+                        st.metric("Total omsetning (eks. MVA)",
+                                  f"kr {metrics['total_revenue_excl_vat']:,.2f}",
+                                  help="Total revenue excluding VAT and shipping costs")
                     with col3:
                         st.metric(
-                            get_text('total_profit', st.session_state.language),
+                            "Total fortjeneste",
                             f"kr {metrics['total_profit']:,.2f}",
-                            help=get_text('total_profit_help', st.session_state.language)
+                            help=
+                            "Profit calculated using revenue (excl. VAT) minus product costs"
                         )
                     with col4:
                         st.metric(
-                            get_text('total_shipping', st.session_state.language),
+                            "Total frakt",
                             f"kr {metrics['shipping_total']:,.2f}",
-                            help=get_text('total_shipping_help', st.session_state.language)
+                            help="Total shipping costs including VAT"
                         )
                     with col5:
                         pass
@@ -366,39 +326,35 @@ try:
                     # Add second row of metrics
                     col5, col6, col7, col8 = st.columns(4)
                     with col5:
-                        st.metric(
-                            get_text('total_vat', st.session_state.language),
-                            f"kr {metrics['total_tax']:,.2f}",
-                            help=get_text('total_vat_help', st.session_state.language)
-                        )
+                        st.metric("Total MVA",
+                                  f"kr {metrics['total_tax']:,.2f}",
+                                  help="Total VAT collected (including shipping VAT)")
                     with col6:
-                        st.metric(
-                            get_text('profit_margin', st.session_state.language),
-                            f"{metrics['profit_margin']:.1f}%",
-                            help=get_text('profit_margin_help', st.session_state.language)
-                        )
+                        st.metric("Fortjenestemargin",
+                                  f"{metrics['profit_margin']:.1f}%",
+                                  help="Profit as percentage of revenue (excl. VAT)")
                     with col7:
-                        st.metric(
-                            get_text('cogs', st.session_state.language),
-                            f"kr {metrics['total_cogs']:,.2f}",
-                            help=get_text('cogs_help', st.session_state.language)
-                        )
+                        st.metric("Kostnad for solgte varer",
+                                  f"kr {metrics['total_cogs']:,.2f}",
+                                  help="Total cost of products sold (excl. VAT)")
                     with col8:
-                        st.metric(
-                            get_text('order_count', st.session_state.language),
-                            f"{metrics['order_count']}",
-                            help=get_text('order_count_help', st.session_state.language)
-                        )
+                        st.metric("Antall ordrer",
+                                  f"{metrics['order_count']}",
+                                  help="Total number of orders in selected period")
 
                     # Add explanation about calculations
-                    st.info(get_text('calculations_info', st.session_state.language))
+                    st.info("""
+                    💡 Kalkulasjon av omsetning og profit:
+                    - Total omsetning (ink. MVA): Totalt produktsalg inkludert MVA, eks. frakt
+                    - Total omsetning (eks. MVA): Total omsetning eks. MVA og frakt.
+                    - Fraktkostnader vises ekskl. mva
+                    - Kostnad: Total varekostnad (eks. MVA)
+                    """)
 
                     # Display Top 10 Products
-                    st.header(get_text('top_products_header', st.session_state.language))
+                    st.header("10 mest solgte produkter basert på antall")
                     st.caption(
-                        get_text('period_caption', st.session_state.language,
-                                 start_date=selected_start_date.strftime('%d.%m.%Y'),
-                                 end_date=selected_end_date.strftime('%d.%m.%Y'))
+                        f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
                     )
 
                     top_products = DataProcessor.get_top_products(df_products)
@@ -407,41 +363,38 @@ try:
                             top_products,
                             column_config={
                                 "name":
-                                    get_text('product_name', st.session_state.language),
+                                    "Produktnavn",
                                 "product_id":
                                     st.column_config.NumberColumn(
-                                        get_text('product_id', st.session_state.language),
-                                        help=get_text('product_id_help', st.session_state.language),
+                                        "Produkt ID",
+                                        help="Unik identifikator for produktet",
                                         format="%d"  # Format as plain integer without commas
                                     ),
-                                "quantity_sold":
+                                "Total Quantity":
                                     st.column_config.NumberColumn(
-                                        get_text('quantity_sold', st.session_state.language),
-                                        help=get_text('quantity_sold_help', st.session_state.language)
+                                        "Antall solgt",
+                                        help=
+                                        "Totalt antall solgt av dette produkter innenfor valg periode"
                                     ),
-                                "stock":
+                                "Stock Quantity":
                                     st.column_config.NumberColumn(
-                                        get_text('stock', st.session_state.language),
-                                        help=get_text('stock_quantity_help', st.session_state.language)
-                                    )
+                                        "På lager", help="Nåværende lagerbeholdning")
                             },
                             hide_index=False,
                             use_container_width=True)
                     else:
-                        st.warning(get_text('no_product_data', st.session_state.language))
+                        st.warning("No product data available for the selected date range")
 
                     # Revenue Trends
-                    st.subheader(get_text('revenue_trends', st.session_state.language, period=view_period))
+                    st.subheader(f"Omsetning ({view_period})")
                     revenue_chart = DataProcessor.create_revenue_chart(df, period)
                     if revenue_chart:
                         st.plotly_chart(revenue_chart, use_container_width=True)
 
                     # Customer List
-                    st.header(get_text('customer_overview', st.session_state.language))
+                    st.header("Ovesikt over kunder")
                     st.caption(
-                        get_text('period_caption', st.session_state.language,
-                                 start_date=selected_start_date.strftime('%d.%m.%Y'),
-                                 end_date=selected_end_date.strftime('%d.%m.%Y'))
+                        f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
                     )
 
                     customers_df = DataProcessor.get_customer_list(df)
@@ -450,35 +403,34 @@ try:
                             customers_df,
                             column_config={
                                 "Name":
-                                    get_text('customer_name', st.session_state.language),
+                                    "Navn på kunde",
                                 "Email":
-                                    get_text('email', st.session_state.language),
+                                    "E-postadresse",
                                 "Order Date":
-                                    st.column_config.DatetimeColumn(get_text('order_date', st.session_state.language),
+                                    st.column_config.DatetimeColumn("Ordre utført",
                                                                     format="DD.MM.YYYY HH:mm"),
                                 "Payment Method":
-                                    get_text('payment_method', st.session_state.language),
+                                    "Betalingsmetode",
                                 "Shipping Method":
-                                    get_text('shipping_method', st.session_state.language),
+                                    "Fraktmetode",
                                 "Total Orders":
-                                    st.column_config.NumberColumn(get_text('order_total', st.session_state.language),
-                                                                  help=get_text('order_total_help', st.session_state.language),
+                                    st.column_config.NumberColumn("Ordretotal",
+                                                                  help="Totalsum for ordren",
                                                                   format="kr %.2f")
                             },
                             hide_index=True,
                             use_container_width=True)
                     else:
-                        st.warning(get_text('no_customer_data', st.session_state.language))
+                        st.warning(
+                            "No customer data available for the selected date range")
 
                 with tab2:
                     # Render invoice section in the second tab
                     def render_invoice_section(df, selected_start_date, selected_end_date):
                         """Render the invoice section in a separate tab"""
-                        st.header(get_text('invoices_header', st.session_state.language))
+                        st.header("Fakturaer")
                         st.caption(
-                            get_text('period_caption', st.session_state.language,
-                                     start_date=selected_start_date.strftime('%d.%m.%Y'),
-                                     end_date=selected_end_date.strftime('%d.%m.%Y'))
+                            f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
                         )
 
                         if not df.empty:
@@ -514,22 +466,25 @@ try:
                                     {'Total': 'kr {:,.2f}'}),
                                              column_config={
                                                  "Fakturanummer":
-                                                     get_text('invoice_number', st.session_state.language),
+                                                     "Fakturanummer",
                                                  "Ordrenummer":
-                                                     get_text('order_number', st.session_state.language),
+                                                     "Ordrenummer",
                                                  "Fakturadato":
                                                      st.column_config.DatetimeColumn(
-                                                         get_text('invoice_date', st.session_state.language), format="DD.MM.YYYY HH:mm"),
+                                                         "Fakturadato", format="DD.MM.YYYY HH:mm"),
                                                  "Status":
-                                                     get_text('status', st.session_state.language),
+                                                     "Status",
                                                  "Total":
-                                                     get_text('total', st.session_state.language),
+                                                     "Total",
                                              },
                                              hide_index=True)
 
                                 # Add download section with improved styling
-                                st.subheader(get_text('download_invoices', st.session_state.language))
-                                st.info(get_text('download_info', st.session_state.language))
+                                st.subheader("Last ned fakturaer")
+                                st.info("""
+                                💡 Klikk på lenkene under for å laste ned PDF-fakturaer direkte. 
+                                Fakturaene vil lastes ned automatisk når du klikker på linken.
+                                """)
 
                                 # Create columns for better layout of download links
                                 cols = st.columns(3)
@@ -540,15 +495,15 @@ try:
                                             f"📄 [{invoice['Fakturanummer']} - {invoice['Ordrenummer']}]({invoice['URL']})"
                                         )
                             else:
-                                st.info(get_text('no_invoices', st.session_state.language))
+                                st.info("Ingen fakturaer funnet for valgt periode")
                         else:
-                            st.warning(get_text('no_order_data', st.session_state.language))
+                            st.warning("Ingen ordredata tilgjengelig for valgt periode")
                     render_invoice_section(df, selected_start_date, selected_end_date)
 
                 with tab3:
                     try:
                         # Resultat tab
-                        st.header(get_text('result_header', st.session_state.language))
+                        st.header("📈 Resultatberegning")
 
                         total_profit = metrics['total_profit']
                         order_count = metrics['order_count']
@@ -561,56 +516,57 @@ try:
 
                         with col1:
                             st.metric(
-                                get_text('total_profit', st.session_state.language),
+                                "Total fortjeneste",
                                 f"kr {total_profit:,.2f}",
-                                help=get_text('total_profit_before_costs', st.session_state.language)
+                                help="Total fortjeneste før annonsekostnader"
                             )
 
                         with col2:
                             st.metric(
-                                get_text('ad_costs', st.session_state.language),
+                                "Annonsekostnader",
                                 f"kr {total_ad_cost:,.2f}",
-                                help=get_text('ad_costs_help', st.session_state.language,
-                                              ad_cost_per_order=ad_cost_per_order,
-                                              order_count=order_count)
+                                help=f"Beregnet som kr {ad_cost_per_order} per ordre x {order_count} ordrer"
                             )
 
                         with col3:
                             st.metric(
-                                get_text('net_result', st.session_state.language),
+                                "Netto resultat",
                                 f"kr {net_profit:,.0f}",  # Changed format to show no decimals
-                                help=get_text('net_result_help', st.session_state.language)
+                                help="Total fortjeneste minus annonsekostnader"
                             )
 
                         # Add explanation
-                        st.info(get_text('calculation_method', st.session_state.language))
+                        st.info("""
+                        💡 Beregningsmetode:
+                        - Total fortjeneste er brutto fortjeneste før annonsekostnader
+                        - Annonsekostnad er beregnet som kr 30 per ordre
+                        - Netto resultat er total fortjeneste minus annonsekostnader
+                        """)
                     except Exception as e:
                         st.error(f"Error calculating result metrics: {str(e)}")
 
                 with tab4:
                     # Original Export tab content (moved from tab3)
-                    st.header(get_text('export_data', st.session_state.language))
+                    st.header("Eksporter data")
                     st.caption(
-                        get_text('period_caption', st.session_state.language,
-                                 start_date=selected_start_date.strftime('%d.%m.%Y'),
-                                 end_date=selected_end_date.strftime('%d.%m.%Y'))
+                        f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
                     )
 
                     # Create two columns for export options
                     export_col1, export_col2 = st.columns(2)
 
                     with export_col1:
-                        st.subheader(get_text('export_order_data', st.session_state.language))
+                        st.subheader("Eksporter ordredata")
                         export_format = st.selectbox(
-                            get_text('select_export_format', st.session_state.language, data_type='orders'),
+                            "Velg filformat for eksport av ordredata",
                             options=['CSV', 'Excel', 'JSON', 'PDF'],
                             key='orders_export_format')
                         ExportHandler.export_data(df, "orders", export_format)
 
                     with export_col2:
-                        st.subheader(get_text('export_product_data', st.session_state.language))
+                        st.subheader("Eksporter produktdata")
                         export_format_products = st.selectbox(
-                            get_text('select_export_format', st.session_state.language, data_type='products'),
+                            "Velg filformat for eksport av produktdata",
                             options=['CSV', 'Excel', 'JSON', 'PDF'],
                             key='products_export_format')
                         ExportHandler.export_data(df_products, "products",
