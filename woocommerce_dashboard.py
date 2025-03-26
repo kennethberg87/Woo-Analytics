@@ -139,15 +139,6 @@ try:
         with st.container():
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                # Language selector in the welcome page
-                lang = st.selectbox(
-                    "Language / Språk",
-                    options=['Norsk', 'English'],
-                    index=0 if st.session_state.language == 'no' else 1,
-                    key='welcome_lang'
-                )
-                st.session_state.language = 'no' if lang == 'Norsk' else 'en'
-
                 st.markdown(
                     f"""
                     <div class="welcome-container">
