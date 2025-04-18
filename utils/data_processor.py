@@ -278,13 +278,14 @@ class DataProcessor:
         }
         
     @staticmethod
-    def calculate_cac_metrics(df, ad_cost_per_order=30, previous_period_data=None):
+    def calculate_cac_metrics(df, ad_cost_per_order=30, use_ga_data=False, previous_period_data=None):
         """
         Calculate Customer Acquisition Cost (CAC) vs. Revenue metrics
         
         Args:
             df: Order DataFrame with billing information
-            ad_cost_per_order: Advertising cost per order in NOK
+            ad_cost_per_order: Advertising cost per order in NOK (used if GA data unavailable)
+            use_ga_data: Whether to use Google Analytics data for ad costs
             previous_period_data: Optional data from previous period for comparison
             
         Returns:
@@ -301,8 +302,10 @@ class DataProcessor:
                 'total_ad_spend': 0,
                 'total_revenue': 0,
                 'revenue_per_customer': 0,
+                'campaign_data': pd.DataFrame(),
                 'cac_trend_data': pd.DataFrame(),
-                'roi_trend_data': pd.DataFrame()
+                'roi_trend_data': pd.DataFrame(),
+                'using_ga_data': False
             }
             
         # Extract unique customers and calculate counts
@@ -330,8 +333,10 @@ class DataProcessor:
                 'total_ad_spend': 0,
                 'total_revenue': 0,
                 'revenue_per_customer': 0,
+                'campaign_data': pd.DataFrame(),
                 'cac_trend_data': pd.DataFrame(),
-                'roi_trend_data': pd.DataFrame()
+                'roi_trend_data': pd.DataFrame(),
+                'using_ga_data': False
             }
             
         # Create DataFrame from customer data
@@ -352,8 +357,51 @@ class DataProcessor:
         # Calculate total revenue
         total_revenue = customers_df['Order Total'].sum()
         
-        # Calculate total ad spend (assuming fixed cost per order)
-        total_ad_spend = len(customers_df) * ad_cost_per_order
+        # Get date range for potential GA data
+        try:
+            min_date = customers_df['Order Date'].min().date()
+            max_date = customers_df['Order Date'].max().date()
+        except:
+            min_date = None
+            max_date = None
+        
+        # Try to get ad cost data from Google Analytics if requested
+        campaign_data = pd.DataFrame()
+        using_ga_data = False
+        
+        if use_ga_data and min_date and max_date:
+            try:
+                # Import the Google Analytics client
+                from utils.google_analytics_client import GoogleAnalyticsClient
+                
+                # Create client and get ad cost data
+                ga_client = GoogleAnalyticsClient()
+                ad_spend_data = ga_client.calculate_total_ad_spend(min_date, max_date)
+                campaign_data = ga_client.calculate_campaign_performance(min_date, max_date)
+                
+                # Use GA data if available
+                if ad_spend_data['has_data']:
+                    total_ad_spend = ad_spend_data['total_spend']
+                    using_ga_data = True
+                    
+                    # Create daily spend data for trend analysis
+                    daily_spend = pd.DataFrame([
+                        {'Date': date, 'Ad_Spend': spend}
+                        for date, spend in ad_spend_data['spend_by_date'].items()
+                    ])
+                else:
+                    # Fall back to the fixed cost approach
+                    total_ad_spend = len(customers_df) * ad_cost_per_order
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error getting Google Analytics data: {str(e)}", exc_info=True)
+                
+                # Fall back to the fixed cost approach
+                total_ad_spend = len(customers_df) * ad_cost_per_order
+        else:
+            # Use fixed cost per order if not using GA data
+            total_ad_spend = len(customers_df) * ad_cost_per_order
         
         # Calculate CAC (Customer Acquisition Cost)
         # We'll only count acquisition cost for new customers
@@ -391,11 +439,25 @@ class DataProcessor:
             
             daily_data.columns = ['Date', 'Revenue', 'Unique_Customers', 'Order_Count']
             
-            # Calculate daily ad spend and CAC
-            daily_data['Ad_Spend'] = daily_data['Order_Count'] * ad_cost_per_order
-            daily_data['Daily_CAC'] = daily_data['Ad_Spend'] / daily_data['Unique_Customers']
-            daily_data['Daily_ROI'] = ((daily_data['Revenue'] - daily_data['Ad_Spend']) / 
-                                     daily_data['Ad_Spend'] * 100)
+            # If using GA data and we have daily spend data, merge it
+            if using_ga_data and 'daily_spend' in locals() and not daily_spend.empty:
+                # Merge GA spend data with daily order data
+                daily_data = pd.merge(daily_data, daily_spend, on='Date', how='left')
+                # Fill missing spend data with 0
+                daily_data['Ad_Spend'].fillna(0, inplace=True)
+            else:
+                # Calculate ad spend based on order count
+                daily_data['Ad_Spend'] = daily_data['Order_Count'] * ad_cost_per_order
+            
+            # Calculate daily CAC and ROI
+            daily_data['Daily_CAC'] = daily_data.apply(
+                lambda x: x['Ad_Spend'] / x['Unique_Customers'] if x['Unique_Customers'] > 0 else 0,
+                axis=1
+            )
+            daily_data['Daily_ROI'] = daily_data.apply(
+                lambda x: (x['Revenue'] - x['Ad_Spend']) / x['Ad_Spend'] * 100 if x['Ad_Spend'] > 0 else 0,
+                axis=1
+            )
             
             # Handle division by zero
             daily_data['Daily_CAC'] = daily_data['Daily_CAC'].replace([np.inf, -np.inf], 0)
@@ -425,8 +487,10 @@ class DataProcessor:
             'total_ad_spend': total_ad_spend,
             'total_revenue': total_revenue,
             'revenue_per_customer': revenue_per_customer,
+            'campaign_data': campaign_data,
             'cac_trend_data': cac_trend_data,
-            'roi_trend_data': roi_trend_data
+            'roi_trend_data': roi_trend_data,
+            'using_ga_data': using_ga_data
         }
 
     @staticmethod
