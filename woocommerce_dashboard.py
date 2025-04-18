@@ -672,26 +672,82 @@ try:
                         with subtab2:
                             st.subheader(t('cac_vs_revenue_period', selected_start_date.strftime('%d.%m.%Y'), selected_end_date.strftime('%d.%m.%Y')))
                             
-                            # Option to use Google Analytics data
-                            use_ga_data = st.checkbox(t('ga_use_actual_costs'), 
+                            # Option to use external ad cost data (Google Analytics or Google Ads)
+                            use_external_data = st.checkbox(t('ga_use_actual_costs'), 
                                                 value=False, 
                                                 help=t('ga_use_actual_costs_help'))
+                            
+                            # Add debug mode option for advanced users
+                            debug_mode = st.checkbox("Debug modus for API testing",
+                                                   value=False,
+                                                   help="Aktiverer diagnostikk-modus for å feilsøke Google Analytics og Google Ads-integrasjonen")
                                                 
                             # Calculate CAC metrics
-                            cac_metrics = DataProcessor.calculate_cac_metrics(df, ad_cost_per_order=ad_cost_per_order, use_ga_data=use_ga_data)
+                            cac_metrics = DataProcessor.calculate_cac_metrics(df, ad_cost_per_order=ad_cost_per_order, use_ga_data=use_external_data)
                             
-                            # Display Google Analytics error if present
-                            if use_ga_data and 'ga_error_message' in cac_metrics and cac_metrics['ga_error_message']:
-                                error_msg = cac_metrics['ga_error_message']
-                                
-                                # Check if it's a "no data" error
-                                if "No advertising cost data found" in error_msg:
-                                    st.info(f"ℹ️ {t('ga_no_data')}")
+                            # Display data source info message
+                            if use_external_data:
+                                if 'using_external_data' in cac_metrics and cac_metrics['using_external_data']:
+                                    # Show data source info
+                                    data_source = cac_metrics.get('data_source', 'unknown')
+                                    if data_source == 'google_analytics':
+                                        st.success("✅ Bruker annonsekostnader fra Google Analytics")
+                                    elif data_source == 'google_ads':
+                                        st.success("✅ Bruker annonsekostnader fra Google Ads API")
+                                    else:
+                                        st.success("✅ Bruker annonsekostnader fra ekstern kilde")
                                 else:
-                                    # Display general error message
-                                    st.warning(f"⚠️ {t('ga_error')}: {error_msg}")
-                                
-                                st.info(t('ga_fallback_notice', ad_cost_per_order))
+                                    # Show error if present
+                                    if 'error_message' in cac_metrics and cac_metrics['error_message']:
+                                        error_msg = cac_metrics['error_message']
+                                        
+                                        # Check if it's a "no data" error
+                                        if "No advertising cost data found" in error_msg or "No ad cost data found" in error_msg:
+                                            st.info(f"ℹ️ {t('ga_no_data')}")
+                                        else:
+                                            # Display general error message
+                                            st.warning(f"⚠️ {t('ga_error')}: {error_msg}")
+                                        
+                                        st.info(t('ga_fallback_notice', ad_cost_per_order))
+                            
+                            # Display debugging information if requested
+                            if debug_mode and use_external_data:
+                                st.subheader("Diagnoseinformasjon")
+                                if 'diagnostic_info' in cac_metrics:
+                                    diagnostic = cac_metrics['diagnostic_info']
+                                    
+                                    # Display diagnostic information in an expander
+                                    with st.expander("Vis diagnoseinformasjon for API-tilkoblinger"):
+                                        # Google Analytics diagnostics
+                                        st.markdown("### Google Analytics API")
+                                        if 'ga_attempted' in diagnostic and diagnostic['ga_attempted']:
+                                            st.markdown("- ✅ Forsøkte å bruke Google Analytics API")
+                                            
+                                            if 'ga_success' in diagnostic and diagnostic['ga_success']:
+                                                st.markdown("- ✅ Vellykket tilkobling til Google Analytics")
+                                                if 'ga_spend' in diagnostic:
+                                                    st.markdown(f"- Totale annonsekostnader: kr {diagnostic['ga_spend']:.2f}")
+                                            elif 'ga_error' in diagnostic:
+                                                st.markdown(f"- ❌ Google Analytics feil: {diagnostic['ga_error']}")
+                                        else:
+                                            st.markdown("- ❌ Google Analytics API ikke forsøkt")
+                                        
+                                        # Google Ads diagnostics
+                                        st.markdown("### Google Ads API")
+                                        if 'ads_attempted' in diagnostic and diagnostic['ads_attempted']:
+                                            st.markdown("- ✅ Forsøkte å bruke Google Ads API")
+                                            
+                                            if 'ads_success' in diagnostic and diagnostic['ads_success']:
+                                                st.markdown("- ✅ Vellykket tilkobling til Google Ads")
+                                                if 'ads_spend' in diagnostic:
+                                                    st.markdown(f"- Totale annonsekostnader: kr {diagnostic['ads_spend']:.2f}")
+                                            elif 'ads_error' in diagnostic:
+                                                st.markdown(f"- ❌ Google Ads feil: {diagnostic['ads_error']}")
+                                        else:
+                                            st.markdown("- ℹ️ Google Ads API ikke forsøkt (sannsynligvis fordi Google Analytics fungerte)")
+                                                    
+                                else:
+                                    st.info("Ingen diagnoseinformasjon tilgjengelig")
                             
                             # Display key metrics
                             col1, col2, col3 = st.columns(3)
@@ -735,17 +791,12 @@ try:
                                     help=t('revenue_per_customer_help')
                                 )
                                 
-                            # Show data source info
-                            if cac_metrics['using_ga_data']:
-                                st.success(t('ga_using_actual_costs'))
-                            else:
-                                if use_ga_data:
-                                    st.warning(t('ga_connection_error'))
-                                else:
-                                    st.info(t('ga_using_estimated_costs'))
+                            # Show data source info if not shown already above
+                            if not use_external_data:
+                                st.info(t('ga_using_estimated_costs'))
                             
-                            # Show campaign performance data if using GA data and data is available
-                            if cac_metrics['using_ga_data'] and not cac_metrics['campaign_data'].empty:
+                            # Show campaign performance data if using external data sources and data is available
+                            if 'using_external_data' in cac_metrics and cac_metrics['using_external_data'] and not cac_metrics['campaign_data'].empty:
                                 with st.expander(t('ga_campaign_performance'), expanded=True):
                                     st.subheader(t('ga_campaign_performance_title'))
                                     # Format the campaign data for display
