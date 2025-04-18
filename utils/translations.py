@@ -332,6 +332,34 @@ class Translations:
                 """,
                 'result_error': 'Error calculating result metrics: {}',
                 
+                # CAC vs. Revenue Analysis
+                'cac_analysis_header': 'Customer Acquisition Cost Analysis',
+                'cac_vs_revenue_period': 'CAC vs. Revenue analysis for the period: {} to {}',
+                'cac_metric': 'Customer Acquisition Cost (CAC)',
+                'cac_metric_help': 'Average cost to acquire a new customer',
+                'cac_to_ltv_ratio': 'CAC to LTV Ratio',
+                'cac_to_ltv_ratio_help': 'Lifetime Value divided by CAC (higher is better, >3 is good)',
+                'roi_metric': 'Marketing ROI',
+                'roi_metric_help': 'Return on Investment for marketing spend',
+                'breakeven_point': 'Breakeven Point',
+                'breakeven_point_help': 'Number of purchases needed to cover acquisition cost',
+                'new_customers': 'New Customers',
+                'new_customers_help': 'Number of first-time customers in this period',
+                'repeat_customers': 'Repeat Customers',
+                'repeat_customers_help': 'Number of returning customers in this period',
+                'revenue_per_customer': 'Revenue per Customer',
+                'revenue_per_customer_help': 'Average revenue generated per customer',
+                'cac_trend_title': 'CAC Trend Analysis',
+                'roi_trend_title': 'ROI Trend Analysis',
+                'cac_trend_help': 'How customer acquisition cost has changed over time',
+                'roi_trend_help': 'How marketing return on investment has changed over time',
+                'cac_analysis_info': """
+                💡 About CAC Analysis:
+                - Customer Acquisition Cost (CAC) is calculated by dividing total marketing spend by number of new customers acquired
+                - Return on Investment (ROI) shows the effectiveness of marketing spend
+                - A CAC:LTV ratio greater than 3:1 indicates good unit economics
+                """,
+                
                 # Export tab
                 'export_header': 'Export data',
                 'export_orders': 'Export order data',

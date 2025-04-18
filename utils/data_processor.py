@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
@@ -275,6 +276,158 @@ class DataProcessor:
             'payment_distribution': payment_dist,
             'shipping_distribution': shipping_dist
         }
+        
+    @staticmethod
+    def calculate_cac_metrics(df, ad_cost_per_order=30, previous_period_data=None):
+        """
+        Calculate Customer Acquisition Cost (CAC) vs. Revenue metrics
+        
+        Args:
+            df: Order DataFrame with billing information
+            ad_cost_per_order: Advertising cost per order in NOK
+            previous_period_data: Optional data from previous period for comparison
+            
+        Returns:
+            Dictionary of CAC metrics and time-series data
+        """
+        if df.empty:
+            return {
+                'cac': 0,
+                'cac_to_ltv_ratio': 0,
+                'roi': 0,
+                'breakeven_point': 0,
+                'new_customers_count': 0,
+                'repeat_customers_count': 0,
+                'total_ad_spend': 0,
+                'total_revenue': 0,
+                'revenue_per_customer': 0,
+                'cac_trend_data': pd.DataFrame(),
+                'roi_trend_data': pd.DataFrame()
+            }
+            
+        # Extract unique customers and calculate counts
+        customer_data = []
+        
+        for _, order in df.iterrows():
+            if 'billing' in order and isinstance(order['billing'], dict):
+                email = order['billing'].get('email', '')
+                customer = {
+                    'Email': email,
+                    'Order Date': pd.to_datetime(order['date']),
+                    'Order Total': float(order['total']),
+                    'Order ID': order['order_id']
+                }
+                customer_data.append(customer)
+                
+        if not customer_data:
+            return {
+                'cac': 0,
+                'cac_to_ltv_ratio': 0,
+                'roi': 0,
+                'breakeven_point': 0,
+                'new_customers_count': 0,
+                'repeat_customers_count': 0,
+                'total_ad_spend': 0,
+                'total_revenue': 0,
+                'revenue_per_customer': 0,
+                'cac_trend_data': pd.DataFrame(),
+                'roi_trend_data': pd.DataFrame()
+            }
+            
+        # Create DataFrame from customer data
+        customers_df = pd.DataFrame(customer_data)
+        
+        # Calculate customer order frequency
+        customer_orders = customers_df.groupby('Email').size().reset_index(name='order_count')
+        
+        # Identify new vs. repeat customers
+        new_customers = customer_orders[customer_orders['order_count'] == 1]
+        repeat_customers = customer_orders[customer_orders['order_count'] > 1]
+        
+        # Calculate metrics
+        new_customers_count = len(new_customers)
+        repeat_customers_count = len(repeat_customers)
+        total_customers = new_customers_count + repeat_customers_count
+        
+        # Calculate total revenue
+        total_revenue = customers_df['Order Total'].sum()
+        
+        # Calculate total ad spend (assuming fixed cost per order)
+        total_ad_spend = len(customers_df) * ad_cost_per_order
+        
+        # Calculate CAC (Customer Acquisition Cost)
+        # We'll only count acquisition cost for new customers
+        cac = total_ad_spend / new_customers_count if new_customers_count > 0 else 0
+        
+        # Calculate average revenue per customer
+        revenue_per_customer = total_revenue / total_customers if total_customers > 0 else 0
+        
+        # Calculate customer lifetime value (LTV) - simplified version
+        # Using the average total value of orders per customer
+        customer_lifetime_value = customers_df.groupby('Email')['Order Total'].sum().mean() if total_customers > 0 else 0
+        
+        # Calculate CAC to LTV ratio
+        cac_to_ltv_ratio = customer_lifetime_value / cac if cac > 0 else 0
+        
+        # Calculate ROI
+        roi = ((total_revenue - total_ad_spend) / total_ad_spend * 100) if total_ad_spend > 0 else 0
+        
+        # Calculate breakeven point (number of orders needed to cover CAC)
+        avg_order_value = customers_df['Order Total'].mean() if len(customers_df) > 0 else 0
+        breakeven_point = cac / avg_order_value if avg_order_value > 0 else 0
+        
+        # Create time series data for CAC trend analysis
+        if len(customers_df) > 0:
+            # Sort by date for time series analysis
+            customers_df = customers_df.sort_values('Order Date')
+            
+            # Group by date
+            customers_df['Date'] = customers_df['Order Date'].dt.date
+            daily_data = customers_df.groupby('Date').agg({
+                'Order Total': 'sum',
+                'Email': pd.Series.nunique,
+                'Order ID': 'count'
+            }).reset_index()
+            
+            daily_data.columns = ['Date', 'Revenue', 'Unique_Customers', 'Order_Count']
+            
+            # Calculate daily ad spend and CAC
+            daily_data['Ad_Spend'] = daily_data['Order_Count'] * ad_cost_per_order
+            daily_data['Daily_CAC'] = daily_data['Ad_Spend'] / daily_data['Unique_Customers']
+            daily_data['Daily_ROI'] = ((daily_data['Revenue'] - daily_data['Ad_Spend']) / 
+                                     daily_data['Ad_Spend'] * 100)
+            
+            # Handle division by zero
+            daily_data['Daily_CAC'] = daily_data['Daily_CAC'].replace([np.inf, -np.inf], 0)
+            daily_data['Daily_ROI'] = daily_data['Daily_ROI'].replace([np.inf, -np.inf], 0)
+            
+            # Fill NaN values
+            daily_data = daily_data.fillna(0)
+            
+            # Calculate rolling averages for smoother trend lines
+            daily_data['CAC_7day_avg'] = daily_data['Daily_CAC'].rolling(window=7, min_periods=1).mean()
+            daily_data['ROI_7day_avg'] = daily_data['Daily_ROI'].rolling(window=7, min_periods=1).mean()
+            
+            cac_trend_data = daily_data[['Date', 'Daily_CAC', 'CAC_7day_avg']]
+            roi_trend_data = daily_data[['Date', 'Daily_ROI', 'ROI_7day_avg']]
+        else:
+            cac_trend_data = pd.DataFrame()
+            roi_trend_data = pd.DataFrame()
+        
+        # Return computed metrics
+        return {
+            'cac': cac,
+            'cac_to_ltv_ratio': cac_to_ltv_ratio,
+            'roi': roi,
+            'breakeven_point': breakeven_point,
+            'new_customers_count': new_customers_count,
+            'repeat_customers_count': repeat_customers_count,
+            'total_ad_spend': total_ad_spend,
+            'total_revenue': total_revenue,
+            'revenue_per_customer': revenue_per_customer,
+            'cac_trend_data': cac_trend_data,
+            'roi_trend_data': roi_trend_data
+        }
 
     @staticmethod
     def create_distribution_chart(distribution_data, title, color_sequence=None):
@@ -315,6 +468,107 @@ class DataProcessor:
         
         return fig
     
+    @staticmethod
+    def create_cac_trend_chart(cac_data):
+        """Create a trend chart for Customer Acquisition Cost"""
+        if cac_data.empty:
+            return None
+            
+        fig = go.Figure()
+        
+        # Add daily CAC
+        fig.add_trace(go.Scatter(
+            x=cac_data['Date'],
+            y=cac_data['Daily_CAC'],
+            name='Daily CAC',
+            mode='markers',
+            marker=dict(color='rgba(135, 206, 250, 0.5)', size=8),
+            hovertemplate='Date: %{x}<br>CAC: kr %{y:.2f}'
+        ))
+        
+        # Add 7-day rolling average
+        fig.add_trace(go.Scatter(
+            x=cac_data['Date'],
+            y=cac_data['CAC_7day_avg'],
+            name='7-day rolling avg',
+            mode='lines',
+            line=dict(color='#0072B2', width=3),
+            hovertemplate='Date: %{x}<br>7-day avg CAC: kr %{y:.2f}'
+        ))
+        
+        # Update layout
+        fig.update_layout(
+            title='Customer Acquisition Cost (CAC) Trend',
+            xaxis_title='Date',
+            yaxis_title='Cost (NOK)',
+            yaxis_tickprefix='kr ',
+            yaxis_tickformat=',.2f',
+            height=400,
+            margin=dict(l=20, r=20, t=50, b=20),
+            hovermode='closest',
+            template='plotly_white',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+        )
+        
+        return fig
+        
+    @staticmethod
+    def create_roi_trend_chart(roi_data):
+        """Create a trend chart for Return on Investment (ROI)"""
+        if roi_data.empty:
+            return None
+            
+        fig = go.Figure()
+        
+        # Add daily ROI
+        fig.add_trace(go.Scatter(
+            x=roi_data['Date'],
+            y=roi_data['Daily_ROI'],
+            name='Daily ROI',
+            mode='markers',
+            marker=dict(color='rgba(255, 128, 0, 0.5)', size=8),
+            hovertemplate='Date: %{x}<br>ROI: %{y:.1f}%'
+        ))
+        
+        # Add 7-day rolling average
+        fig.add_trace(go.Scatter(
+            x=roi_data['Date'],
+            y=roi_data['ROI_7day_avg'],
+            name='7-day rolling avg',
+            mode='lines',
+            line=dict(color='#D55E00', width=3),
+            hovertemplate='Date: %{x}<br>7-day avg ROI: %{y:.1f}%'
+        ))
+        
+        # Add breakeven line at 0%
+        fig.add_shape(
+            type="line",
+            x0=roi_data['Date'].min(),
+            y0=0,
+            x1=roi_data['Date'].max(),
+            y1=0,
+            line=dict(
+                color="green",
+                width=2,
+                dash="dash",
+            )
+        )
+        
+        # Update layout
+        fig.update_layout(
+            title='Marketing ROI Trend',
+            xaxis_title='Date',
+            yaxis_title='ROI (%)',
+            yaxis_ticksuffix='%',
+            height=400,
+            margin=dict(l=20, r=20, t=50, b=20),
+            hovermode='closest',
+            template='plotly_white',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+        )
+        
+        return fig
+        
     @staticmethod
     def create_revenue_chart(df, period='daily'):
         """Create a line chart for revenue with different time periods"""
