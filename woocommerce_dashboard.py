@@ -680,6 +680,11 @@ try:
                             # Calculate CAC metrics
                             cac_metrics = DataProcessor.calculate_cac_metrics(df, ad_cost_per_order=ad_cost_per_order, use_ga_data=use_ga_data)
                             
+                            # Display Google Analytics error if present
+                            if use_ga_data and 'ga_error_message' in cac_metrics and cac_metrics['ga_error_message']:
+                                st.warning(f"⚠️ {t('ga_error')}: {cac_metrics['ga_error_message']}")
+                                st.info(t('ga_fallback_notice', ad_cost_per_order))
+                            
                             # Display key metrics
                             col1, col2, col3 = st.columns(3)
                             

@@ -522,7 +522,8 @@ class DataProcessor:
             'campaign_data': campaign_data,
             'cac_trend_data': cac_trend_data,
             'roi_trend_data': roi_trend_data,
-            'using_ga_data': using_ga_data
+            'using_ga_data': using_ga_data,
+            'ga_error_message': ga_error_message  # Include error message if any
         }
 
     @staticmethod
