@@ -290,7 +290,7 @@ try:
 
                 # Fetch and process data
                 try:
-                    with st.spinner("Henter bestillinger fra nettbutikken..."):
+                    with st.spinner(t('fetching_orders')):
                         orders = st.session_state.woo_client.get_orders(
                             selected_start_date, selected_end_date)
 
@@ -311,15 +311,15 @@ try:
                             logging.debug(f"Processed data shape: {df.shape}")
 
                 except Exception as e:
-                    st.error(f"Error: {str(e)}")
+                    st.error(t('error', str(e)))
                     if debug_mode:
                         logging.error(f"Detailed error: {str(e)}")
                     return
 
                 if df.empty:
-                    st.warning(
-                        f"Ingen ordre funnet fra perioden {selected_start_date} and {selected_end_date}"
-                    )
+                    st.warning(t('no_orders_found', 
+                        selected_start_date.strftime('%d.%m.%Y'),
+                        selected_end_date.strftime('%d.%m.%Y')))
                     return
 
                 # Calculate metrics once, before creating tabs
@@ -330,11 +330,16 @@ try:
                     # Calculate metrics including profit
                     metrics = DataProcessor.calculate_metrics(df, df_products, period)
                 except Exception as e:
-                    st.error(f"Error calculating metrics: {str(e)}")
+                    st.error(t('error_calculating', str(e)))
                     return
 
                 # Create tabs
-                tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "🧾 Fakturaer", "📈 Resultat", "📤 Eksporter"])
+                tab1, tab2, tab3, tab4 = st.tabs([
+                    t('dashboard_tab'), 
+                    t('invoices_tab'), 
+                    t('results_tab'), 
+                    t('export_tab')
+                ])
 
                 with tab1:
                     # Display metrics in columns (change from 4 columns to 5)
