@@ -95,7 +95,7 @@ class DataProcessor:
             df_products['date'] = pd.to_datetime(df_products['date'])
 
         # Group by product and aggregate data
-        top_products = df_products.groupby(['name', 'product_id']).agg({
+        top_products = df_products.groupby(['name', 'product_id', 'sku']).agg({
             'quantity': 'sum',
             'stock_quantity': 'last'  # Take the most recent stock quantity
         }).reset_index()
