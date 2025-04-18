@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 from datetime import datetime, timedelta
 import logging
 from utils.woocommerce_client import WooCommerceClient
@@ -545,6 +546,91 @@ try:
                     render_invoice_section(df, selected_start_date, selected_end_date)
 
                 with tab3:
+                    # Customer Insights tab
+                    st.header(t('customer_insights_header'))
+                    st.caption(t('customer_insights_period',
+                              selected_start_date.strftime('%d.%m.%Y'),
+                              selected_end_date.strftime('%d.%m.%Y')))
+                    
+                    # Calculate customer insights
+                    customer_insights = DataProcessor.get_customer_insights(df)
+                    
+                    if not df.empty:
+                        # Key Metrics in a 4-column layout
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric(
+                                t('repeat_customers'),
+                                f"{customer_insights['repeat_customers']}",
+                                help=t('repeat_customers_help')
+                            )
+                        
+                        with col2:
+                            st.metric(
+                                t('new_customers'),
+                                f"{customer_insights['new_customers']}",
+                                help=t('new_customers_help')
+                            )
+                        
+                        with col3:
+                            st.metric(
+                                t('customer_retention'),
+                                f"{customer_insights['customer_retention']:.1f}%",
+                                help=t('customer_retention_help')
+                            )
+                        
+                        with col4:
+                            st.metric(
+                                t('avg_order_value'),
+                                f"kr {customer_insights['avg_order_value']:,.2f}",
+                                help=t('avg_order_value_help')
+                            )
+                        
+                        # Customer Lifetime Value
+                        customer_lifetime_col1, customer_lifetime_col2 = st.columns([1, 3])
+                        with customer_lifetime_col1:
+                            st.metric(
+                                t('customer_lifetime_value'),
+                                f"kr {customer_insights['customer_lifetime_value']:,.2f}",
+                                help=t('customer_lifetime_value_help')
+                            )
+                        
+                        # Top Cities
+                        st.subheader(t('top_cities'))
+                        if not customer_insights['top_cities'].empty:
+                            st.dataframe(
+                                customer_insights['top_cities'],
+                                column_config={
+                                    "City": st.column_config.TextColumn(t('city_name')),
+                                    "Order Count": st.column_config.NumberColumn(t('order_count_by_city')),
+                                    "Customer Count": st.column_config.NumberColumn(t('customer_count_by_city'))
+                                },
+                                hide_index=True,
+                                use_container_width=True
+                            )
+                        
+                        # Payment and Shipping Distribution
+                        st.subheader(t('payment_distribution'))
+                        payment_chart = DataProcessor.create_distribution_chart(
+                            customer_insights['payment_distribution'],
+                            t('payment_distribution'),
+                            color_sequence=px.colors.qualitative.Pastel
+                        )
+                        if payment_chart:
+                            st.plotly_chart(payment_chart, use_container_width=True)
+                        
+                        st.subheader(t('shipping_distribution'))
+                        shipping_chart = DataProcessor.create_distribution_chart(
+                            customer_insights['shipping_distribution'],
+                            t('shipping_distribution'),
+                            color_sequence=px.colors.qualitative.Pastel1
+                        )
+                        if shipping_chart:
+                            st.plotly_chart(shipping_chart, use_container_width=True)
+                    else:
+                        st.warning(t('no_customer_data'))
+
+                with tab4:
                     try:
                         # Results tab
                         st.header(t('results_header'))
@@ -584,7 +670,7 @@ try:
                     except Exception as e:
                         st.error(t('result_error', str(e)))
 
-                with tab4:
+                with tab5:
                     # Export tab content
                     st.header(t('export_header'))
                     st.caption(t('period_caption',
