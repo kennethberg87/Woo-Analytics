@@ -342,8 +342,8 @@ class WooCommerceClient:
                         'dintero_payment_method': dintero_method,
                         'shipping_method': shipping_method,
                         'invoice_number': invoice_details['invoice_number'],
-                        'invoice_date': invoice_details['invoice_date'],
-                        'meta_data': order.get('meta_data', [])
+                        'invoice_date': invoice_details['invoice_date']
+                        # Removed meta_data to avoid pyarrow conversions issues
                     }
 
                     order_data.append(order_info)
