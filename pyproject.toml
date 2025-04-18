@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
+    "google-ads>=26.1.0",
     "google-analytics-data>=0.18.18",
     "google-api-python-client>=2.167.0",
     "google-auth-httplib2>=0.2.0",

@@ -46,8 +46,8 @@ class GoogleAdsClient:
         try:
             # Import the Google Ads client library within this method to avoid errors
             # if the library is not installed
-            from google.ads.googleads.client import GoogleAdsClient as GoogleAdsSDK
-            from google.ads.googleads.errors import GoogleAdsException
+            import google.ads.googleads.client
+            import google.ads.googleads.errors
             
             return True, None
         except ImportError as e:
@@ -75,14 +75,83 @@ class GoogleAdsClient:
             raise ImportError(error_msg)
         
         try:
-            # Here we would normally call the Google Ads API
-            # For now, we'll use a placeholder and log the attempts
+            # Import here to avoid import errors if the package is not installed
+            from google.ads.googleads.client import GoogleAdsClient
+            
             logger.info(f"Attempting to fetch Google Ads cost data for {start_date} to {end_date}")
             
-            # We'd normally implement this with real API calls, but since the
-            # Google Ads API is not ready yet, we'll just return None
-            logger.warning("Google Ads API integration not fully implemented")
-            return None
+            # Check if we have credentials for Google Ads API
+            client_id = os.environ.get("GOOGLE_ADS_CLIENT_ID")
+            client_secret = os.environ.get("GOOGLE_ADS_CLIENT_SECRET")
+            developer_token = os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN")
+            customer_id = os.environ.get("GOOGLE_ADS_CUSTOMER_ID")
+            refresh_token = os.environ.get("GOOGLE_ADS_REFRESH_TOKEN")
+            
+            if not all([client_id, client_secret, developer_token, customer_id, refresh_token]):
+                logger.warning("Missing Google Ads API credentials")
+                return None
+                
+            try:
+                # Initialize Google Ads client
+                credentials = {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "developer_token": developer_token,
+                    "refresh_token": refresh_token,
+                    "use_proto_plus": True
+                }
+                client = GoogleAdsClient.load_from_dict(credentials)
+                
+                # Format date range for the query
+                start_date_str = start_date.strftime("%Y-%m-%d")
+                end_date_str = end_date.strftime("%Y-%m-%d")
+                
+                # Create the GAQL query
+                query = f"""
+                    SELECT 
+                        campaign.id, 
+                        campaign.name, 
+                        metrics.cost_micros, 
+                        metrics.conversions,
+                        segments.date 
+                    FROM campaign 
+                    WHERE segments.date BETWEEN '{start_date_str}' AND '{end_date_str}'
+                    ORDER BY campaign.id
+                """
+                
+                # Execute the query
+                ga_service = client.get_service("GoogleAdsService")
+                search_request = client.get_type("SearchGoogleAdsRequest")
+                search_request.customer_id = customer_id
+                search_request.query = query
+                search_request.page_size = 1000  # Adjust as needed
+                
+                # Get the results
+                results = []
+                stream = ga_service.search_stream(search_request)
+                
+                for batch in stream:
+                    for row in batch.results:
+                        results.append({
+                            'Campaign_ID': row.campaign.id,
+                            'Campaign': row.campaign.name,
+                            'Date': row.segments.date,
+                            'Ad_Cost': row.metrics.cost_micros / 1000000,  # Convert micros to NOK
+                            'Conversions': row.metrics.conversions
+                        })
+                
+                # Convert to DataFrame
+                if results:
+                    df = pd.DataFrame(results)
+                    df['Date'] = pd.to_datetime(df['Date'])
+                    return df
+                else:
+                    logger.warning("No data returned from Google Ads API")
+                    return None
+                    
+            except Exception as e:
+                logger.error(f"Error executing Google Ads API request: {str(e)}", exc_info=True)
+                return None
             
         except Exception as e:
             logger.error(f"Error fetching ad costs from Google Ads: {str(e)}", exc_info=True)
