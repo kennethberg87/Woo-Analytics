@@ -6,6 +6,7 @@ from utils.woocommerce_client import WooCommerceClient
 from utils.data_processor import DataProcessor
 from utils.export_handler import ExportHandler
 from utils.notification_handler import NotificationHandler
+from utils.translations import Translations
 import os
 import sys
 
@@ -42,6 +43,10 @@ try:
     # Initialize session state for page switching
     if 'show_dashboard' not in st.session_state:
         st.session_state.show_dashboard = False
+        
+    # Initialize language settings
+    if 'language' not in st.session_state:
+        st.session_state.language = 'no'  # Default to Norwegian
 
     # Function to switch to dashboard
     def switch_to_dashboard():
@@ -58,6 +63,10 @@ try:
     if 'notification_handler' not in st.session_state:
         logger.info("Initializing notification handler")
         st.session_state.notification_handler = NotificationHandler()
+        
+    # Convenience function for getting translated text
+    def t(key):
+        return Translations.get_text(key, st.session_state.language)
 
     def get_date_range(view_period):
         """Calculate date range based on view period"""
