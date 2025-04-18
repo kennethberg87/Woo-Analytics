@@ -167,6 +167,35 @@ class Translations:
                 """,
                 'result_error': 'Feil ved beregning av resultatkalkuleringer: {}',
                 
+                # CAC vs. Revenue Analysis
+                'cac_analysis_header': 'Kundeakvisisjonskostnad Analyse',
+                'cac_vs_revenue_period': 'CAC vs. Omsetning analyse for perioden: {} til {}',
+                'cac_metric': 'Kundeakvisisjonskostnad (CAC)',
+                'cac_metric_help': 'Gjennomsnittskostnad for å skaffe en ny kunde',
+                'cac_to_ltv_ratio': 'CAC til LTV forhold',
+                'cac_to_ltv_ratio_help': 'Kundens livstidsverdi delt på CAC (høyere er bedre, >3 er god)',
+                'roi_metric': 'Markedsføring ROI',
+                'roi_metric_help': 'Avkastning på investeringer i markedsføring',
+                'breakeven_point': 'Nullpunkt',
+                'breakeven_point_help': 'Antall kjøp som trengs for å dekke akvisisjonskostnaden',
+                'new_customers': 'Nye kunder',
+                'new_customers_help': 'Antall førstegangskunder i denne perioden',
+                'repeat_customers': 'Gjentakende kunder',
+                'repeat_customers_help': 'Antall returnerende kunder i denne perioden',
+                'revenue_per_customer': 'Omsetning per kunde',
+                'revenue_per_customer_help': 'Gjennomsnittlig omsetning generert per kunde',
+                'cac_trend_title': 'CAC Trendanalyse',
+                'roi_trend_title': 'ROI Trendanalyse',
+                'cac_trend_help': 'Hvordan kundeakvisisjonskostnaden har endret seg over tid',
+                'roi_trend_help': 'Hvordan markedsføringens avkastning har endret seg over tid',
+                'cac_analysis_info': """
+                💡 Om CAC Analyse:
+                - Kundeakvisisjonskostnad (CAC) beregnes ved å dele totale markedsføringskostnader på antall nye kunder
+                - Avkastning på investering (ROI) viser effektiviteten av markedsføringsutgifter
+                - Et CAC:LTV-forhold større enn 3:1 indikerer god enhetøkonomi
+                """,
+                'not_enough_trend_data': "Ikke nok data for å vise trendanalyse. Velg en lengre tidsperiode.",
+                
                 # Export tab
                 'export_header': 'Eksporter data',
                 'export_orders': 'Eksporter ordredata',
@@ -359,6 +388,7 @@ class Translations:
                 - Return on Investment (ROI) shows the effectiveness of marketing spend
                 - A CAC:LTV ratio greater than 3:1 indicates good unit economics
                 """,
+                'not_enough_trend_data': "Not enough data to show trend analysis. Please select a longer time period.",
                 
                 # Export tab
                 'export_header': 'Export data',

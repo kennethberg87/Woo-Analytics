@@ -632,41 +632,113 @@ try:
 
                 with tab4:
                     try:
-                        # Results tab
-                        st.header(t('results_header'))
+                        # Create subtabs for basic results and CAC analysis
+                        subtab1, subtab2 = st.tabs([t('results_header'), t('cac_analysis_header')])
+                        
+                        # Basic Results Subtab
+                        with subtab1:
+                            total_profit = metrics['total_profit']
+                            order_count = metrics['order_count']
+                            ad_cost_per_order = 30
+                            total_ad_cost = order_count * ad_cost_per_order
+                            net_profit = round(total_profit - total_ad_cost)  # Rounded to nearest krone
 
-                        total_profit = metrics['total_profit']
-                        order_count = metrics['order_count']
-                        ad_cost_per_order = 30
-                        total_ad_cost = order_count * ad_cost_per_order
-                        net_profit = round(total_profit - total_ad_cost)  # Rounded to nearest krone
+                            # Display the calculation components
+                            col1, col2, col3 = st.columns(3)
 
-                        # Display the calculation components
-                        col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric(
+                                    t('total_gross_profit'),
+                                    f"kr {total_profit:,.2f}",
+                                    help=t('total_gross_profit_help')
+                                )
 
-                        with col1:
-                            st.metric(
-                                t('total_gross_profit'),
-                                f"kr {total_profit:,.2f}",
-                                help=t('total_gross_profit_help')
-                            )
+                            with col2:
+                                st.metric(
+                                    t('ad_costs'),
+                                    f"kr {total_ad_cost:,.2f}",
+                                    help=t('ad_costs_help', ad_cost_per_order, order_count)
+                                )
 
-                        with col2:
-                            st.metric(
-                                t('ad_costs'),
-                                f"kr {total_ad_cost:,.2f}",
-                                help=t('ad_costs_help', ad_cost_per_order, order_count)
-                            )
+                            with col3:
+                                st.metric(
+                                    t('net_result'),
+                                    f"kr {net_profit:,.0f}",  # Changed format to show no decimals
+                                    help=t('net_result_help')
+                                )
 
-                        with col3:
-                            st.metric(
-                                t('net_result'),
-                                f"kr {net_profit:,.0f}",  # Changed format to show no decimals
-                                help=t('net_result_help')
-                            )
-
-                        # Add explanation
-                        st.info(t('calculation_method_info'))
+                            # Add explanation
+                            st.info(t('calculation_method_info'))
+                            
+                        # CAC Analysis Subtab
+                        with subtab2:
+                            st.subheader(t('cac_vs_revenue_period', selected_start_date.strftime('%d.%m.%Y'), selected_end_date.strftime('%d.%m.%Y')))
+                            
+                            # Calculate CAC metrics
+                            cac_metrics = DataProcessor.calculate_cac_metrics(df, ad_cost_per_order=ad_cost_per_order)
+                            
+                            # Display key metrics
+                            col1, col2, col3 = st.columns(3)
+                            
+                            with col1:
+                                st.metric(
+                                    t('cac_metric'),
+                                    f"kr {cac_metrics['cac']:,.2f}",
+                                    help=t('cac_metric_help')
+                                )
+                                
+                                st.metric(
+                                    t('roi_metric'),
+                                    f"{cac_metrics['roi']:.1f}%",
+                                    help=t('roi_metric_help')
+                                )
+                            
+                            with col2:
+                                st.metric(
+                                    t('new_customers'),
+                                    f"{cac_metrics['new_customers_count']}",
+                                    help=t('new_customers_help')
+                                )
+                                
+                                st.metric(
+                                    t('repeat_customers'),
+                                    f"{cac_metrics['repeat_customers_count']}",
+                                    help=t('repeat_customers_help')
+                                )
+                            
+                            with col3:
+                                st.metric(
+                                    t('cac_to_ltv_ratio'),
+                                    f"{cac_metrics['cac_to_ltv_ratio']:.2f}",
+                                    help=t('cac_to_ltv_ratio_help')
+                                )
+                                
+                                st.metric(
+                                    t('revenue_per_customer'),
+                                    f"kr {cac_metrics['revenue_per_customer']:,.2f}",
+                                    help=t('revenue_per_customer_help')
+                                )
+                                
+                            # Display trend charts
+                            if not cac_metrics['cac_trend_data'].empty and len(cac_metrics['cac_trend_data']) > 1:
+                                col1, col2 = st.columns(2)
+                                
+                                with col1:
+                                    st.subheader(t('cac_trend_title'))
+                                    st.caption(t('cac_trend_help'))
+                                    cac_chart = DataProcessor.create_cac_trend_chart(cac_metrics['cac_trend_data'])
+                                    st.plotly_chart(cac_chart, use_container_width=True)
+                                
+                                with col2:
+                                    st.subheader(t('roi_trend_title'))
+                                    st.caption(t('roi_trend_help'))
+                                    roi_chart = DataProcessor.create_roi_trend_chart(cac_metrics['roi_trend_data'])
+                                    st.plotly_chart(roi_chart, use_container_width=True)
+                            else:
+                                st.info(t('not_enough_trend_data'))
+                            
+                            # Additional info
+                            st.info(t('cac_analysis_info'))
                     except Exception as e:
                         st.error(t('result_error', str(e)))
 
