@@ -6,6 +6,7 @@ from utils.woocommerce_client import WooCommerceClient
 from utils.data_processor import DataProcessor
 from utils.export_handler import ExportHandler
 from utils.notification_handler import NotificationHandler
+from utils.translations import Translations
 import os
 import sys
 
@@ -58,6 +59,19 @@ try:
     if 'notification_handler' not in st.session_state:
         logger.info("Initializing notification handler")
         st.session_state.notification_handler = NotificationHandler()
+        
+    # Initialize translations
+    if 'translator' not in st.session_state:
+        logger.info("Initializing translator")
+        st.session_state.translator = Translations()
+        
+    # Initialize language selection (default to Norwegian)
+    if 'language' not in st.session_state:
+        st.session_state.language = 'no'
+        
+    # Helper function to get translated text
+    def t(key, *args):
+        return st.session_state.translator.get_text(key, st.session_state.language, *args)
 
     def get_date_range(view_period):
         """Calculate date range based on view period"""
@@ -141,9 +155,9 @@ try:
                 st.markdown(
                     f"""
                     <div class="welcome-container">
-                        <div class="welcome-text">Gratulerer! Så mye penger har du tjent i dag:</div>
+                        <div class="welcome-text">{t('welcome_text')}</div>
                         <div class="profit-number">kr {net_profit:,}</div>
-                        <div class="click-anywhere">(Klikk hvor som helst for å se dashbordet)</div>
+                        <div class="click-anywhere">{t('click_anywhere')}</div>
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -176,28 +190,46 @@ try:
                 show_welcome_page()
             else:
                 # Show WooCommerce connection status when dashboard is visible
-                st.success("Koblet til WooCommerce API")
+                st.success(t('connected_status'))
 
                 # Header
-                st.title("📊 Salgsstatistikk nettbutikk")
+                st.title(t('dashboard_title'))
+                
+                # Add a sidebar divider
+                st.sidebar.title("⚙️ Settings")
+                
+                # Language selector
+                language_options = {'no': 'Norsk', 'en': 'English'}
+                selected_language = st.sidebar.selectbox(
+                    t('select_language'),
+                    options=list(language_options.keys()),
+                    format_func=lambda x: language_options[x],
+                    index=0 if st.session_state.language == 'no' else 1
+                )
+                
+                # Update language if changed
+                if selected_language != st.session_state.language:
+                    st.session_state.language = selected_language
+                    st.rerun()
+                
+                # Add a divider
+                st.sidebar.markdown("---")
 
                 # Debug mode toggle
-                debug_mode = st.sidebar.checkbox("Debug Mode", value=True)
+                debug_mode = st.sidebar.checkbox(t('debug_mode'), value=True)
                 if debug_mode:
-                    st.sidebar.info(
-                        "Debug mode is enabled. API responses and error messages are being logged to woocommerce_api.log"
-                    )
+                    st.sidebar.info(t('debug_info'))
 
                 # Real-time notifications toggle
-                notifications_enabled = st.sidebar.checkbox("Aktiver sanntidsvarsler",
+                notifications_enabled = st.sidebar.checkbox(t('enable_notifications'),
                                                             value=True)
 
                 # Add sound toggle if notifications are enabled
                 if notifications_enabled:
                     st.session_state.sound_enabled = st.sidebar.checkbox(
-                        "🔔 Aktiver lydvarsling",
+                        t('enable_sound'),
                         value=st.session_state.get('sound_enabled', True),
-                        help="Spiller av Ca-Ching lyd når en ny ordre er mottatt.")
+                        help=t('sound_help'))
 
                     # Add a placeholder for notifications
                     notification_placeholder = st.empty()
@@ -205,47 +237,56 @@ try:
                     # Check for new orders every 30 seconds
                     if st.session_state.notification_handler.monitor_orders(
                             st.session_state.woo_client):
-                        notification_placeholder.success(
-                            "✨ Aktivert varsler - Du får beskjed når det kommer inn en ny bestilling!"
-                        )
+                        notification_placeholder.success(t('notification_success'))
 
+                # Get period options based on language
+                period_options = [t('daily'), t('weekly'), t('monthly')]
+                
                 # View period selector (before date range)
-                view_period = st.selectbox("Velg visningsperiode",
-                                           options=['Daglig', 'Ukentlig', 'Månedlig'],
+                view_period = st.selectbox(t('view_period'),
+                                           options=period_options,
                                            index=0,
-                                           help="Velg hvordan dataene skal aggregeres")
+                                           help=t('view_period_help'))
 
+                # Map display period to internal period
+                period_map = {
+                    t('daily'): 'Daglig',
+                    t('weekly'): 'Ukentlig',
+                    t('monthly'): 'Månedlig'
+                }
+                internal_period = period_map.get(view_period, 'Daglig')
+                
                 # Calculate date range based on view period
-                start_date, end_date = get_date_range(view_period)
+                start_date, end_date = get_date_range(internal_period)
 
                 # Date range selector with calculated defaults
-                st.subheader("Valg av ordreperiode")
+                st.subheader(t('date_range_header'))
 
                 # Create two columns for date pickers
                 col1, col2 = st.columns(2)
 
                 with col1:
                     selected_start_date = st.date_input(
-                        "Startdato",
+                        t('start_date'),
                         value=start_date,
-                        help=f"Startdato (standard: {start_date.strftime('%d.%m.%Y')})",
+                        help=t('date_help_start', start_date.strftime('%d.%m.%Y')),
                         format="DD.MM.YYYY")
 
                 with col2:
                     selected_end_date = st.date_input(
-                        "Sluttdato",
+                        t('end_date'),
                         value=end_date,
-                        help=f"Sluttdato (standard: {end_date.strftime('%d.%m.%Y')})",
+                        help=t('date_help_end', end_date.strftime('%d.%m.%Y')),
                         format="DD.MM.YYYY")
 
                 # Validate date range
                 if selected_start_date > selected_end_date:
-                    st.error("Error: End date must be after start date")
+                    st.error(t('date_error'))
                     return
 
-                st.info(
-                    f"Basert på ordre fra {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
-                )
+                st.info(t('date_info', 
+                    selected_start_date.strftime('%d.%m.%Y'), 
+                    selected_end_date.strftime('%d.%m.%Y')))
 
                 # Fetch and process data
                 try:
