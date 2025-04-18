@@ -123,6 +123,29 @@ class Translations:
                 """,
                 'no_invoices_found': 'Ingen fakturaer funnet for valgt periode',
                 'no_order_data': 'Ingen ordredata tilgjengelig for valgt periode',
+                
+                # Results tab
+                'results_header': '📈 Resultatberegning',
+                'total_gross_profit': 'Total fortjeneste',
+                'total_gross_profit_help': 'Total fortjeneste før annonsekostnader',
+                'ad_costs': 'Annonsekostnader',
+                'ad_costs_help': 'Beregnet som kr {} per ordre x {} ordrer',
+                'net_result': 'Netto resultat',
+                'net_result_help': 'Total fortjeneste minus annonsekostnader',
+                'calculation_method_info': """
+                💡 Beregningsmetode:
+                - Total fortjeneste er brutto fortjeneste før annonsekostnader
+                - Annonsekostnad er beregnet som kr 30 per ordre
+                - Netto resultat er total fortjeneste minus annonsekostnader
+                """,
+                'result_error': 'Feil ved beregning av resultatkalkuleringer: {}',
+                
+                # Export tab
+                'export_header': 'Eksporter data',
+                'export_orders': 'Eksporter ordredata',
+                'export_products': 'Eksporter produktdata',
+                'select_format_orders': 'Velg filformat for eksport av ordredata',
+                'select_format_products': 'Velg filformat for eksport av produktdata',
             },
             'en': {
                 # Page title and headers
@@ -223,6 +246,44 @@ class Translations:
                 'order_total': 'Order total',
                 'order_total_help': 'Total amount for the order',
                 'no_customer_data': 'No customer data available for the selected date range',
+                
+                # Invoices section
+                'invoices_header': 'Invoices',
+                'invoice_number_column': 'Invoice number',
+                'order_number_column': 'Order number',
+                'invoice_date_column': 'Invoice date',
+                'status_column': 'Status',
+                'total_column': 'Total',
+                'download_invoices': 'Download invoices',
+                'download_invoices_info': """
+                💡 Click on the links below to download PDF invoices directly. 
+                The invoices will be downloaded automatically when you click on the link.
+                """,
+                'no_invoices_found': 'No invoices found for the selected period',
+                'no_order_data': 'No order data available for the selected period',
+                
+                # Results tab
+                'results_header': '📈 Results calculation',
+                'total_gross_profit': 'Total gross profit',
+                'total_gross_profit_help': 'Total profit before advertising costs',
+                'ad_costs': 'Advertising costs',
+                'ad_costs_help': 'Calculated as kr {} per order x {} orders',
+                'net_result': 'Net result',
+                'net_result_help': 'Total profit minus advertising costs',
+                'calculation_method_info': """
+                💡 Calculation method:
+                - Total gross profit is before advertising costs
+                - Advertising cost is calculated as kr 30 per order
+                - Net result is total profit minus advertising costs
+                """,
+                'result_error': 'Error calculating result metrics: {}',
+                
+                # Export tab
+                'export_header': 'Export data',
+                'export_orders': 'Export order data',
+                'export_products': 'Export product data',
+                'select_format_orders': 'Select file format for order data export',
+                'select_format_products': 'Select file format for product data export',
             }
         }
     

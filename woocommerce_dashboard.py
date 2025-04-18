@@ -536,8 +536,8 @@ try:
 
                 with tab3:
                     try:
-                        # Resultat tab
-                        st.header("📈 Resultatberegning")
+                        # Results tab
+                        st.header(t('results_header'))
 
                         total_profit = metrics['total_profit']
                         order_count = metrics['order_count']
@@ -550,57 +550,52 @@ try:
 
                         with col1:
                             st.metric(
-                                "Total fortjeneste",
+                                t('total_gross_profit'),
                                 f"kr {total_profit:,.2f}",
-                                help="Total fortjeneste før annonsekostnader"
+                                help=t('total_gross_profit_help')
                             )
 
                         with col2:
                             st.metric(
-                                "Annonsekostnader",
+                                t('ad_costs'),
                                 f"kr {total_ad_cost:,.2f}",
-                                help=f"Beregnet som kr {ad_cost_per_order} per ordre x {order_count} ordrer"
+                                help=t('ad_costs_help', ad_cost_per_order, order_count)
                             )
 
                         with col3:
                             st.metric(
-                                "Netto resultat",
+                                t('net_result'),
                                 f"kr {net_profit:,.0f}",  # Changed format to show no decimals
-                                help="Total fortjeneste minus annonsekostnader"
+                                help=t('net_result_help')
                             )
 
                         # Add explanation
-                        st.info("""
-                        💡 Beregningsmetode:
-                        - Total fortjeneste er brutto fortjeneste før annonsekostnader
-                        - Annonsekostnad er beregnet som kr 30 per ordre
-                        - Netto resultat er total fortjeneste minus annonsekostnader
-                        """)
+                        st.info(t('calculation_method_info'))
                     except Exception as e:
-                        st.error(f"Error calculating result metrics: {str(e)}")
+                        st.error(t('result_error', str(e)))
 
                 with tab4:
-                    # Original Export tab content (moved from tab3)
-                    st.header("Eksporter data")
-                    st.caption(
-                        f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
-                    )
+                    # Export tab content
+                    st.header(t('export_header'))
+                    st.caption(t('period_caption',
+                              selected_start_date.strftime('%d.%m.%Y'),
+                              selected_end_date.strftime('%d.%m.%Y')))
 
                     # Create two columns for export options
                     export_col1, export_col2 = st.columns(2)
 
                     with export_col1:
-                        st.subheader("Eksporter ordredata")
+                        st.subheader(t('export_orders'))
                         export_format = st.selectbox(
-                            "Velg filformat for eksport av ordredata",
+                            t('select_format_orders'),
                             options=['CSV', 'Excel', 'JSON', 'PDF'],
                             key='orders_export_format')
                         ExportHandler.export_data(df, "orders", export_format)
 
                     with export_col2:
-                        st.subheader("Eksporter produktdata")
+                        st.subheader(t('export_products'))
                         export_format_products = st.selectbox(
-                            "Velg filformat for eksport av produktdata",
+                            t('select_format_products'),
                             options=['CSV', 'Excel', 'JSON', 'PDF'],
                             key='products_export_format')
                         ExportHandler.export_data(df_products, "products",
