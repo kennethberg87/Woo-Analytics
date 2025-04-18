@@ -113,25 +113,58 @@ def setup_credentials():
                     st.info("""
                     ## Authentication Instructions:
                     
-                    1. **Watch the terminal below** - you'll see an authentication URL appear
+                    1. The authentication URL will appear below this message in a blue box
                     2. **Copy that URL** and open it in a new browser tab
                     3. **Sign in with your Google account** and authorize the application
                     4. After authorization, Google will display a code
-                    5. **Copy that code** and paste it back in the terminal when prompted
-                    6. Press Enter to complete the authentication
+                    5. **Copy that code** and paste it back in the terminal window (you may need to click in the lower part of the screen to find the terminal)
+                    6. After pasting the code, press Enter to complete the authentication
                     
-                    ⚠️ **Important:** The page will appear to freeze with "Waiting for authentication..." - 
-                    this is normal. Just follow the steps above in the terminal window.
+                    ⚠️ **Important:** During authentication, the page will display "Waiting for authentication..." - 
+                    this is normal, continue following the steps above.
                     """)
                     try:
+                        # Create a container to display the authentication URL
+                        auth_url_container = st.empty()
+                        auth_url_container.info("Starting authentication process... the URL will appear here in a moment.")
+                        
                         with st.spinner("Waiting for authentication... Please follow the instructions above."):
                             # Initialize the client which will trigger authentication
                             client = GoogleMerchantClient()
+                            
+                            # Try to read the auth URL from the file
+                            try:
+                                # Check if file exists and has content (for up to 10 seconds)
+                                import time
+                                for _ in range(10):
+                                    if os.path.exists('google_auth_url.txt'):
+                                        with open('google_auth_url.txt', 'r') as f:
+                                            auth_url = f.read().strip()
+                                            if auth_url:
+                                                # Display the URL in Streamlit
+                                                auth_url_container.code(
+                                                    f"🔗 Authentication URL:\n\n{auth_url}\n\n"
+                                                    "👆 Copy this URL and open it in your browser.\n"
+                                                    "Then enter the authorization code in the terminal below."
+                                                )
+                                                break
+                                    time.sleep(1)
+                            except Exception as url_error:
+                                logger.error(f"Error reading auth URL: {str(url_error)}")
+                                auth_url_container.error(
+                                    "Could not display the authentication URL here. "
+                                    "Please check the terminal/shell for the URL."
+                                )
                             
                             # Check if we have a valid client after authentication
                             if client.merchant_id:
                                 st.success(f"✅ Successfully authenticated with Google Merchant Center (ID: {client.merchant_id})")
                                 st.balloons()
+                                
+                                # Clean up the auth URL file
+                                if os.path.exists('google_auth_url.txt'):
+                                    os.remove('google_auth_url.txt')
+                                
                                 # Force refresh of the page
                                 st.rerun()
                             else:
@@ -139,6 +172,10 @@ def setup_credentials():
                     except Exception as e:
                         st.error(f"⚠️ Authentication failed: {str(e)}")
                         logger.error(f"Authentication error: {str(e)}", exc_info=True)
+                        
+                        # Clean up the auth URL file if it exists
+                        if os.path.exists('google_auth_url.txt'):
+                            os.remove('google_auth_url.txt')
     
     # Display test data if fully authenticated
     if credentials_exist and token_exists:

@@ -76,6 +76,8 @@ class GoogleMerchantClient:
                     
                     # Get the authorization URL
                     auth_url, _ = flow.authorization_url(prompt='consent')
+                    
+                    # Print to console for reference
                     print("\n")
                     print("="*80)
                     print("AUTHENTICATION REQUIRED")
@@ -86,7 +88,11 @@ class GoogleMerchantClient:
                     print("4. Paste the code here and press Enter:")
                     print("="*80)
                     
-                    # Get the authorization code from user
+                    # Write URL to a file that Streamlit can read
+                    with open('google_auth_url.txt', 'w') as f:
+                        f.write(auth_url)
+                    
+                    # Wait for user to enter the code
                     code = input("Enter authorization code: ").strip()
                     
                     # Exchange authorization code for credentials
