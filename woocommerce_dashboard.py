@@ -407,10 +407,11 @@ try:
                             column_config={
                                 "name":
                                     t('product_name_column'),
-                                "sku":
-                                    st.column_config.TextColumn(
+                                "product_id":
+                                    st.column_config.NumberColumn(
                                         t('product_id_column'),
-                                        help=t('product_id_help')
+                                        help=t('product_id_help'),
+                                        format="%d"  # Format as plain integer without commas
                                     ),
                                 "Total Quantity":
                                     st.column_config.NumberColumn(
