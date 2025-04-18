@@ -8,7 +8,6 @@ from utils.data_processor import DataProcessor
 from utils.export_handler import ExportHandler
 from utils.notification_handler import NotificationHandler
 from utils.translations import Translations
-from utils.google_merchant_client import GoogleMerchantClient, CREDENTIALS_FILE, TOKEN_FILE
 import os
 import sys
 
@@ -70,20 +69,6 @@ try:
     # Initialize language selection (default to Norwegian)
     if 'language' not in st.session_state:
         st.session_state.language = 'no'
-        
-    # Initialize Google Merchant client if credentials exist
-    if 'google_merchant_client' not in st.session_state:
-        if os.path.exists(CREDENTIALS_FILE) and os.path.exists(TOKEN_FILE):
-            try:
-                logger.info("Initializing Google Merchant client")
-                st.session_state.google_merchant_client = GoogleMerchantClient()
-                logger.info("Google Merchant client initialized successfully")
-            except Exception as e:
-                logger.error(f"Failed to initialize Google Merchant client: {str(e)}")
-                st.session_state.google_merchant_client = None
-        else:
-            logger.info("Google Merchant credentials not found, skipping initialization")
-            st.session_state.google_merchant_client = None
         
     # Helper function to get translated text
     def t(key, *args):
@@ -229,13 +214,6 @@ try:
                     st.rerun()
                 
                 # Add a divider
-                st.sidebar.markdown("---")
-                
-                # Google Merchant Center setup link
-                st.sidebar.subheader("🔄 Integrations")
-                merchant_status = "✅ Connected" if st.session_state.google_merchant_client else "⚠️ Not connected"
-                st.sidebar.markdown(f"[Google Merchant Center](/pages/google_merchant_setup) - {merchant_status}")
-                
                 st.sidebar.markdown("---")
 
                 # Debug mode toggle
@@ -696,33 +674,8 @@ try:
                         with subtab2:
                             st.subheader(t('cac_vs_revenue_period', selected_start_date.strftime('%d.%m.%Y'), selected_end_date.strftime('%d.%m.%Y')))
                             
-                            # Fetch Google Merchant data if available
-                            google_merchant_data = None
-                            if st.session_state.google_merchant_client:
-                                try:
-                                    with st.spinner(t('fetching_merchant_data')):
-                                        # Convert to datetime objects
-                                        start_datetime = datetime.combine(selected_start_date, datetime.min.time())
-                                        end_datetime = datetime.combine(selected_end_date, datetime.max.time())
-                                        
-                                        # Get CAC data from Google Merchant
-                                        google_merchant_data = st.session_state.google_merchant_client.get_cac_data_for_period(
-                                            start_datetime, end_datetime
-                                        )
-                                        
-                                        # Show notification that we're using Google data
-                                        st.success(t('using_merchant_data'))
-                                        
-                                except Exception as e:
-                                    logger.error(f"Error fetching Google Merchant data: {str(e)}")
-                                    st.warning(t('merchant_error', str(e)))
-                            
-                            # Calculate CAC metrics (using Google data if available)
-                            cac_metrics = DataProcessor.calculate_cac_metrics(
-                                df, 
-                                ad_cost_per_order=ad_cost_per_order,
-                                google_merchant_data=google_merchant_data
-                            )
+                            # Calculate CAC metrics
+                            cac_metrics = DataProcessor.calculate_cac_metrics(df, ad_cost_per_order=ad_cost_per_order)
                             
                             # Display key metrics
                             col1, col2, col3 = st.columns(3)
