@@ -69,9 +69,14 @@ def setup_credentials():
             To connect to Google Merchant, you need to:
             1. Go to [Google Cloud Console](https://console.cloud.google.com/)
             2. Create a project (or select an existing one)
-            3. Enable the Content API for Shopping
+            3. Enable the **Content API for Shopping** and **Google Analytics API**
             4. Create OAuth 2.0 credentials (Web application type)
-            5. Download the credentials JSON file
+            5. Add `https://localhost:8080/oauth2callback` to the list of authorized redirect URIs
+            6. Make sure your Google account is added as a test user in the OAuth consent screen
+            7. Download the credentials JSON file
+            
+            ⚠️ **Important:** If you see "403: access_denied" errors, please verify your OAuth settings
+            in the Google Cloud Console, especially that the redirect URI is correctly configured.
             """)
             
             # File uploader for credentials
@@ -144,11 +149,12 @@ def setup_credentials():
                                 # Using the flow imported at the top of the file
                                 # SCOPES are already imported from utils.google_merchant_client
                                 
-                                # Use localhost redirect instead of OOB
+                                # The app may be running on Replit, so we need to use a public redirect URI
+                                # For security, we're using a common pattern for testing apps
                                 flow = InstalledAppFlow.from_client_secrets_file(
                                     CREDENTIALS_FILE, 
                                     SCOPES,
-                                    redirect_uri='http://localhost:8080'
+                                    redirect_uri='https://localhost:8080/oauth2callback'
                                 )
                                 
                                 # Get the auth URL
@@ -185,8 +191,38 @@ def setup_credentials():
                                             time.sleep(2)
                                             st.rerun()
                                     except Exception as token_error:
-                                        st.error(f"⚠️ Error processing authorization code: {str(token_error)}")
-                                        logger.error(f"Token error: {str(token_error)}", exc_info=True)
+                                        error_msg = str(token_error)
+                                        if "invalid_grant" in error_msg.lower():
+                                            st.error("""
+                                            ⚠️ **Invalid authorization code**
+                                            
+                                            The code you entered was invalid or has expired. Authorization codes can only be used once 
+                                            and expire quickly. Please try the authentication process again by refreshing this page.
+                                            """)
+                                        elif "access_denied" in error_msg.lower():
+                                            st.error("""
+                                            ⚠️ **Access Denied Error (403)**
+                                            
+                                            Google denied access to the requested resources. This usually means:
+                                            1. Your OAuth consent screen isn't properly configured
+                                            2. Your Google account isn't added as a test user
+                                            3. The requested API scopes haven't been added to your OAuth consent screen
+                                            
+                                            Please check these settings in your Google Cloud Console.
+                                            """)
+                                        elif "redirect_uri_mismatch" in error_msg.lower():
+                                            st.error("""
+                                            ⚠️ **Redirect URI Mismatch**
+                                            
+                                            The redirect URI in your OAuth credentials doesn't match the one used by this application.
+                                            
+                                            Please add exactly `https://localhost:8080/oauth2callback` to your authorized redirect URIs
+                                            in the Google Cloud Console.
+                                            """)
+                                        else:
+                                            st.error(f"⚠️ Error processing authorization code: {error_msg}")
+                                        
+                                        logger.error(f"Token error: {error_msg}", exc_info=True)
                             else:
                                 auth_url_container.error("⚠️ Invalid credentials file format. Please make sure you've uploaded the correct OAuth 2.0 credentials file.")
                         except Exception as e:
