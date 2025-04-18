@@ -195,6 +195,14 @@ class Translations:
                 - Et CAC:LTV-forhold større enn 3:1 indikerer god enhetøkonomi
                 """,
                 'not_enough_trend_data': "Ikke nok data for å vise trendanalyse. Velg en lengre tidsperiode.",
+                'ga_use_actual_costs': "Bruk faktiske annonsekostnader fra Google Analytics",
+                'ga_use_actual_costs_help': "Henter faktiske annonsekostnader fra Google Analytics i stedet for å bruke et estimat",
+                'ga_using_actual_costs': "Bruker faktiske annonsekostnader fra Google Analytics",
+                'ga_using_estimated_costs': "Bruker estimerte annonsekostnader basert på antall ordre",
+                'ga_connection_error': "Kunne ikke hente data fra Google Analytics. Bruker estimerte kostnader i stedet.",
+                'ga_campaign_performance': "Kampanjeytelse (fra Google Analytics)",
+                'ga_campaign_performance_title': "Ytelse per kampanje",
+                'ga_roi_per_campaign': "ROI per kampanje",
                 
                 # Export tab
                 'export_header': 'Eksporter data',
@@ -389,6 +397,14 @@ class Translations:
                 - A CAC:LTV ratio greater than 3:1 indicates good unit economics
                 """,
                 'not_enough_trend_data': "Not enough data to show trend analysis. Please select a longer time period.",
+                'ga_use_actual_costs': "Use actual advertising costs from Google Analytics",
+                'ga_use_actual_costs_help': "Fetches actual advertising costs from Google Analytics instead of using an estimate",
+                'ga_using_actual_costs': "Using actual advertising costs from Google Analytics",
+                'ga_using_estimated_costs': "Using estimated advertising costs based on order count",
+                'ga_connection_error': "Could not fetch data from Google Analytics. Using estimated costs instead.",
+                'ga_campaign_performance': "Campaign performance (from Google Analytics)",
+                'ga_campaign_performance_title': "Performance by campaign",
+                'ga_roi_per_campaign': "ROI per campaign",
                 
                 # Export tab
                 'export_header': 'Export data',

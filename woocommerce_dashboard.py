@@ -674,8 +674,13 @@ try:
                         with subtab2:
                             st.subheader(t('cac_vs_revenue_period', selected_start_date.strftime('%d.%m.%Y'), selected_end_date.strftime('%d.%m.%Y')))
                             
+                            # Option to use Google Analytics data
+                            use_ga_data = st.checkbox(t('ga_use_actual_costs'), 
+                                                value=False, 
+                                                help=t('ga_use_actual_costs_help'))
+                                                
                             # Calculate CAC metrics
-                            cac_metrics = DataProcessor.calculate_cac_metrics(df, ad_cost_per_order=ad_cost_per_order)
+                            cac_metrics = DataProcessor.calculate_cac_metrics(df, ad_cost_per_order=ad_cost_per_order, use_ga_data=use_ga_data)
                             
                             # Display key metrics
                             col1, col2, col3 = st.columns(3)
@@ -719,6 +724,50 @@ try:
                                     help=t('revenue_per_customer_help')
                                 )
                                 
+                            # Show data source info
+                            if cac_metrics['using_ga_data']:
+                                st.success(t('ga_using_actual_costs'))
+                            else:
+                                if use_ga_data:
+                                    st.warning(t('ga_connection_error'))
+                                else:
+                                    st.info(t('ga_using_estimated_costs'))
+                            
+                            # Show campaign performance data if using GA data and data is available
+                            if cac_metrics['using_ga_data'] and not cac_metrics['campaign_data'].empty:
+                                with st.expander("Kampanjeytelse (fra Google Analytics)", expanded=True):
+                                    st.subheader("Ytelse per kampanje")
+                                    # Format the campaign data for display
+                                    display_df = cac_metrics['campaign_data'].copy()
+                                    # Format currency columns
+                                    display_df['Ad_Cost'] = display_df['Ad_Cost'].apply(lambda x: f"kr {x:.2f}")
+                                    display_df['Revenue'] = display_df['Revenue'].apply(lambda x: f"kr {x:.2f}")
+                                    # Format percentage columns
+                                    display_df['ROI'] = display_df['ROI'].apply(lambda x: f"{x:.1f}%" if not pd.isna(x) else "N/A")
+                                    # Format other columns
+                                    display_df['CPA'] = display_df['CPA'].apply(lambda x: f"kr {x:.2f}" if not pd.isna(x) else "N/A")
+                                    display_df['ROAS'] = display_df['ROAS'].apply(lambda x: f"{x:.2f}x" if not pd.isna(x) else "N/A")
+                                    # Rename columns for display
+                                    display_df.columns = ['Kampanje', 'Annonsekostnad', 'Transaksjoner', 'Inntekt', 'ROI', 'CPA', 'ROAS']
+                                    
+                                    # Display the table
+                                    st.table(display_df)
+                                    
+                                    # Add campaign performance charts if there's more than one campaign
+                                    if len(display_df) > 1:
+                                        # Create bar chart for campaign performance
+                                        raw_df = cac_metrics['campaign_data']
+                                        fig = px.bar(
+                                            raw_df,
+                                            x='Campaign',
+                                            y='ROI',
+                                            title='ROI per kampanje',
+                                            labels={'Campaign': 'Kampanje', 'ROI': 'ROI (%)'},
+                                            color='ROI',
+                                            color_continuous_scale='RdYlGn'
+                                        )
+                                        st.plotly_chart(fig, use_container_width=True)
+                            
                             # Display trend charts
                             if not cac_metrics['cac_trend_data'].empty and len(cac_metrics['cac_trend_data']) > 1:
                                 col1, col2 = st.columns(2)
