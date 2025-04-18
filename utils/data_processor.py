@@ -48,11 +48,11 @@ class DataProcessor:
         # Count orders excluding pending status
         order_count = len(df[df['status'] != 'pending'])  # Filter out pending orders
 
-        # Calculate revenues including VAT (should match 5,946.00)
-        total_revenue_incl_vat = 5946.00  # Corrected value as per customer requirement
+        # Calculate revenues
+        total_revenue_incl_vat = df['total'].sum()  # Total revenue including shipping and VAT
 
-        # Calculate revenue excluding VAT (should match WooCommerce value of 7,065.74)
-        total_revenue_excl_vat = 7065.74  # Corrected value as per WooCommerce Analytics
+        # Calculate revenue excluding VAT by using subtotal which is already excluding VAT
+        total_revenue_excl_vat = df['subtotal'].sum()  # Use subtotal which is already excluding VAT
 
         # Calculate profit using revenue excluding VAT and cost excluding VAT and shipping
         total_profit = total_revenue_excl_vat - total_cost
@@ -74,7 +74,6 @@ class DataProcessor:
             'total_revenue_excl_vat': total_revenue_excl_vat,
             'average_revenue': float(avg_revenue),
             'shipping_total': shipping_total,  # Total shipping costs including VAT
-            'shipping_base': shipping_base,  # Base shipping costs excluding VAT - Added for isolated shipping costs display
             'total_tax': total_tax,
             'total_profit': total_profit,
             'profit_margin': profit_margin,

@@ -67,8 +67,6 @@ class Translations:
                 'total_profit_help': 'Profit calculated using revenue (excl. VAT) minus product costs',
                 'total_shipping': 'Total frakt',
                 'total_shipping_help': 'Total shipping costs including VAT',
-                'isolated_shipping': 'Frakt (eks. MVA)',
-                'isolated_shipping_help': 'Total shipping costs excluding VAT',
                 'total_tax': 'Total MVA',
                 'total_tax_help': 'Total VAT collected (including shipping VAT)',
                 'profit_margin': 'Fortjenestemargin',
@@ -81,11 +79,10 @@ class Translations:
                 # Explanations
                 'calculation_info': """
                 💡 Kalkulasjon av omsetning og profit:
-                - Total omsetning (ink. MVA): 5,946.00 kr inkludert MVA
-                - Total omsetning (eks. MVA): 7,065.74 kr ekskludert MVA
-                - Frakt (eks. MVA): Fraktkostnader ekskludert MVA
-                - Total frakt: Fraktkostnader inkludert MVA
-                - Kostnad: Total varekostnad ekskludert MVA og frakt
+                - Total omsetning (ink. MVA): Totalt produktsalg inkludert MVA, eks. frakt
+                - Total omsetning (eks. MVA): Total omsetning eks. MVA og frakt.
+                - Fraktkostnader vises ekskl. mva
+                - Kostnad: Total varekostnad (eks. MVA)
                 """,
                 
                 # Products section
@@ -208,8 +205,6 @@ class Translations:
                 'total_profit_help': 'Profit calculated using revenue (excl. VAT) minus product costs',
                 'total_shipping': 'Total shipping',
                 'total_shipping_help': 'Total shipping costs including VAT',
-                'isolated_shipping': 'Shipping (excl. VAT)',
-                'isolated_shipping_help': 'Total shipping costs excluding VAT',
                 'total_tax': 'Total VAT',
                 'total_tax_help': 'Total VAT collected (including shipping VAT)',
                 'profit_margin': 'Profit margin',
@@ -222,11 +217,10 @@ class Translations:
                 # Explanations
                 'calculation_info': """
                 💡 Calculation of revenue and profit:
-                - Total revenue (incl. VAT): 5,946.00 kr including VAT
-                - Total revenue (excl. VAT): 7,065.74 kr excluding VAT
-                - Shipping (excl. VAT): Shipping costs excluding VAT
-                - Total shipping: Shipping costs including VAT
-                - Cost of goods sold: Total product cost excluding VAT and shipping
+                - Total revenue (incl. VAT): Total product sales including VAT, excl. shipping
+                - Total revenue (excl. VAT): Total revenue excl. VAT and shipping.
+                - Shipping costs are shown excl. VAT
+                - Cost: Total product cost (excl. VAT)
                 """,
                 
                 # Products section
