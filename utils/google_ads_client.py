@@ -58,6 +58,17 @@ class GoogleAdsClient:
             
             # Check if all required credentials are available
             if all([client_id, client_secret, developer_token, refresh_token]):
+                # Format customer ID (remove non-digit characters)
+                if customer_id:
+                    formatted_customer_id = ''.join(filter(str.isdigit, customer_id))
+                else:
+                    formatted_customer_id = None
+                
+                if formatted_customer_id:
+                    logger.info(f"Using formatted customer ID: {formatted_customer_id}")
+                else:
+                    logger.warning("No customer ID available or it contains no digits")
+                    
                 # Initialize the client
                 logger.info("Initializing Google Ads client...")
                 credentials = {
@@ -70,6 +81,7 @@ class GoogleAdsClient:
                 
                 # Create the client instance
                 self.client = GoogleAdsClient.load_from_dict(credentials)
+                self.customer_id = formatted_customer_id  # Store formatted customer ID
                 logger.info("Google Ads client initialized successfully")
                 self.api_ready = True
             else:
@@ -195,7 +207,16 @@ class GoogleAdsClient:
                 # Execute the query
                 ga_service = client.get_service("GoogleAdsService")
                 search_request = client.get_type("SearchGoogleAdsRequest")
-                search_request.customer_id = customer_id
+                
+                # Format customer ID correctly by removing any non-numeric characters
+                if customer_id:
+                    formatted_customer_id = ''.join(filter(str.isdigit, customer_id))
+                    logger.info(f"Using customer ID: {formatted_customer_id} (original: {customer_id})")
+                else:
+                    logger.error("Customer ID is missing")
+                    raise ValueError("Google Ads API requires a customer ID")
+                
+                search_request.customer_id = formatted_customer_id
                 search_request.query = query
                 search_request.page_size = 1000  # Adjust as needed
                 
