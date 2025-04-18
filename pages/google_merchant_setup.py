@@ -165,9 +165,12 @@ def setup_credentials():
                                     f"🔗 Authentication URL:\n\n{auth_url}\n\n"
                                     "👆 Copy this URL and open it in your browser.\n"
                                     "After logging in, you'll be redirected to localhost (which may show an error page).\n"
-                                    "Look in the browser's address bar for a URL like: http://localhost:8080/?code=4/XXXX\n"
-                                    "Copy the entire 'code' parameter (everything after 'code=' and before any '&' character)\n"
-                                    "and paste it in the box below."
+                                    "Look in the browser's address bar for a URL that looks like:\n"
+                                    "http://localhost:8080/?code=4/XXXX...\n\n"
+                                    "ONLY copy the value of the 'code' parameter (everything after 'code=' and before any '&' character)\n"
+                                    "For example, if you see: http://localhost:8080/?code=4/P7q-abcdef123456&scope=...\n"
+                                    "You should only copy: 4/P7q-abcdef123456\n\n"
+                                    "Paste ONLY this code in the box below. Do NOT paste the full URL."
                                 )
                                 
                                 # Get the authorization code from the user
@@ -177,52 +180,118 @@ def setup_credentials():
                                 )
                                 
                                 if auth_code:
-                                    try:
-                                        with st.spinner("Completing authentication..."):
-                                            # Exchange code for credentials
-                                            flow.fetch_token(code=auth_code)
-                                            
-                                            # Save credentials to token file
-                                            with open(TOKEN_FILE, 'w') as token:
-                                                token.write(flow.credentials.to_json())
-                                                
-                                            st.success("✅ Authentication successful! Refreshing page...")
-                                            st.balloons()
-                                            time.sleep(2)
-                                            st.rerun()
-                                    except Exception as token_error:
-                                        error_msg = str(token_error)
-                                        if "invalid_grant" in error_msg.lower():
-                                            st.error("""
-                                            ⚠️ **Invalid authorization code**
-                                            
-                                            The code you entered was invalid or has expired. Authorization codes can only be used once 
-                                            and expire quickly. Please try the authentication process again by refreshing this page.
-                                            """)
-                                        elif "access_denied" in error_msg.lower():
-                                            st.error("""
-                                            ⚠️ **Access Denied Error (403)**
-                                            
-                                            Google denied access to the requested resources. This usually means:
-                                            1. Your OAuth consent screen isn't properly configured
-                                            2. Your Google account isn't added as a test user
-                                            3. The requested API scopes haven't been added to your OAuth consent screen
-                                            
-                                            Please check these settings in your Google Cloud Console.
-                                            """)
-                                        elif "redirect_uri_mismatch" in error_msg.lower():
-                                            st.error("""
-                                            ⚠️ **Redirect URI Mismatch**
-                                            
-                                            The redirect URI in your OAuth credentials doesn't match the one used by this application.
-                                            
-                                            Please add exactly `https://localhost:8080/oauth2callback` to your authorized redirect URIs
-                                            in the Google Cloud Console.
-                                            """)
-                                        else:
-                                            st.error(f"⚠️ Error processing authorization code: {error_msg}")
+                                    # Clean up the authorization code if needed
+                                    # The error "OAuth 2 parameters can only have a single value: client_id" 
+                                    # occurs when the user copies the entire URL instead of just the code
+                                    
+                                    # If the user entered the full URL instead of just the code part
+                                    if "client_id" in auth_code:
+                                        st.warning("""
+                                        It looks like you've pasted the entire URL instead of just the authorization code.
                                         
-                                        logger.error(f"Token error: {error_msg}", exc_info=True)
+                                        Please copy ONLY the code parameter from the URL (the part after `code=` and before any `&` character).
+                                        """)
+                                        # Extract just the code parameter if possible
+                                        try:
+                                            if "code=" in auth_code:
+                                                code_part = auth_code.split("code=")[1]
+                                                if "&" in code_part:
+                                                    auth_code = code_part.split("&")[0]
+                                                    st.info(f"Automatically extracted code: {auth_code[:10]}...")
+                                                else:
+                                                    auth_code = code_part
+                                                    st.info(f"Automatically extracted code: {auth_code[:10]}...")
+                                        except Exception as e:
+                                            st.error(f"Could not automatically extract the code. Please manually copy only the code parameter.")
+                                            logger.error(f"Code extraction error: {str(e)}", exc_info=True)
+                                            auth_code = None
+                                    
+                                    # Process the authorization code if provided
+                                    if auth_code:
+                                        # Clean up the authorization code if needed
+                                        # The error "OAuth 2 parameters can only have a single value: client_id" 
+                                        # occurs when the user copies the entire URL instead of just the code
+                                        
+                                        # If the user entered the full URL instead of just the code part
+                                        if "client_id" in auth_code:
+                                            st.warning("""
+                                            It looks like you've pasted the entire URL instead of just the authorization code.
+                                            
+                                            Please copy ONLY the code parameter from the URL (the part after `code=` and before any `&` character).
+                                            """)
+                                            # Extract just the code parameter if possible
+                                            try:
+                                                if "code=" in auth_code:
+                                                    code_part = auth_code.split("code=")[1]
+                                                    if "&" in code_part:
+                                                        auth_code = code_part.split("&")[0]
+                                                        st.info(f"Automatically extracted code: {auth_code[:10]}...")
+                                                    else:
+                                                        auth_code = code_part
+                                                        st.info(f"Automatically extracted code: {auth_code[:10]}...")
+                                            except Exception as e:
+                                                st.error(f"Could not automatically extract the code. Please manually copy only the code parameter.")
+                                                logger.error(f"Code extraction error: {str(e)}", exc_info=True)
+                                                auth_code = None
+                                        
+                                        # Continue with the authentication process if we have a clean code
+                                        if auth_code:
+                                            try:
+                                                with st.spinner("Completing authentication..."):
+                                                    # Exchange code for credentials
+                                                    flow.fetch_token(code=auth_code)
+                                                    
+                                                    # Save credentials to token file
+                                                    with open(TOKEN_FILE, 'w') as token:
+                                                        token.write(flow.credentials.to_json())
+                                                        
+                                                    st.success("✅ Authentication successful! Refreshing page...")
+                                                    st.balloons()
+                                                    time.sleep(2)
+                                                    st.rerun()
+                                            except Exception as token_error:
+                                                error_msg = str(token_error)
+                                                if "invalid_grant" in error_msg.lower():
+                                                    st.error("""
+                                                    ⚠️ **Invalid authorization code**
+                                                    
+                                                    The code you entered was invalid or has expired. Authorization codes can only be used once 
+                                                    and expire quickly. Please try the authentication process again by refreshing this page.
+                                                    """)
+                                                elif "access_denied" in error_msg.lower():
+                                                    st.error("""
+                                                    ⚠️ **Access Denied Error (403)**
+                                                    
+                                                    Google denied access to the requested resources. This usually means:
+                                                    1. Your OAuth consent screen isn't properly configured
+                                                    2. Your Google account isn't added as a test user
+                                                    3. The requested API scopes haven't been added to your OAuth consent screen
+                                                    
+                                                    Please check these settings in your Google Cloud Console.
+                                                    """)
+                                                elif "redirect_uri_mismatch" in error_msg.lower():
+                                                    st.error("""
+                                                    ⚠️ **Redirect URI Mismatch**
+                                                    
+                                                    The redirect URI in your OAuth credentials doesn't match the one used by this application.
+                                                    
+                                                    Please add exactly `https://localhost:8080/oauth2callback` to your authorized redirect URIs
+                                                    in the Google Cloud Console.
+                                                    """)
+                                                elif "client_id" in error_msg.lower():
+                                                    st.error("""
+                                                    ⚠️ **OAuth 2 parameter error**
+                                                    
+                                                    There's an issue with the client_id parameter. This usually happens when:
+                                                    1. You've pasted the full URL instead of just the code
+                                                    2. The credentials file is malformed or invalid
+                                                    
+                                                    Please make sure you're only pasting the authorization code, not the entire URL.
+                                                    """)
+                                                else:
+                                                    st.error(f"⚠️ Error processing authorization code: {error_msg}")
+                                                
+                                                logger.error(f"Token error: {error_msg}", exc_info=True)
                             else:
                                 auth_url_container.error("⚠️ Invalid credentials file format. Please make sure you've uploaded the correct OAuth 2.0 credentials file.")
                         except Exception as e:
