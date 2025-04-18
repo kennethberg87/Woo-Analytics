@@ -407,6 +407,11 @@ try:
                             column_config={
                                 "name":
                                     t('product_name_column'),
+                                "sku":
+                                    st.column_config.TextColumn(
+                                        t('sku_column'),
+                                        help=t('sku_help')
+                                    ),
                                 "product_id":
                                     st.column_config.NumberColumn(
                                         t('product_id_column'),
