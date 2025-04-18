@@ -389,9 +389,14 @@ class DataProcessor:
                         {'Date': date, 'Ad_Spend': spend}
                         for date, spend in ad_spend_data['spend_by_date'].items()
                     ])
+                    # For logging and debugging
+                    import logging
+                    logging.getLogger(__name__).info(f"Using Google Analytics data: Total spend: {total_ad_spend}, Daily data points: {len(daily_spend)}")
                 else:
                     # Fall back to the fixed cost approach
                     total_ad_spend = len(customers_df) * ad_cost_per_order
+                    # Initialize empty daily_spend for later use
+                    daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
@@ -399,9 +404,13 @@ class DataProcessor:
                 
                 # Fall back to the fixed cost approach
                 total_ad_spend = len(customers_df) * ad_cost_per_order
+                # Initialize empty daily_spend for later use
+                daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
         else:
             # Use fixed cost per order if not using GA data
             total_ad_spend = len(customers_df) * ad_cost_per_order
+            # Initialize empty daily_spend for later use
+            daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
         
         # Calculate CAC (Customer Acquisition Cost)
         # We'll only count acquisition cost for new customers

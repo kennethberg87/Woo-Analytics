@@ -37,13 +37,15 @@ class GoogleAnalyticsClient:
         """
         self.client = None
         self.property_id = os.environ.get('GOOGLE_ANALYTICS_PROPERTY_ID')
-        self.credentials_json = os.environ.get('GOOGLE_ANALYTICS_CREDENTIALS')
+        self.credentials_str = os.environ.get('GOOGLE_ANALYTICS_CREDENTIALS')
         
         # Log initialization info
         logger.info("Initializing Google Analytics client")
         if not self.property_id:
             logger.warning("Google Analytics Property ID not found in environment variables")
-        
+        if not self.credentials_str:
+            logger.warning("Google Analytics credentials not found in environment variables")
+            
         # Try to initialize the client with credentials
         try:
             self._initialize_client()
@@ -57,19 +59,29 @@ class GoogleAnalyticsClient:
         Raises:
             Exception: If credentials are not available or invalid
         """
-        if not self.credentials_json or not self.property_id:
+        if not self.credentials_str or not self.property_id:
             logger.warning("Missing Google Analytics credentials or property ID")
             return
         
         try:
+            # Parse the JSON credentials from the environment variable
+            import json
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            credentials_json = json.loads(self.credentials_str)
+            
             # Try to initialize with service account credentials from env var
             scopes = ['https://www.googleapis.com/auth/analytics.readonly']
             credentials = Credentials.from_service_account_info(
-                self.credentials_json, 
+                credentials_json, 
                 scopes=scopes
             )
             self.client = BetaAnalyticsDataClient(credentials=credentials)
             logger.info("Successfully initialized Google Analytics client")
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parsing Google Analytics credentials JSON: {str(e)}", exc_info=True)
+            raise
         except Exception as e:
             logger.error(f"Error initializing GA client with credentials: {str(e)}", exc_info=True)
             raise
