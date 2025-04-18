@@ -484,21 +484,19 @@ try:
                         if not df.empty:
                             invoice_data = []
                             for _, order in df.iterrows():
-                                invoice_details = st.session_state.woo_client.get_invoice_details(
-                                    order['meta_data'])
-                                if invoice_details['invoice_number']:
+                                # Use the invoice data directly from the DataFrame instead of meta_data
+                                if order['invoice_number']:
                                     invoice_url = st.session_state.woo_client.get_invoice_url(
                                         order['order_id'])
                                     invoice_data.append({
                                         t('invoice_number_column'):
-                                            invoice_details['invoice_number'],
+                                            order['invoice_number'],
                                         t('order_number_column'):
-                                            invoice_details['order_number'],
+                                            order['order_number'],
                                         t('invoice_date_column'):
-                                            invoice_details['invoice_date'],
+                                            order['invoice_date'],
                                         t('status_column'):
-                                            st.session_state.woo_client.get_order_status_display(
-                                                order['status']),
+                                            order['status'],
                                         t('total_column'):
                                             order['total'],
                                         'URL':
