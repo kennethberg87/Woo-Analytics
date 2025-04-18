@@ -28,18 +28,60 @@ class GoogleAdsClient:
         
         Attempts to load credentials from environment variable or credentials file.
         """
-        self.credentials = None
+        self.client = None
         self.api_ready = False
         
-        # Get credentials from environment variable
-        google_ads_creds = os.environ.get('GOOGLE_ADS_CREDENTIALS')
-        if google_ads_creds:
-            try:
-                self.credentials = json.loads(google_ads_creds)
-                logger.info("Loaded Google Ads credentials from environment variable")
+        # Check for required libraries
+        libs_available, error_msg = self._check_required_libraries()
+        if not libs_available:
+            logger.error(f"Google Ads API libraries not available: {error_msg}")
+            return
+            
+        try:
+            # Import here to avoid import errors if the package is not installed
+            from google.ads.googleads.client import GoogleAdsClient
+            
+            # Check if we have the individual API credentials
+            client_id = os.environ.get("GOOGLE_ADS_CLIENT_ID")
+            client_secret = os.environ.get("GOOGLE_ADS_CLIENT_SECRET")
+            developer_token = os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN")
+            customer_id = os.environ.get("GOOGLE_ADS_CUSTOMER_ID")
+            refresh_token = os.environ.get("GOOGLE_ADS_REFRESH_TOKEN")
+            
+            # Log credential availability (without showing values)
+            logger.info("Checking Google Ads API credentials availability:")
+            logger.info(f"- Client ID: {'Present' if client_id else 'Missing'}")
+            logger.info(f"- Client Secret: {'Present' if client_secret else 'Missing'}")
+            logger.info(f"- Developer Token: {'Present' if developer_token else 'Missing'}")
+            logger.info(f"- Customer ID: {'Present' if customer_id else 'Missing'}")
+            logger.info(f"- Refresh Token: {'Present' if refresh_token else 'Missing'}")
+            
+            # Check if all required credentials are available
+            if all([client_id, client_secret, developer_token, refresh_token]):
+                # Initialize the client
+                logger.info("Initializing Google Ads client...")
+                credentials = {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "developer_token": developer_token,
+                    "refresh_token": refresh_token,
+                    "use_proto_plus": True
+                }
+                
+                # Create the client instance
+                self.client = GoogleAdsClient.load_from_dict(credentials)
+                logger.info("Google Ads client initialized successfully")
                 self.api_ready = True
-            except Exception as e:
-                logger.error(f"Failed to parse Google Ads credentials from environment: {str(e)}")
+            else:
+                missing = []
+                if not client_id: missing.append("GOOGLE_ADS_CLIENT_ID")
+                if not client_secret: missing.append("GOOGLE_ADS_CLIENT_SECRET")
+                if not developer_token: missing.append("GOOGLE_ADS_DEVELOPER_TOKEN")
+                if not refresh_token: missing.append("GOOGLE_ADS_REFRESH_TOKEN")
+                logger.warning(f"Missing Google Ads credentials: {', '.join(missing)}")
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize Google Ads client: {str(e)}", exc_info=True)
     
     def _check_required_libraries(self):
         """Check if required libraries are available"""
@@ -111,18 +153,25 @@ class GoogleAdsClient:
                 raise ValueError(error_msg)
                 
             try:
-                # Initialize Google Ads client
-                credentials = {
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                    "developer_token": developer_token,
-                    "refresh_token": refresh_token,
-                    "use_proto_plus": True
-                }
-                
-                logger.info("Initializing Google Ads client with credentials...")
-                client = GoogleAdsClient.load_from_dict(credentials)
-                logger.info("Successfully initialized Google Ads client")
+                # Use the pre-initialized client if available
+                if self.client is not None:
+                    logger.info("Using pre-initialized Google Ads client")
+                    client = self.client
+                else:
+                    # Initialize Google Ads client
+                    credentials = {
+                        "client_id": client_id,
+                        "client_secret": client_secret,
+                        "developer_token": developer_token,
+                        "refresh_token": refresh_token,
+                        "use_proto_plus": True
+                    }
+                    
+                    logger.info("Initializing Google Ads client with credentials...")
+                    client = GoogleAdsClient.load_from_dict(credentials)
+                    logger.info("Successfully initialized Google Ads client")
+                    # Save for future use
+                    self.client = client
                 
                 # Format date range for the query
                 start_date_str = start_date.strftime("%Y-%m-%d")
