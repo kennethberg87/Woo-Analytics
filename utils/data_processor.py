@@ -148,7 +148,173 @@ class DataProcessor:
         customers_df = customers_df.sort_values('Order Date', ascending=False)
 
         return customers_df
+        
+    @staticmethod
+    def get_customer_insights(df):
+        """Calculate enhanced customer insights from order data"""
+        if df.empty:
+            return {
+                'repeat_customers': 0,
+                'new_customers': 0,
+                'customer_retention': 0,
+                'avg_order_value': 0,
+                'customer_lifetime_value': 0,
+                'top_cities': pd.DataFrame(),
+                'payment_distribution': {},
+                'shipping_distribution': {}
+            }
+            
+        # Extract customer information
+        customer_data = []
+        city_data = []
+        payment_methods = []
+        shipping_methods = []
+        
+        for _, order in df.iterrows():
+            if 'billing' in order and isinstance(order['billing'], dict):
+                email = order['billing'].get('email', '')
+                first_name = order['billing'].get('first_name', '')
+                last_name = order['billing'].get('last_name', '')
+                city = order['billing'].get('city', '')
+                
+                customer = {
+                    'Name': f"{first_name} {last_name}".strip(),
+                    'Email': email,
+                    'Order Date': order['date'],
+                    'Order Total': float(order['total']),
+                    'Order ID': order['order_id']
+                }
+                customer_data.append(customer)
+                
+                # Add city data
+                if city:
+                    city_data.append({
+                        'City': city,
+                        'Email': email,
+                        'Order ID': order['order_id'],
+                        'Order Total': float(order['total'])
+                    })
+                
+                # Add payment and shipping method data
+                payment_methods.append(order.get('dintero_payment_method', 'Unknown'))
+                shipping_methods.append(order.get('shipping_method', 'Unknown'))
+        
+        if not customer_data:
+            return {
+                'repeat_customers': 0,
+                'new_customers': 0,
+                'customer_retention': 0,
+                'avg_order_value': 0,
+                'customer_lifetime_value': 0,
+                'top_cities': pd.DataFrame(),
+                'payment_distribution': {},
+                'shipping_distribution': {}
+            }
+            
+        # Create DataFrames
+        customers_df = pd.DataFrame(customer_data)
+        city_df = pd.DataFrame(city_data) if city_data else pd.DataFrame()
+        
+        # Calculate metrics
+        # 1. Unique customers count
+        unique_customers = customers_df['Email'].nunique()
+        
+        # 2. Customer order frequency
+        customer_orders = customers_df.groupby('Email').size().reset_index(name='order_count')
+        
+        # 3. Repeat customers (more than one order)
+        repeat_customers = customer_orders[customer_orders['order_count'] > 1].shape[0]
+        
+        # 4. New customers (just one order)
+        new_customers = customer_orders[customer_orders['order_count'] == 1].shape[0]
+        
+        # 5. Customer retention rate
+        customer_retention = (repeat_customers / unique_customers * 100) if unique_customers > 0 else 0
+        
+        # 6. Average order value
+        avg_order_value = customers_df['Order Total'].mean() if len(customers_df) > 0 else 0
+        
+        # 7. Customer lifetime value
+        customer_value = customers_df.groupby('Email')['Order Total'].sum().mean() if unique_customers > 0 else 0
+        
+        # 8. Top cities by order count
+        if not city_df.empty:
+            top_cities = city_df.groupby('City').agg({
+                'Order ID': 'nunique', 
+                'Email': 'nunique'
+            }).reset_index()
+            top_cities.columns = ['City', 'Order Count', 'Customer Count']
+            top_cities = top_cities.sort_values('Order Count', ascending=False).head(5)
+        else:
+            top_cities = pd.DataFrame()
+        
+        # 9. Payment method distribution
+        payment_dist = {}
+        for method in payment_methods:
+            if method in payment_dist:
+                payment_dist[method] += 1
+            else:
+                payment_dist[method] = 1
+        
+        # 10. Shipping method distribution
+        shipping_dist = {}
+        for method in shipping_methods:
+            if method in shipping_dist:
+                shipping_dist[method] += 1
+            else:
+                shipping_dist[method] = 1
+        
+        # Return all insights
+        return {
+            'repeat_customers': repeat_customers,
+            'new_customers': new_customers,
+            'customer_retention': customer_retention,
+            'avg_order_value': avg_order_value,
+            'customer_lifetime_value': customer_value,
+            'top_cities': top_cities,
+            'payment_distribution': payment_dist,
+            'shipping_distribution': shipping_dist
+        }
 
+    @staticmethod
+    def create_distribution_chart(distribution_data, title, color_sequence=None):
+        """Create a pie chart for distributions (payment methods, shipping methods, etc.)"""
+        if not distribution_data:
+            return None
+            
+        # Convert dictionary to DataFrame
+        df = pd.DataFrame(list(distribution_data.items()), columns=['Category', 'Count'])
+        
+        # Calculate percentages
+        total = df['Count'].sum()
+        df['Percentage'] = df['Count'] / total * 100
+        
+        # Create pie chart
+        fig = px.pie(
+            df, 
+            values='Count', 
+            names='Category', 
+            title=title,
+            hover_data=['Percentage'],
+            labels={'Percentage': 'Percentage (%)', 'Count': 'Number of Orders'},
+            color_discrete_sequence=color_sequence
+        )
+        
+        # Update layout
+        fig.update_layout(
+            height=400,
+            margin=dict(l=20, r=20, t=40, b=20),
+            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
+        )
+        
+        # Update trace hover template to show percentages
+        fig.update_traces(
+            textinfo='percent+label',
+            hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{customdata[0]:.1f}%'
+        )
+        
+        return fig
+    
     @staticmethod
     def create_revenue_chart(df, period='daily'):
         """Create a line chart for revenue with different time periods"""

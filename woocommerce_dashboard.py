@@ -334,9 +334,10 @@ try:
                     return
 
                 # Create tabs
-                tab1, tab2, tab3, tab4 = st.tabs([
+                tab1, tab2, tab3, tab4, tab5 = st.tabs([
                     t('dashboard_tab'), 
                     t('invoices_tab'), 
+                    t('customer_insights_tab'),
                     t('results_tab'), 
                     t('export_tab')
                 ])

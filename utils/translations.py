@@ -55,6 +55,7 @@ class Translations:
                 # Tabs
                 'dashboard_tab': '📊 Dashboard',
                 'invoices_tab': '🧾 Fakturaer',
+                'customer_insights_tab': '👥 Kundeanalyse',
                 'results_tab': '📈 Resultat',
                 'export_tab': '📤 Eksporter',
                 
@@ -112,6 +113,28 @@ class Translations:
                 'order_total': 'Ordretotal',
                 'order_total_help': 'Totalsum for ordren',
                 'no_customer_data': 'Ingen kundedata tilgjengelig for valgt periode',
+                
+                # Customer Insights section
+                'customer_insights_header': '👥 Kundeanalyse',
+                'customer_insights_period': 'Kundeanalyse for perioden: {} til {}',
+                'repeat_customers': 'Gjenkjøpskunder',
+                'repeat_customers_help': 'Kunder som har handlet mer enn én gang',
+                'new_customers': 'Nye kunder',
+                'new_customers_help': 'Kunder som har handlet for første gang i valgt periode',
+                'customer_retention': 'Kundelojalitet',
+                'customer_retention_help': 'Prosentandel av gjenkjøpskunder',
+                'avg_order_value': 'Gjennomsnittlig ordreverdi',
+                'avg_order_value_help': 'Gjennomsnittlig beløp per ordre',
+                'top_cities': 'Topp byer',
+                'top_cities_help': 'De mest populære byene basert på antall ordre',
+                'customer_lifetime_value': 'Kundeverdi (LTV)',
+                'customer_lifetime_value_help': 'Gjennomsnittlig totalverdi per kunde over tid',
+                'city_distribution': 'Geografisk fordeling',
+                'city_name': 'By',
+                'order_count_by_city': 'Antall ordre',
+                'customer_count_by_city': 'Antall kunder',
+                'payment_distribution': 'Fordeling av betalingsmetoder',
+                'shipping_distribution': 'Fordeling av fraktmetoder',
                 
                 # Invoices section
                 'invoices_header': 'Fakturaer',
@@ -197,6 +220,7 @@ class Translations:
                 # Tabs
                 'dashboard_tab': '📊 Dashboard',
                 'invoices_tab': '🧾 Invoices',
+                'customer_insights_tab': '👥 Customer Insights',
                 'results_tab': '📈 Results',
                 'export_tab': '📤 Export',
                 
@@ -254,6 +278,28 @@ class Translations:
                 'order_total': 'Order total',
                 'order_total_help': 'Total amount for the order',
                 'no_customer_data': 'No customer data available for the selected date range',
+                
+                # Customer Insights section
+                'customer_insights_header': '👥 Customer Insights',
+                'customer_insights_period': 'Customer insights for the period: {} to {}',
+                'repeat_customers': 'Repeat Customers',
+                'repeat_customers_help': 'Customers who have made more than one purchase',
+                'new_customers': 'New Customers',
+                'new_customers_help': 'Customers who made their first purchase in the selected period',
+                'customer_retention': 'Customer Retention',
+                'customer_retention_help': 'Percentage of repeat customers',
+                'avg_order_value': 'Average Order Value',
+                'avg_order_value_help': 'Average amount per order',
+                'top_cities': 'Top Cities',
+                'top_cities_help': 'Most popular cities based on number of orders',
+                'customer_lifetime_value': 'Customer Lifetime Value (LTV)',
+                'customer_lifetime_value_help': 'Average total value per customer over time',
+                'city_distribution': 'Geographic Distribution',
+                'city_name': 'City',
+                'order_count_by_city': 'Order Count',
+                'customer_count_by_city': 'Customer Count',
+                'payment_distribution': 'Payment Method Distribution',
+                'shipping_distribution': 'Shipping Method Distribution',
                 
                 # Invoices section
                 'invoices_header': 'Invoices',
