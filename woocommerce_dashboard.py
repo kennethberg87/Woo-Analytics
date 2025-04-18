@@ -342,7 +342,7 @@ try:
                 ])
 
                 with tab1:
-                    # Display metrics in columns (change from 4 columns to 5)
+                    # Display metrics in columns with 5 columns
                     col1, col2, col3, col4, col5 = st.columns(5)
                     with col1:
                         st.metric(
@@ -361,12 +361,16 @@ try:
                         )
                     with col4:
                         st.metric(
+                            t('shipping_costs'),
+                            f"kr {metrics['shipping_costs']:,.2f}",
+                            help=t('shipping_costs_help')
+                        )
+                    with col5:
+                        st.metric(
                             t('total_shipping'),
                             f"kr {metrics['shipping_total']:,.2f}",
                             help=t('total_shipping_help')
                         )
-                    with col5:
-                        pass
 
                     # Add second row of metrics
                     col5, col6, col7, col8 = st.columns(4)

@@ -74,6 +74,7 @@ class DataProcessor:
             'total_revenue_excl_vat': total_revenue_excl_vat,
             'average_revenue': float(avg_revenue),
             'shipping_total': shipping_total,  # Total shipping costs including VAT
+            'shipping_costs': shipping_base,   # Isolated shipping costs excluding VAT
             'total_tax': total_tax,
             'total_profit': total_profit,
             'profit_margin': profit_margin,
