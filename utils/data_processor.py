@@ -369,10 +369,18 @@ class DataProcessor:
         campaign_data = pd.DataFrame()
         using_ga_data = False
         
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        ga_error_message = None
+        
         if use_ga_data and min_date and max_date:
             try:
                 # Import the Google Analytics client
                 from utils.google_analytics_client import GoogleAnalyticsClient
+                
+                # Log attempt to use Google Analytics
+                logger.info(f"Attempting to use Google Analytics data for period {min_date} to {max_date}")
                 
                 # Create client and get ad cost data
                 ga_client = GoogleAnalyticsClient()
@@ -389,27 +397,42 @@ class DataProcessor:
                         {'Date': date, 'Ad_Spend': spend}
                         for date, spend in ad_spend_data['spend_by_date'].items()
                     ])
-                    # For logging and debugging
-                    import logging
-                    logging.getLogger(__name__).info(f"Using Google Analytics data: Total spend: {total_ad_spend}, Daily data points: {len(daily_spend)}")
+                    
+                    # Log success
+                    logger.info(f"Successfully retrieved Google Analytics data: Total spend: {total_ad_spend:.2f} NOK, Daily data points: {len(daily_spend)}")
                 else:
+                    # Log no data found
+                    ga_error_message = "No advertising cost data found in Google Analytics for the selected period"
+                    logger.warning(ga_error_message)
+                    
                     # Fall back to the fixed cost approach
                     total_ad_spend = len(customers_df) * ad_cost_per_order
                     # Initialize empty daily_spend for later use
                     daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error getting Google Analytics data: {str(e)}", exc_info=True)
+            except ImportError as e:
+                # Handle missing Google Analytics libraries
+                ga_error_message = "Google Analytics API libraries not available. Please check installation."
+                logger.error(f"{ga_error_message}: {str(e)}")
                 
                 # Fall back to the fixed cost approach
                 total_ad_spend = len(customers_df) * ad_cost_per_order
-                # Initialize empty daily_spend for later use
+                daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
+            except Exception as e:
+                # Log detailed error information
+                ga_error_message = f"Error retrieving Google Analytics data: {str(e)}"
+                logger.error(f"{ga_error_message}", exc_info=True)
+                
+                # Fall back to the fixed cost approach
+                total_ad_spend = len(customers_df) * ad_cost_per_order
                 daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
         else:
             # Use fixed cost per order if not using GA data
+            if use_ga_data:
+                logger.info("Google Analytics selected but missing date range information")
+            else:
+                logger.info("Using fixed cost estimates instead of Google Analytics data")
+                
             total_ad_spend = len(customers_df) * ad_cost_per_order
-            # Initialize empty daily_spend for later use
             daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
         
         # Calculate CAC (Customer Acquisition Cost)

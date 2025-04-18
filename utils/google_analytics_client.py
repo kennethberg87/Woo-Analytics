@@ -66,19 +66,47 @@ class GoogleAnalyticsClient:
         
         try:
             # Parse the JSON credentials from the environment variable
-            credentials_json = json.loads(self.credentials_str)
+            try:
+                credentials_json = json.loads(self.credentials_str)
+            except json.JSONDecodeError as json_err:
+                logger.error(f"Error parsing Google Analytics credentials JSON: {str(json_err)}")
+                logger.info("Checking if credentials string might be a file path...")
+                
+                # Try if the string might be a file path instead
+                if os.path.exists(self.credentials_str):
+                    try:
+                        with open(self.credentials_str, 'r') as cred_file:
+                            credentials_json = json.load(cred_file)
+                        logger.info("Successfully loaded credentials from file")
+                    except Exception as file_err:
+                        logger.error(f"Error loading credentials from file: {str(file_err)}")
+                        raise
+                else:
+                    # Not a valid JSON string or file path
+                    raise json_err
             
-            # Try to initialize with service account credentials from env var
+            # Try to initialize with service account credentials
             scopes = ['https://www.googleapis.com/auth/analytics.readonly']
-            credentials = Credentials.from_service_account_info(
-                credentials_json, 
-                scopes=scopes
-            )
-            self.client = BetaAnalyticsDataClient(credentials=credentials)
-            logger.info("Successfully initialized Google Analytics client")
-        except json.JSONDecodeError as e:
-            logger.error(f"Error parsing Google Analytics credentials JSON: {str(e)}", exc_info=True)
-            raise
+            
+            try:
+                credentials = Credentials.from_service_account_info(
+                    credentials_json, 
+                    scopes=scopes
+                )
+                self.client = BetaAnalyticsDataClient(credentials=credentials)
+                logger.info("Successfully initialized Google Analytics client")
+            except Exception as e:
+                logger.error(f"Error creating credentials from service account info: {str(e)}")
+                
+                # Try alternative initialization if needed
+                if 'client_id' in credentials_json and 'client_secret' in credentials_json:
+                    logger.info("Attempting to use OAuth2 client credentials instead of service account")
+                    # Handle OAuth client credentials differently if needed
+                    # This would require additional implementation
+                    raise NotImplementedError("OAuth2 client credentials not yet supported")
+                else:
+                    raise
+                    
         except Exception as e:
             logger.error(f"Error initializing GA client with credentials: {str(e)}", exc_info=True)
             raise
