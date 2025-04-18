@@ -365,14 +365,16 @@ class DataProcessor:
             min_date = None
             max_date = None
         
-        # Try to get ad cost data from Google Analytics if requested
+        # Try to get ad cost data from Google Analytics or Google Ads if requested
         campaign_data = pd.DataFrame()
-        using_ga_data = False
+        using_external_data = False
+        data_source = "estimates"
         
         import logging
         logger = logging.getLogger(__name__)
         
-        ga_error_message = None
+        error_message = None
+        diagnostic_info = {}
         
         if use_ga_data and min_date and max_date:
             try:
@@ -388,20 +390,30 @@ class DataProcessor:
                 # Get ad spend data - check for no data error
                 ad_spend_data = ga_client.calculate_total_ad_spend(min_date, max_date)
                 
+                # Initialize default values (fallback)
+                total_ad_spend = len(customers_df) * ad_cost_per_order
+                daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
+                
+                # Collect diagnostic info
+                diagnostic_info['ga_attempted'] = True
+                
                 # Check for error message from no data case
                 if 'error_message' in ad_spend_data:
-                    ga_error_message = ad_spend_data['error_message']
-                    logger.warning(f"Google Analytics returned an error: {ga_error_message}")
+                    error_message = ad_spend_data['error_message']
+                    diagnostic_info['ga_error'] = error_message
+                    logger.warning(f"Google Analytics returned an error: {error_message}")
                     
-                    # Fall back to the fixed cost approach
-                    total_ad_spend = len(customers_df) * ad_cost_per_order
-                    daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
-                    campaign_data = pd.DataFrame()
+                    # We'll try Google Ads next, don't fall back yet
                     
                 # Use GA data if available and no error
                 elif ad_spend_data['has_data']:
                     total_ad_spend = ad_spend_data['total_spend']
-                    using_ga_data = True
+                    using_external_data = True
+                    data_source = "google_analytics"
+                    
+                    # Collect diagnostic info
+                    diagnostic_info['ga_success'] = True
+                    diagnostic_info['ga_spend'] = total_ad_spend
                     
                     # Try to get campaign data as well
                     try:
@@ -421,29 +433,106 @@ class DataProcessor:
                     logger.info(f"Successfully retrieved Google Analytics data: Total spend: {total_ad_spend:.2f} NOK, Daily data points: {len(daily_spend)}")
                 else:
                     # Log no data found (should not happen with the new error handling, but keep as fallback)
-                    ga_error_message = "No advertising cost data found in Google Analytics for the selected period"
-                    logger.warning(ga_error_message)
+                    error_message = "No advertising cost data found in Google Analytics for the selected period"
+                    diagnostic_info['ga_error'] = error_message
+                    logger.warning(error_message)
                     
-                    # Fall back to the fixed cost approach
-                    total_ad_spend = len(customers_df) * ad_cost_per_order
-                    daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
-                    campaign_data = pd.DataFrame()
+                    # We'll try Google Ads next, don't fall back yet
+                
             except ImportError as e:
                 # Handle missing Google Analytics libraries
-                ga_error_message = "Google Analytics API libraries not available. Please check installation."
-                logger.error(f"{ga_error_message}: {str(e)}")
+                error_message = f"Google Analytics API libraries not available: {str(e)}"
+                diagnostic_info['ga_error'] = error_message
+                logger.error(f"{error_message}")
                 
-                # Fall back to the fixed cost approach
-                total_ad_spend = len(customers_df) * ad_cost_per_order
-                daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
+                # We'll try Google Ads next, don't fall back yet
+                
             except Exception as e:
                 # Log detailed error information
-                ga_error_message = f"Error retrieving Google Analytics data: {str(e)}"
-                logger.error(f"{ga_error_message}", exc_info=True)
+                error_message = f"Error retrieving Google Analytics data: {str(e)}"
+                diagnostic_info['ga_error'] = error_message
+                logger.error(f"{error_message}", exc_info=True)
                 
-                # Fall back to the fixed cost approach
-                total_ad_spend = len(customers_df) * ad_cost_per_order
-                daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
+                # We'll try Google Ads next, don't fall back yet
+            
+            # Attempt #2: If Google Analytics didn't work, try Google Ads API
+            if not using_external_data:
+                try:
+                    # Import the Google Ads client
+                    from utils.google_ads_client import GoogleAdsClient
+                    
+                    # Log attempt to use Google Ads
+                    logger.info(f"Attempting to use Google Ads data for period {min_date} to {max_date}")
+                    
+                    # Create client and get ad spend data
+                    ads_client = GoogleAdsClient()
+                    
+                    # Collect diagnostic info
+                    diagnostic_info['ads_attempted'] = True
+                    
+                    # Get ad spend data
+                    ads_spend_data = ads_client.calculate_total_ad_spend(min_date, max_date)
+                    
+                    # Check for error message
+                    if 'error_message' in ads_spend_data:
+                        ads_error = ads_spend_data['error_message']
+                        diagnostic_info['ads_error'] = ads_error
+                        logger.warning(f"Google Ads returned an error: {ads_error}")
+                        
+                        # Fall back to the fixed cost approach (already set above)
+                        
+                    # Use Ads data if available and no error
+                    elif ads_spend_data['has_data']:
+                        total_ad_spend = ads_spend_data['total_spend']
+                        using_external_data = True
+                        data_source = "google_ads"
+                        
+                        # Collect diagnostic info
+                        diagnostic_info['ads_success'] = True
+                        diagnostic_info['ads_spend'] = total_ad_spend
+                        
+                        # Create daily spend data for trend analysis
+                        daily_spend = pd.DataFrame([
+                            {'Date': date, 'Ad_Spend': spend}
+                            for date, spend in ads_spend_data['spend_by_date'].items()
+                        ])
+                        
+                        # Log success
+                        logger.info(f"Successfully retrieved Google Ads data: Total spend: {total_ad_spend:.2f} NOK, Daily data points: {len(daily_spend)}")
+                    else:
+                        ads_error = "No advertising cost data found in Google Ads for the selected period"
+                        diagnostic_info['ads_error'] = ads_error
+                        logger.warning(ads_error)
+                        
+                        # Update error message to include both GA and Ads failures
+                        if error_message:
+                            error_message = f"No ad cost data found in Google Analytics or Google Ads for the selected period"
+                        else:
+                            error_message = ads_error
+                
+                except ImportError as e:
+                    # Handle missing Google Ads libraries
+                    ads_error = f"Google Ads API libraries not available: {str(e)}"
+                    diagnostic_info['ads_error'] = ads_error
+                    logger.error(f"{ads_error}")
+                    
+                    # Update error message to include both failures if needed
+                    if error_message:
+                        error_message = f"{error_message}. Additionally, {ads_error}"
+                    else:
+                        error_message = ads_error
+                    
+                except Exception as e:
+                    # Log detailed error information
+                    ads_error = f"Error retrieving Google Ads data: {str(e)}"
+                    diagnostic_info['ads_error'] = ads_error
+                    logger.error(f"{ads_error}", exc_info=True)
+                    
+                    # Update error message to include both failures if needed
+                    if error_message:
+                        error_message = f"{error_message}. Additionally, {ads_error}"
+                    else:
+                        error_message = ads_error
         else:
             # Use fixed cost per order if not using GA data
             if use_ga_data:
@@ -490,8 +579,8 @@ class DataProcessor:
             
             daily_data.columns = ['Date', 'Revenue', 'Unique_Customers', 'Order_Count']
             
-            # If using GA data and we have daily spend data, merge it
-            if using_ga_data and 'daily_spend' in locals() and not daily_spend.empty:
+            # If using external ad data and we have daily spend data, merge it
+            if using_external_data and 'daily_spend' in locals() and not daily_spend.empty:
                 # Merge GA spend data with daily order data
                 daily_data = pd.merge(daily_data, daily_spend, on='Date', how='left')
                 # Fill missing spend data with 0
@@ -541,8 +630,10 @@ class DataProcessor:
             'campaign_data': campaign_data,
             'cac_trend_data': cac_trend_data,
             'roi_trend_data': roi_trend_data,
-            'using_ga_data': using_ga_data,
-            'ga_error_message': ga_error_message  # Include error message if any
+            'using_external_data': using_external_data,
+            'error_message': error_message,  # Include error message if any
+            'data_source': data_source,      # Indicate which data source was used
+            'diagnostic_info': diagnostic_info  # Include diagnostic info for troubleshooting
         }
 
     @staticmethod
