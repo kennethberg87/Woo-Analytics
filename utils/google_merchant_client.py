@@ -67,37 +67,12 @@ class GoogleMerchantClient:
                             "Please create this file with your OAuth client ID and client secret."
                         )
                     
-                    # Create OAuth flow for Replit environment
-                    flow = InstalledAppFlow.from_client_secrets_file(
-                        CREDENTIALS_FILE, 
-                        SCOPES,
-                        redirect_uri='urn:ietf:wg:oauth:2.0:oob'  # Use out-of-band flow for Replit
+                    # Instead of handling authentication here, direct the user to the setup page
+                    logger.warning("Authentication required. Please use the Google Merchant Setup page.")
+                    raise ValueError(
+                        "Authentication required. Please go to the Google Merchant Setup page in the sidebar "
+                        "and follow the authentication steps to connect with Google Merchant Center."
                     )
-                    
-                    # Get the authorization URL
-                    auth_url, _ = flow.authorization_url(prompt='consent')
-                    
-                    # Print to console for reference
-                    print("\n")
-                    print("="*80)
-                    print("AUTHENTICATION REQUIRED")
-                    print("="*80)
-                    print(f"1. Go to this URL in your browser:\n\n{auth_url}\n")
-                    print("2. Log in and authorize access if prompted")
-                    print("3. Copy the authorization code from the browser")
-                    print("4. Paste the code here and press Enter:")
-                    print("="*80)
-                    
-                    # Write URL to a file that Streamlit can read
-                    with open('google_auth_url.txt', 'w') as f:
-                        f.write(auth_url)
-                    
-                    # Wait for user to enter the code
-                    code = input("Enter authorization code: ").strip()
-                    
-                    # Exchange authorization code for credentials
-                    flow.fetch_token(code=code)
-                    self.creds = flow.credentials
                 
                 # Save the credentials for the next run
                 with open(TOKEN_FILE, 'w') as token:

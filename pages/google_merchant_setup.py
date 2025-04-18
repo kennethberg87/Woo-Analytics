@@ -7,6 +7,7 @@ integration for accurate CAC data in the dashboard.
 
 import os
 import json
+import time
 import logging
 import streamlit as st
 from datetime import datetime, timedelta
@@ -14,8 +15,9 @@ import pandas as pd
 
 import sys
 sys.path.append('.')
-from utils.google_merchant_client import GoogleMerchantClient, CREDENTIALS_FILE, TOKEN_FILE
+from utils.google_merchant_client import GoogleMerchantClient, CREDENTIALS_FILE, TOKEN_FILE, SCOPES
 from utils.translations import Translations
+from google_auth_oauthlib.flow import InstalledAppFlow
 
 # Initialize translations
 translations = Translations()
@@ -123,59 +125,69 @@ def setup_credentials():
                     ⚠️ **Important:** During authentication, the page will display "Waiting for authentication..." - 
                     this is normal, continue following the steps above.
                     """)
-                    try:
-                        # Create a container to display the authentication URL
-                        auth_url_container = st.empty()
-                        auth_url_container.info("Starting authentication process... the URL will appear here in a moment.")
-                        
-                        with st.spinner("Waiting for authentication... Please follow the instructions above."):
-                            # Initialize the client which will trigger authentication
-                            client = GoogleMerchantClient()
-                            
-                            # Try to read the auth URL from the file
-                            try:
-                                # Check if file exists and has content (for up to 10 seconds)
-                                import time
-                                for _ in range(10):
-                                    if os.path.exists('google_auth_url.txt'):
-                                        with open('google_auth_url.txt', 'r') as f:
-                                            auth_url = f.read().strip()
-                                            if auth_url:
-                                                # Display the URL in Streamlit
-                                                auth_url_container.code(
-                                                    f"🔗 Authentication URL:\n\n{auth_url}\n\n"
-                                                    "👆 Copy this URL and open it in your browser.\n"
-                                                    "Then enter the authorization code in the terminal below."
-                                                )
-                                                break
-                                    time.sleep(1)
-                            except Exception as url_error:
-                                logger.error(f"Error reading auth URL: {str(url_error)}")
-                                auth_url_container.error(
-                                    "Could not display the authentication URL here. "
-                                    "Please check the terminal/shell for the URL."
+                    # Create containers for the authentication process
+                    auth_url_container = st.empty()
+                    auth_status_container = st.empty()
+                    
+                    # Generate Google Auth URL directly in Streamlit
+                    if not os.path.exists(CREDENTIALS_FILE):
+                        auth_url_container.error(f"Credentials file not found. Please upload your Google API credentials first.")
+                    else:
+                        # Load credentials
+                        try:
+                            with open(CREDENTIALS_FILE, 'r') as f:
+                                creds_data = json.load(f)
+                                
+                            # Check if credentials are valid
+                            if 'web' in creds_data or 'installed' in creds_data:
+                                # Using the flow imported at the top of the file
+                                # SCOPES are already imported from utils.google_merchant_client
+                                
+                                # Create the flow with OOB (out-of-band) redirect
+                                flow = InstalledAppFlow.from_client_secrets_file(
+                                    CREDENTIALS_FILE, 
+                                    SCOPES,
+                                    redirect_uri='urn:ietf:wg:oauth:2.0:oob'
                                 )
-                            
-                            # Check if we have a valid client after authentication
-                            if client.merchant_id:
-                                st.success(f"✅ Successfully authenticated with Google Merchant Center (ID: {client.merchant_id})")
-                                st.balloons()
                                 
-                                # Clean up the auth URL file
-                                if os.path.exists('google_auth_url.txt'):
-                                    os.remove('google_auth_url.txt')
+                                # Get the auth URL
+                                auth_url, _ = flow.authorization_url(prompt='consent')
                                 
-                                # Force refresh of the page
-                                st.rerun()
+                                # Display the auth URL
+                                auth_url_container.code(
+                                    f"🔗 Authentication URL:\n\n{auth_url}\n\n"
+                                    "👆 Copy this URL, open it in your browser, and complete the authentication process.\n"
+                                    "Then copy the code provided by Google and paste it in the box below."
+                                )
+                                
+                                # Get the authorization code from the user
+                                auth_code = auth_status_container.text_input(
+                                    "Enter the authorization code provided by Google:",
+                                    key="auth_code"
+                                )
+                                
+                                if auth_code:
+                                    try:
+                                        with st.spinner("Completing authentication..."):
+                                            # Exchange code for credentials
+                                            flow.fetch_token(code=auth_code)
+                                            
+                                            # Save credentials to token file
+                                            with open(TOKEN_FILE, 'w') as token:
+                                                token.write(flow.credentials.to_json())
+                                                
+                                            st.success("✅ Authentication successful! Refreshing page...")
+                                            st.balloons()
+                                            time.sleep(2)
+                                            st.rerun()
+                                    except Exception as token_error:
+                                        st.error(f"⚠️ Error processing authorization code: {str(token_error)}")
+                                        logger.error(f"Token error: {str(token_error)}", exc_info=True)
                             else:
-                                st.error("⚠️ Authentication completed but couldn't find a Merchant Center account")
-                    except Exception as e:
-                        st.error(f"⚠️ Authentication failed: {str(e)}")
-                        logger.error(f"Authentication error: {str(e)}", exc_info=True)
-                        
-                        # Clean up the auth URL file if it exists
-                        if os.path.exists('google_auth_url.txt'):
-                            os.remove('google_auth_url.txt')
+                                auth_url_container.error("⚠️ Invalid credentials file format. Please make sure you've uploaded the correct OAuth 2.0 credentials file.")
+                        except Exception as e:
+                            auth_url_container.error(f"⚠️ Error setting up authentication: {str(e)}")
+                            logger.error(f"Authentication setup error: {str(e)}", exc_info=True)
     
     # Display test data if fully authenticated
     if credentials_exist and token_exists:
