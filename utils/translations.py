@@ -108,6 +108,21 @@ class Translations:
                 'order_total': 'Ordretotal',
                 'order_total_help': 'Totalsum for ordren',
                 'no_customer_data': 'Ingen kundedata tilgjengelig for valgt periode',
+                
+                # Invoices section
+                'invoices_header': 'Fakturaer',
+                'invoice_number_column': 'Fakturanummer',
+                'order_number_column': 'Ordrenummer',
+                'invoice_date_column': 'Fakturadato',
+                'status_column': 'Status',
+                'total_column': 'Total',
+                'download_invoices': 'Last ned fakturaer',
+                'download_invoices_info': """
+                💡 Klikk på lenkene under for å laste ned PDF-fakturaer direkte. 
+                Fakturaene vil lastes ned automatisk når du klikker på linken.
+                """,
+                'no_invoices_found': 'Ingen fakturaer funnet for valgt periode',
+                'no_order_data': 'Ingen ordredata tilgjengelig for valgt periode',
             },
             'en': {
                 # Page title and headers
@@ -186,16 +201,28 @@ class Translations:
                 """,
                 
                 # Products section
-                'top_products_header': '10 best-selling products based on quantity',
+                'top_products': '10 best-selling products based on quantity',
                 'period_caption': 'For the period: {} to {}',
-                'product_name': 'Product name',
-                'product_id': 'Product ID',
+                'product_name_column': 'Product name',
+                'product_id_column': 'Product ID',
                 'product_id_help': 'Unique identifier for the product',
-                'quantity_sold': 'Quantity sold',
+                'quantity_sold_column': 'Quantity sold',
                 'quantity_sold_help': 'Total quantity sold of this product within the selected period',
-                'stock_quantity': 'In stock',
-                'stock_quantity_help': 'Current stock quantity',
-                'no_product_data': 'No product data available',
+                'stock_column': 'In stock',
+                'stock_help': 'Current stock quantity',
+                'no_product_data': 'No product data available for the selected date range',
+                
+                # Revenue and Customers section
+                'revenue_trends': 'Revenue',
+                'customer_list': 'Customer overview',
+                'customer_name': 'Customer name',
+                'customer_email': 'Email address',
+                'order_date': 'Order date',
+                'payment_method': 'Payment method',
+                'shipping_method': 'Shipping method',
+                'order_total': 'Order total',
+                'order_total_help': 'Total amount for the order',
+                'no_customer_data': 'No customer data available for the selected date range',
             }
         }
     

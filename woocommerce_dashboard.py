@@ -465,10 +465,10 @@ try:
                     # Render invoice section in the second tab
                     def render_invoice_section(df, selected_start_date, selected_end_date):
                         """Render the invoice section in a separate tab"""
-                        st.header("Fakturaer")
-                        st.caption(
-                            f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
-                        )
+                        st.header(t('invoices_header'))
+                        st.caption(t('period_caption',
+                                   selected_start_date.strftime('%d.%m.%Y'),
+                                   selected_end_date.strftime('%d.%m.%Y')))
 
                         if not df.empty:
                             invoice_data = []
@@ -479,16 +479,16 @@ try:
                                     invoice_url = st.session_state.woo_client.get_invoice_url(
                                         order['order_id'])
                                     invoice_data.append({
-                                        'Fakturanummer':
+                                        t('invoice_number_column'):
                                             invoice_details['invoice_number'],
-                                        'Ordrenummer':
+                                        t('order_number_column'):
                                             invoice_details['order_number'],
-                                        'Fakturadato':
+                                        t('invoice_date_column'):
                                             invoice_details['invoice_date'],
-                                        'Status':
+                                        t('status_column'):
                                             st.session_state.woo_client.get_order_status_display(
                                                 order['status']),
-                                        'Total':
+                                        t('total_column'):
                                             order['total'],
                                         'URL':
                                             invoice_url
@@ -500,28 +500,25 @@ try:
 
                                 # Display invoices in a table
                                 st.dataframe(invoices_df.drop(columns=['URL']).style.format(
-                                    {'Total': 'kr {:,.2f}'}),
+                                    {t('total_column'): 'kr {:,.2f}'}),
                                              column_config={
-                                                 "Fakturanummer":
-                                                     "Fakturanummer",
-                                                 "Ordrenummer":
-                                                     "Ordrenummer",
-                                                 "Fakturadato":
+                                                 t('invoice_number_column'):
+                                                     t('invoice_number_column'),
+                                                 t('order_number_column'):
+                                                     t('order_number_column'),
+                                                 t('invoice_date_column'):
                                                      st.column_config.DatetimeColumn(
-                                                         "Fakturadato", format="DD.MM.YYYY HH:mm"),
-                                                 "Status":
-                                                     "Status",
-                                                 "Total":
-                                                     "Total",
+                                                         t('invoice_date_column'), format="DD.MM.YYYY HH:mm"),
+                                                 t('status_column'):
+                                                     t('status_column'),
+                                                 t('total_column'):
+                                                     t('total_column'),
                                              },
                                              hide_index=True)
 
                                 # Add download section with improved styling
-                                st.subheader("Last ned fakturaer")
-                                st.info("""
-                                💡 Klikk på lenkene under for å laste ned PDF-fakturaer direkte. 
-                                Fakturaene vil lastes ned automatisk når du klikker på linken.
-                                """)
+                                st.subheader(t('download_invoices'))
+                                st.info(t('download_invoices_info'))
 
                                 # Create columns for better layout of download links
                                 cols = st.columns(3)
@@ -529,12 +526,12 @@ try:
                                     col_idx = idx % 3
                                     if invoice['URL']:
                                         cols[col_idx].markdown(
-                                            f"📄 [{invoice['Fakturanummer']} - {invoice['Ordrenummer']}]({invoice['URL']})"
+                                            f"📄 [{invoice[t('invoice_number_column')]} - {invoice[t('order_number_column')]}]({invoice['URL']})"
                                         )
                             else:
-                                st.info("Ingen fakturaer funnet for valgt periode")
+                                st.info(t('no_invoices_found'))
                         else:
-                            st.warning("Ingen ordredata tilgjengelig for valgt periode")
+                            st.warning(t('no_order_data'))
                     render_invoice_section(df, selected_start_date, selected_end_date)
 
                 with tab3:
