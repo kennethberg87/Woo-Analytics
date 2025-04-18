@@ -118,12 +118,13 @@ def setup_credentials():
                     1. The authentication URL will appear below this message in a blue box
                     2. **Copy that URL** and open it in a new browser tab
                     3. **Sign in with your Google account** and authorize the application
-                    4. After authorization, Google will display a code
-                    5. **Copy that code** and paste it back in the terminal window (you may need to click in the lower part of the screen to find the terminal)
-                    6. After pasting the code, press Enter to complete the authentication
+                    4. You'll be redirected to localhost (which may show an error page - this is normal)
+                    5. **Look at your browser's address bar** for a URL like: `http://localhost:8080/?code=4/XXXX...`
+                    6. **Copy the entire code parameter** (everything after `code=` and before any `&` character)
+                    7. **Paste this code** in the input field that appears below the URL
                     
-                    ⚠️ **Important:** During authentication, the page will display "Waiting for authentication..." - 
-                    this is normal, continue following the steps above.
+                    ⚠️ **Important:** Make sure to use the code from the URL in your browser's address bar,
+                    not any code that might be displayed on the error page itself.
                     """)
                     # Create containers for the authentication process
                     auth_url_container = st.empty()
@@ -143,11 +144,11 @@ def setup_credentials():
                                 # Using the flow imported at the top of the file
                                 # SCOPES are already imported from utils.google_merchant_client
                                 
-                                # Create the flow with OOB (out-of-band) redirect
+                                # Use localhost redirect instead of OOB
                                 flow = InstalledAppFlow.from_client_secrets_file(
                                     CREDENTIALS_FILE, 
                                     SCOPES,
-                                    redirect_uri='urn:ietf:wg:oauth:2.0:oob'
+                                    redirect_uri='http://localhost:8080'
                                 )
                                 
                                 # Get the auth URL
@@ -156,8 +157,11 @@ def setup_credentials():
                                 # Display the auth URL
                                 auth_url_container.code(
                                     f"🔗 Authentication URL:\n\n{auth_url}\n\n"
-                                    "👆 Copy this URL, open it in your browser, and complete the authentication process.\n"
-                                    "Then copy the code provided by Google and paste it in the box below."
+                                    "👆 Copy this URL and open it in your browser.\n"
+                                    "After logging in, you'll be redirected to localhost (which may show an error page).\n"
+                                    "Look in the browser's address bar for a URL like: http://localhost:8080/?code=4/XXXX\n"
+                                    "Copy the entire 'code' parameter (everything after 'code=' and before any '&' character)\n"
+                                    "and paste it in the box below."
                                 )
                                 
                                 # Get the authorization code from the user
