@@ -131,7 +131,77 @@ class GoogleAnalyticsClient:
             start_str = start_date.strftime('%Y-%m-%d')
             end_str = end_date.strftime('%Y-%m-%d')
             
-            # Create the report request
+            # Log the requested date range for debugging
+            logger.info(f"Requesting Google Analytics data from {start_str} to {end_str}")
+            
+            # First try with the primary metrics for Google Ads integration
+            metrics_to_try = [
+                # First attempt with the standard advertiserAdCost
+                [
+                    Metric(name="advertiserAdCost"), 
+                    Metric(name="transactions"),
+                    Metric(name="totalRevenue")
+                ],
+                # Second attempt with adCost which is used for some GA4 properties
+                [
+                    Metric(name="adCost"), 
+                    Metric(name="transactions"),
+                    Metric(name="totalRevenue")
+                ],
+                # Last attempt with Google Ads cost and clicks
+                [
+                    Metric(name="googleAdsImpressions"),
+                    Metric(name="googleAdsClicks"),
+                    Metric(name="googleAdsCost"),
+                    Metric(name="transactions"),
+                    Metric(name="totalRevenue")
+                ]
+            ]
+            
+            # Try each set of metrics until we find data
+            metrics = metrics_to_try[-1]  # Default to the last set (fallback)
+            metric_names = [m.name for m in metrics]  # Initialize for error case
+            
+            found_data = False
+            for attempt_metrics in metrics_to_try:
+                try:
+                    # Log which metrics we're trying
+                    attempt_metric_names = [m.name for m in attempt_metrics]
+                    logger.info(f"Trying Google Analytics metrics: {', '.join(attempt_metric_names)}")
+                    
+                    # Create the report request
+                    request = RunReportRequest(
+                        property=f"properties/{self.property_id}",
+                        date_ranges=[DateRange(start_date=start_str, end_date=end_str)],
+                        dimensions=[
+                            Dimension(name="date"),
+                            Dimension(name="campaign"),
+                            Dimension(name="sourceMedium")
+                        ],
+                        metrics=attempt_metrics
+                    )
+                    
+                    # Make the API request
+                    response = self.client.run_report(request)
+                    
+                    # If we got rows, we found the right metrics!
+                    if len(response.rows) > 0:
+                        logger.info(f"Found data using metrics: {', '.join(attempt_metric_names)}")
+                        metrics = attempt_metrics
+                        metric_names = attempt_metric_names
+                        found_data = True
+                        break
+                        
+                except Exception as metric_error:
+                    logger.warning(f"Error with metrics {', '.join(attempt_metric_names)}: {str(metric_error)}")
+                    # Continue to the next set of metrics
+                    continue
+            
+            if not found_data:
+                logger.warning("None of the metric sets returned data")
+                    
+            # Create the report request with our final metrics
+            # This will use the last successful metrics set, or the last one we tried
             request = RunReportRequest(
                 property=f"properties/{self.property_id}",
                 date_ranges=[DateRange(start_date=start_str, end_date=end_str)],
@@ -140,11 +210,7 @@ class GoogleAnalyticsClient:
                     Dimension(name="campaign"),
                     Dimension(name="sourceMedium")
                 ],
-                metrics=[
-                    Metric(name="advertiserAdCost"),
-                    Metric(name="transactions"),
-                    Metric(name="totalRevenue")
-                ]
+                metrics=metrics
             )
             
             # Make the API request
@@ -152,23 +218,66 @@ class GoogleAnalyticsClient:
             
             # Process the response into a DataFrame
             rows = []
+            
+            # Get metric names from the request to know what we're looking at
+            metric_names = [m.name for m in metrics]
+            logger.info(f"Processing response with metrics: {', '.join(metric_names)}")
+            
+            # Add debugging information about response structure
+            logger.debug(f"Response has {len(response.rows)} rows and {len(response.metric_headers)} metrics")
+            if len(response.metric_headers) > 0:
+                header_names = [h.name for h in response.metric_headers]
+                logger.debug(f"Metric headers: {', '.join(header_names)}")
+            
             for row in response.rows:
                 date_val = row.dimension_values[0].value
                 campaign = row.dimension_values[1].value
                 source_medium = row.dimension_values[2].value
                 
-                ad_cost = float(row.metric_values[0].value) if row.metric_values[0].value else 0
-                transactions = int(row.metric_values[1].value) if row.metric_values[1].value else 0
-                revenue = float(row.metric_values[2].value) if row.metric_values[2].value else 0
-                
-                rows.append({
+                # Handle different metric configurations
+                # Check which metrics we have based on our earlier selection
+                data_row = {
                     'Date': datetime.datetime.strptime(date_val, '%Y%m%d').date(),
                     'Campaign': campaign,
                     'Source_Medium': source_medium,
-                    'Ad_Cost': ad_cost,
-                    'Transactions': transactions,
-                    'Revenue': revenue
-                })
+                }
+                
+                # If we're using the standard metrics (advertiserAdCost or adCost)
+                if "advertiserAdCost" in metric_names or "adCost" in metric_names:
+                    data_row['Ad_Cost'] = float(row.metric_values[0].value) if row.metric_values[0].value else 0
+                    data_row['Transactions'] = int(row.metric_values[1].value) if row.metric_values[1].value else 0
+                    data_row['Revenue'] = float(row.metric_values[2].value) if row.metric_values[2].value else 0
+                
+                # If we're using the Google Ads specific metrics
+                elif "googleAdsCost" in metric_names:
+                    # The position will depend on our metric order
+                    cost_index = metric_names.index("googleAdsCost")
+                    data_row['Ad_Cost'] = float(row.metric_values[cost_index].value) if row.metric_values[cost_index].value else 0
+                    
+                    # Try to find transactions and revenue
+                    if "transactions" in metric_names:
+                        trans_index = metric_names.index("transactions")
+                        data_row['Transactions'] = int(row.metric_values[trans_index].value) if row.metric_values[trans_index].value else 0
+                    else:
+                        data_row['Transactions'] = 0
+                        
+                    if "totalRevenue" in metric_names:
+                        rev_index = metric_names.index("totalRevenue")
+                        data_row['Revenue'] = float(row.metric_values[rev_index].value) if row.metric_values[rev_index].value else 0
+                    else:
+                        data_row['Revenue'] = 0
+                
+                # Fallback for any other metric configuration
+                else:
+                    # Just use the first metric as the ad cost if we don't recognize the pattern
+                    # This is a fallback approach - not ideal but better than failing
+                    data_row['Ad_Cost'] = float(row.metric_values[0].value) if row.metric_values[0].value else 0
+                    data_row['Transactions'] = int(row.metric_values[1].value) if len(row.metric_values) > 1 and row.metric_values[1].value else 0
+                    data_row['Revenue'] = float(row.metric_values[2].value) if len(row.metric_values) > 2 and row.metric_values[2].value else 0
+                
+                # Log the processed row for debugging
+                logger.debug(f"Processed row: {data_row}")
+                rows.append(data_row)
             
             # Create DataFrame from rows
             if rows:
