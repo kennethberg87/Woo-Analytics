@@ -195,6 +195,9 @@ class Translations:
                 - Et CAC:LTV-forhold større enn 3:1 indikerer god enhetøkonomi
                 """,
                 'not_enough_trend_data': "Ikke nok data for å vise trendanalyse. Velg en lengre tidsperiode.",
+                'fetching_merchant_data': "Henter data fra Google Merchant Center...",
+                'using_merchant_data': "Bruker faktiske Google Ads-kostnader for CAC-beregning",
+                'merchant_error': "Kunne ikke hente Google Merchant data: {}. Bruker estimerte verdier.",
                 
                 # Export tab
                 'export_header': 'Eksporter data',
@@ -389,6 +392,9 @@ class Translations:
                 - A CAC:LTV ratio greater than 3:1 indicates good unit economics
                 """,
                 'not_enough_trend_data': "Not enough data to show trend analysis. Please select a longer time period.",
+                'fetching_merchant_data': "Fetching data from Google Merchant Center...",
+                'using_merchant_data': "Using actual Google Ads costs for CAC calculation",
+                'merchant_error': "Could not fetch Google Merchant data: {}. Using estimated values.",
                 
                 # Export tab
                 'export_header': 'Export data',
