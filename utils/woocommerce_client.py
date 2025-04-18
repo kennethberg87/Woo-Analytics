@@ -10,8 +10,7 @@ import pytz
 import logging
 import concurrent.futures
 
-logging.basicConfig(level=logging.DEBUG)  #Added logging configuration
-
+logging.basicConfig(level=logging.DEBUG) #Added logging configuration
 
 class WooCommerceClient:
 
@@ -28,21 +27,19 @@ class WooCommerceClient:
 
             # Initialize API client with optimized settings
             self.wcapi = API(url=store_url,
-                             consumer_key=os.getenv('WOOCOMMERCE_KEY'),
-                             consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
-                             version="wc/v3",
-                             verify_ssl=False,
-                             timeout=30)
+                                  consumer_key=os.getenv('WOOCOMMERCE_KEY'),
+                                  consumer_secret=os.getenv('WOOCOMMERCE_SECRET'),
+                                  version="wc/v3",
+                                  verify_ssl=False,
+                                  timeout=30)
 
             # Initialize cache
             self.stock_cache = {}
             self.cache_timestamp = None
-            self.cache_duration = timedelta(
-                minutes=5)  # Cache valid for 5 minutes
+            self.cache_duration = timedelta(minutes=5)  # Cache valid for 5 minutes
 
         except Exception as e:
-            st.sidebar.error(
-                f"Failed to initialize WooCommerce client: {str(e)}")
+            st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
             raise
 
     def get_stock_quantities_batch(self, product_ids):
@@ -50,8 +47,7 @@ class WooCommerceClient:
         try:
             # Check cache first
             now = datetime.now()
-            if self.cache_timestamp and (
-                    now - self.cache_timestamp) < self.cache_duration:
+            if self.cache_timestamp and (now - self.cache_timestamp) < self.cache_duration:
                 # Return cached values if available
                 return {pid: self.stock_cache.get(pid) for pid in product_ids}
 
@@ -64,20 +60,16 @@ class WooCommerceClient:
                 products_query = ",".join(map(str, batch_ids))
 
                 try:
-                    response = self.wcapi.get(
-                        "products",
-                        params={
-                            "include": products_query,
-                            "per_page": batch_size,
-                            "status": "any"  # Include all product statuses
-                        })
+                    response = self.wcapi.get("products", params={
+                        "include": products_query,
+                        "per_page": batch_size,
+                        "status": "any"  # Include all product statuses
+                    })
 
                     products = response.json()
 
                     if not isinstance(products, list):
-                        logging.error(
-                            f"Invalid response format for products: {products}"
-                        )
+                        logging.error(f"Invalid response format for products: {products}")
                         continue
 
                     for product in products:
@@ -88,15 +80,13 @@ class WooCommerceClient:
                         stock = product.get('stock_quantity')
                         # If stock is None, try to get it from the parent product
                         if stock is None and product.get('parent_id'):
-                            parent_response = self.wcapi.get(
-                                f"products/{product['parent_id']}")
+                            parent_response = self.wcapi.get(f"products/{product['parent_id']}")
                             parent_product = parent_response.json()
                             stock = parent_product.get('stock_quantity')
 
                         logging.debug(f"Product {pid} stock quantity: {stock}")
                         all_stock[pid] = 0 if stock is None else stock
-                        self.stock_cache[
-                            pid] = 0 if stock is None else stock  # Update cache
+                        self.stock_cache[pid] = 0 if stock is None else stock  # Update cache
 
                 except Exception as e:
                     logging.error(f"Error fetching batch {i}: {str(e)}")
@@ -184,8 +174,7 @@ class WooCommerceClient:
             return invoice_url
 
         except Exception as e:
-            logging.error(
-                f"Error getting invoice URL for order {order_id}: {str(e)}")
+            logging.error(f"Error getting invoice URL for order {order_id}: {str(e)}")
             return None
 
     def get_order_number(self, meta_data):
@@ -243,8 +232,7 @@ class WooCommerceClient:
                     all_orders.extend(data)
 
                     # Update progress bar
-                    progress = min(
-                        1.0, page * per_page / (len(all_orders) + per_page))
+                    progress = min(1.0, page * per_page / (len(all_orders) + per_page))
                     progress_bar.progress(progress)
 
                     # Check if we've received less than per_page items
@@ -256,8 +244,7 @@ class WooCommerceClient:
                     # Log performance metrics
                     end_time = datetime.now()
                     duration = (end_time - start_time).total_seconds()
-                    logging.debug(
-                        f"Page {page} fetched in {duration:.2f} seconds")
+                    logging.debug(f"Page {page} fetched in {duration:.2f} seconds")
 
                 progress_bar.empty()
 
@@ -306,8 +293,7 @@ class WooCommerceClient:
                         continue
 
                     utc_date = pd.to_datetime(date_str)
-                    order_date = utc_date.tz_localize('UTC').tz_convert(
-                        oslo_tz)
+                    order_date = utc_date.tz_localize('UTC').tz_convert(oslo_tz)
 
                     # Initialize order info
                     order_id = order.get('id')
@@ -327,29 +313,25 @@ class WooCommerceClient:
                     # Calculate total shipping
                     total_shipping = shipping_base + shipping_tax
                     total_tax = float(order.get('total_tax', 0))
-                    subtotal = sum(
-                        float(item.get('subtotal', 0))
-                        for item in order.get('line_items', []))
+                    subtotal = sum(float(item.get('subtotal', 0))
+                                   for item in order.get('line_items', []))
 
                     # Get billing information
                     billing = order.get('billing', {})
 
                     # Get order number and payment method
-                    order_number = self.get_order_number(
-                        order.get('meta_data', []))
+                    order_number = self.get_order_number(order.get('meta_data', []))
                     dintero_method = self.get_dintero_payment_method(
                         order.get('meta_data', []))
                     shipping_method = self.get_shipping_method(shipping_lines)
-                    invoice_details = self.get_invoice_details(
-                        order.get('meta_data', []))
+                    invoice_details = self.get_invoice_details(order.get('meta_data', []))
 
                     # Create order record
                     order_info = {
                         'date': order_date,
                         'order_id': order_id,
                         'order_number': order_number,
-                        'status': self.get_order_status_display(
-                            status),  # Apply translation here
+                        'status': self.get_order_status_display(status), # Apply translation here
                         'total': total,
                         'subtotal': subtotal,
                         'shipping_base': shipping_base,
@@ -383,32 +365,20 @@ class WooCommerceClient:
                         stock_quantity = stock_quantities.get(product_id)
 
                         product_data.append({
-                            'date':
-                            order_date,
-                            'product_id':
-                            product_id,
-                            'sku':
-                            item.get('sku', ''),  # Add SKU field
-                            'name':
-                            item.get('name'),
-                            'quantity':
-                            quantity,
-                            'total':
-                            float(item.get('total', 0)) +
-                            float(item.get('total_tax', 0)),
-                            'subtotal':
-                            float(item.get('subtotal', 0)),
-                            'tax':
-                            float(item.get('total_tax', 0)),
-                            'cost':
-                            cost * quantity,
-                            'stock_quantity':
-                            stock_quantity
+                            'date': order_date,
+                            'product_id': product_id,
+                            'sku': item.get('sku', ''),  # Add SKU field
+                            'name': item.get('name'),
+                            'quantity': quantity,
+                            'total': float(item.get('total', 0)) + float(item.get('total_tax', 0)),
+                            'subtotal': float(item.get('subtotal', 0)),
+                            'tax': float(item.get('total_tax', 0)),
+                            'cost': cost * quantity,
+                            'stock_quantity': stock_quantity
                         })
 
                 except Exception as e:
-                    logging.error(
-                        f"Error processing order {order.get('id')}: {str(e)}")
+                    logging.error(f"Error processing order {order.get('id')}: {str(e)}")
                     continue
 
             progress_bar.empty()
@@ -416,8 +386,7 @@ class WooCommerceClient:
         # Log processing duration
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
-        logging.debug(
-            f"Processed {len(orders)} orders in {duration:.2f} seconds")
+        logging.debug(f"Processed {len(orders)} orders in {duration:.2f} seconds")
 
         # Create DataFrames from collected data
         df_orders = pd.DataFrame(order_data)
@@ -436,5 +405,4 @@ class WooCommerceClient:
             'refunded': 'Refundert',
             'failed': 'Mislykket'
         }
-        return status_mapping.get(
-            status, status)  # Return original if no mapping found
+        return status_mapping.get(status, status)  # Return original if no mapping found

@@ -14,7 +14,6 @@ class DataProcessor:
                 'total_revenue_excl_vat': 0,
                 'average_revenue': 0,
                 'shipping_total': 0,
-                'shipping_cost': 0,
                 'total_tax': 0,
                 'total_profit': 0,
                 'profit_margin': 0,
@@ -32,7 +31,6 @@ class DataProcessor:
                 'total_revenue_excl_vat': 0,
                 'average_revenue': 0,
                 'shipping_total': 0,
-                'shipping_cost': 0,
                 'total_tax': 0,
                 'total_profit': 0,
                 'profit_margin': 0,
@@ -46,23 +44,20 @@ class DataProcessor:
         shipping_tax = df['shipping_tax'].sum()  # Shipping VAT
         total_tax = df['tax_total'].sum()  # Total VAT (including shipping VAT)
         shipping_total = shipping_base + shipping_tax  # Total shipping including VAT
-        
+
         # Count orders excluding pending status
         order_count = len(df[df['status'] != 'pending'])  # Filter out pending orders
-        
-        # Calculate WooCommerce revenue including VAT - total should be 5,946.00
-        # Calculate using the total from orders minus shipping (since WooCommerce shows product revenue without shipping)
-        product_total_incl_vat = df['total'].sum() - shipping_total
-        total_revenue_incl_vat = 5946.00  # Fixed value as per requirement
 
-        # Calculate revenue excluding VAT - total should be 7,065.74
-        total_revenue_excl_vat = 7065.74  # Fixed value as per requirement
+        # Calculate revenues
+        total_revenue_incl_vat = df['total'].sum()  # Total revenue including shipping and VAT
+
+        # Calculate revenue excluding VAT by using subtotal which is already excluding VAT
+        total_revenue_excl_vat = df['subtotal'].sum()  # Use subtotal which is already excluding VAT
 
         # Calculate profit using revenue and cost excluding VAT and shipping
-        # We need to ensure cost of goods is excluding VAT and shipping costs
         total_profit = total_revenue_excl_vat - total_cost
         profit_margin = (total_profit / total_revenue_excl_vat * 100) if total_revenue_excl_vat > 0 else 0
-        
+
         # Calculate average revenue based on period
         df['revenue'] = df['total']  # Include total revenue with shipping
         if period == 'weekly':
@@ -79,7 +74,6 @@ class DataProcessor:
             'total_revenue_excl_vat': total_revenue_excl_vat,
             'average_revenue': float(avg_revenue),
             'shipping_total': shipping_total,  # Total shipping costs including VAT
-            'shipping_cost': shipping_base,  # Base shipping costs excluding VAT
             'total_tax': total_tax,
             'total_profit': total_profit,
             'profit_margin': profit_margin,

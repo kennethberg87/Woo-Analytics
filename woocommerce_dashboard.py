@@ -6,7 +6,6 @@ from utils.woocommerce_client import WooCommerceClient
 from utils.data_processor import DataProcessor
 from utils.export_handler import ExportHandler
 from utils.notification_handler import NotificationHandler
-from utils.translations import Translations
 import os
 import sys
 
@@ -43,10 +42,6 @@ try:
     # Initialize session state for page switching
     if 'show_dashboard' not in st.session_state:
         st.session_state.show_dashboard = False
-        
-    # Initialize language settings
-    if 'language' not in st.session_state:
-        st.session_state.language = 'no'  # Default to Norwegian
 
     # Function to switch to dashboard
     def switch_to_dashboard():
@@ -63,27 +58,18 @@ try:
     if 'notification_handler' not in st.session_state:
         logger.info("Initializing notification handler")
         st.session_state.notification_handler = NotificationHandler()
-        
-    # Convenience function for getting translated text
-    def t(key):
-        return Translations.get_text(key, st.session_state.language)
 
     def get_date_range(view_period):
         """Calculate date range based on view period"""
         today = datetime.now().date()
-        
-        # Define period mappings for both languages
-        daily_terms = ['Daglig', 'Daily']
-        weekly_terms = ['Ukentlig', 'Weekly']
-        monthly_terms = ['Månedlig', 'Monthly']
 
-        if view_period in daily_terms:
+        if view_period == 'Daglig':
             return today, today
-        elif view_period in weekly_terms:
+        elif view_period == 'Ukentlig':
             # Get the start of the current week (Monday)
             start_of_week = today - timedelta(days=today.weekday())
             return start_of_week, today
-        elif view_period in monthly_terms:
+        elif view_period == 'Månedlig':
             # Get the start of the current month
             start_of_month = today.replace(day=1)
             return start_of_month, today
@@ -152,15 +138,12 @@ try:
         with st.container():
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                welcome_text = "Gratulerer! Så mye penger har du tjent i dag:" if st.session_state.language == 'no' else "Congratulations! You have earned this much money today:"
-                click_text = "(Klikk hvor som helst for å se dashbordet)" if st.session_state.language == 'no' else "(Click anywhere to see the dashboard)"
-                
                 st.markdown(
                     f"""
                     <div class="welcome-container">
-                        <div class="welcome-text">{welcome_text}</div>
+                        <div class="welcome-text">Gratulerer! Så mye penger har du tjent i dag:</div>
                         <div class="profit-number">kr {net_profit:,}</div>
-                        <div class="click-anywhere">{click_text}</div>
+                        <div class="click-anywhere">(Klikk hvor som helst for å se dashbordet)</div>
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -193,49 +176,26 @@ try:
                 show_welcome_page()
             else:
                 # Show WooCommerce connection status when dashboard is visible
-                st.success(t('connected_to_api'))
+                st.success("Koblet til WooCommerce API")
 
                 # Header
-                st.title(t('dashboard_title'))
+                st.title("📊 Salgsstatistikk nettbutikk")
 
-                # Add a sidebar header for settings
-                st.sidebar.header("Innstillinger")
-                
-                # Language selector
-                language_options = list(Translations.LANGUAGES.items())
-                selected_lang_index = 0
-                for i, (code, name) in enumerate(language_options):
-                    if code == st.session_state.language:
-                        selected_lang_index = i
-                        break
-                
-                selected_lang = st.sidebar.selectbox(
-                    t('language'),
-                    options=[lang[0] for lang in language_options],
-                    format_func=lambda x: Translations.LANGUAGES[x],
-                    index=selected_lang_index
-                )
-                
-                # Update language if changed
-                if selected_lang != st.session_state.language:
-                    st.session_state.language = selected_lang
-                    st.rerun()
-                
                 # Debug mode toggle
-                debug_mode = st.sidebar.checkbox(t('debug_mode'), value=True)
+                debug_mode = st.sidebar.checkbox("Debug Mode", value=True)
                 if debug_mode:
                     st.sidebar.info(
                         "Debug mode is enabled. API responses and error messages are being logged to woocommerce_api.log"
                     )
 
                 # Real-time notifications toggle
-                notifications_enabled = st.sidebar.checkbox(t('enable_notifications'),
+                notifications_enabled = st.sidebar.checkbox("Aktiver sanntidsvarsler",
                                                             value=True)
 
                 # Add sound toggle if notifications are enabled
                 if notifications_enabled:
                     st.session_state.sound_enabled = st.sidebar.checkbox(
-                        t('enable_sound'),
+                        "🔔 Aktiver lydvarsling",
                         value=st.session_state.get('sound_enabled', True),
                         help="Spiller av Ca-Ching lyd når en ny ordre er mottatt.")
 
@@ -250,41 +210,32 @@ try:
                         )
 
                 # View period selector (before date range)
-                # Map the values to translation keys
-                period_mapping = {
-                    'no': ['Daglig', 'Ukentlig', 'Månedlig'],
-                    'en': ['Daily', 'Weekly', 'Monthly']
-                }
-                period_options = period_mapping[st.session_state.language]
-                
-                view_period = st.selectbox(
-                    t('view_period'),
-                    options=period_options,
-                    index=0,
-                    help="Select how data should be aggregated"
-                )
+                view_period = st.selectbox("Velg visningsperiode",
+                                           options=['Daglig', 'Ukentlig', 'Månedlig'],
+                                           index=0,
+                                           help="Velg hvordan dataene skal aggregeres")
 
                 # Calculate date range based on view period
                 start_date, end_date = get_date_range(view_period)
 
                 # Date range selector with calculated defaults
-                st.subheader(t('date_range'))
+                st.subheader("Valg av ordreperiode")
 
                 # Create two columns for date pickers
                 col1, col2 = st.columns(2)
 
                 with col1:
                     selected_start_date = st.date_input(
-                        t('start_date'),
+                        "Startdato",
                         value=start_date,
-                        help=f"{t('start_date')} ({start_date.strftime('%d.%m.%Y')})",
+                        help=f"Startdato (standard: {start_date.strftime('%d.%m.%Y')})",
                         format="DD.MM.YYYY")
 
                 with col2:
                     selected_end_date = st.date_input(
-                        t('end_date'),
+                        "Sluttdato",
                         value=end_date,
-                        help=f"{t('end_date')} ({end_date.strftime('%d.%m.%Y')})",
+                        help=f"Sluttdato (standard: {end_date.strftime('%d.%m.%Y')})",
                         format="DD.MM.YYYY")
 
                 # Validate date range
@@ -293,7 +244,7 @@ try:
                     return
 
                 st.info(
-                    t('date_range_info').format(selected_start_date.strftime('%d.%m.%Y'), selected_end_date.strftime('%d.%m.%Y'))
+                    f"Basert på ordre fra {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
                 )
 
                 # Fetch and process data
@@ -342,70 +293,63 @@ try:
                     return
 
                 # Create tabs
-                tab1, tab2, tab3, tab4 = st.tabs([
-                    f"📊 {t('dashboard_tab')}", 
-                    f"🧾 {t('invoices_tab')}", 
-                    f"📈 {t('results_tab')}", 
-                    f"📤 {t('export_tab')}"
-                ])
+                tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "🧾 Fakturaer", "📈 Resultat", "📤 Eksporter"])
 
                 with tab1:
-                    # Display metrics in columns - first row
+                    # Display metrics in columns (change from 4 columns to 5)
                     col1, col2, col3, col4, col5 = st.columns(5)
                     with col1:
                         st.metric(
-                            t('total_revenue_incl_vat'),
+                            "Total omsetning (ink. MVA)",
                             f"kr {metrics['total_revenue_incl_vat']:,.2f}",
                             help="Total revenue including VAT, excluding shipping costs")
                     with col2:
-                        st.metric(
-                            t('total_revenue_excl_vat'),
-                            f"kr {metrics['total_revenue_excl_vat']:,.2f}",
-                            help="Total revenue excluding VAT and shipping costs")
+                        st.metric("Total omsetning (eks. MVA)",
+                                  f"kr {metrics['total_revenue_excl_vat']:,.2f}",
+                                  help="Total revenue excluding VAT and shipping costs")
                     with col3:
                         st.metric(
-                            t('total_profit'),
+                            "Total fortjeneste",
                             f"kr {metrics['total_profit']:,.2f}",
-                            help="Profit calculated using revenue (excl. VAT) minus product costs"
+                            help=
+                            "Profit calculated using revenue (excl. VAT) minus product costs"
                         )
                     with col4:
                         st.metric(
-                            t('total_shipping_costs'),
-                            f"kr {metrics['shipping_cost']:,.2f}",
-                            help="Total shipping costs excluding VAT"
-                        )
-                    with col5:
-                        st.metric(
-                            t('total_shipping'),
+                            "Total frakt",
                             f"kr {metrics['shipping_total']:,.2f}",
                             help="Total shipping costs including VAT"
                         )
+                    with col5:
+                        pass
 
                     # Add second row of metrics
                     col5, col6, col7, col8 = st.columns(4)
                     with col5:
-                        st.metric(
-                            t('total_vat'),
-                            f"kr {metrics['total_tax']:,.2f}",
-                            help="Total VAT collected (including shipping VAT)")
+                        st.metric("Total MVA",
+                                  f"kr {metrics['total_tax']:,.2f}",
+                                  help="Total VAT collected (including shipping VAT)")
                     with col6:
-                        st.metric(
-                            t('profit_margin'),
-                            f"{metrics['profit_margin']:.1f}%",
-                            help="Profit as percentage of revenue (excl. VAT)")
+                        st.metric("Fortjenestemargin",
+                                  f"{metrics['profit_margin']:.1f}%",
+                                  help="Profit as percentage of revenue (excl. VAT)")
                     with col7:
-                        st.metric(
-                            t('cost_of_goods_sold'),
-                            f"kr {metrics['total_cogs']:,.2f}",
-                            help="Total cost of products sold (excl. VAT)")
+                        st.metric("Kostnad for solgte varer",
+                                  f"kr {metrics['total_cogs']:,.2f}",
+                                  help="Total cost of products sold (excl. VAT)")
                     with col8:
-                        st.metric(
-                            t('order_count'),
-                            f"{metrics['order_count']}",
-                            help="Total number of orders in selected period")
+                        st.metric("Antall ordrer",
+                                  f"{metrics['order_count']}",
+                                  help="Total number of orders in selected period")
 
                     # Add explanation about calculations
-                    st.info(t('calculation_info'))
+                    st.info("""
+                    💡 Kalkulasjon av omsetning og profit:
+                    - Total omsetning (ink. MVA): Totalt produktsalg inkludert MVA, eks. frakt
+                    - Total omsetning (eks. MVA): Total omsetning eks. MVA og frakt.
+                    - Fraktkostnader vises ekskl. mva
+                    - Kostnad: Total varekostnad (eks. MVA)
+                    """)
 
                     # Display Top 10 Products
                     st.header("10 mest solgte produkter basert på antall")
