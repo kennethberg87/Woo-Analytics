@@ -61,7 +61,7 @@ def setup_credentials():
                     os.remove(CREDENTIALS_FILE)
                 if os.path.exists(TOKEN_FILE):
                     os.remove(TOKEN_FILE)
-                st.experimental_rerun()
+                st.rerun()
         else:
             st.info("""
             To connect to Google Merchant, you need to:
@@ -87,7 +87,7 @@ def setup_credentials():
                         st.success("✅ Credentials file uploaded successfully!")
                         
                         # Force refresh of the page
-                        st.experimental_rerun()
+                        st.rerun()
                     else:
                         st.error("⚠️ Invalid credentials file. Please make sure you've downloaded the correct OAuth 2.0 credentials file.")
                 except Exception as e:
@@ -105,7 +105,7 @@ def setup_credentials():
                 if st.button("Reauthenticate"):
                     if os.path.exists(TOKEN_FILE):
                         os.remove(TOKEN_FILE)
-                    st.experimental_rerun()
+                    st.rerun()
             else:
                 st.info("Click the button below to authenticate with your Google account")
                 
@@ -120,7 +120,7 @@ def setup_credentials():
                                 st.success(f"✅ Successfully authenticated with Google Merchant Center (ID: {client.merchant_id})")
                                 st.balloons()
                                 # Force refresh of the page
-                                st.experimental_rerun()
+                                st.rerun()
                             else:
                                 st.error("⚠️ Authentication completed but couldn't find a Merchant Center account")
                     except Exception as e:
