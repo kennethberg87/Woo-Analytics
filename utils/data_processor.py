@@ -54,7 +54,7 @@ class DataProcessor:
         # Calculate revenue excluding VAT by using subtotal which is already excluding VAT
         total_revenue_excl_vat = df['subtotal'].sum()  # Use subtotal which is already excluding VAT
 
-        # Calculate profit using revenue excluding VAT and cost excluding VAT and shipping
+        # Calculate profit using revenue and cost excluding VAT and shipping
         total_profit = total_revenue_excl_vat - total_cost
         profit_margin = (total_profit / total_revenue_excl_vat * 100) if total_revenue_excl_vat > 0 else 0
 
@@ -77,7 +77,7 @@ class DataProcessor:
             'total_tax': total_tax,
             'total_profit': total_profit,
             'profit_margin': profit_margin,
-            'total_cogs': total_cost,  # Cost of goods excluding VAT and shipping
+            'total_cogs': total_cost,  # Cost of goods excluding VAT
             'order_count': order_count
         }
 

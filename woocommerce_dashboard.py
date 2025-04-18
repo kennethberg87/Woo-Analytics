@@ -366,11 +366,7 @@ try:
                             help=t('total_shipping_help')
                         )
                     with col5:
-                        st.metric(
-                            t('isolated_shipping'),
-                            f"kr {metrics['shipping_base']:,.2f}",
-                            help=t('isolated_shipping_help')
-                        )
+                        pass
 
                     # Add second row of metrics
                     col5, col6, col7, col8 = st.columns(4)
