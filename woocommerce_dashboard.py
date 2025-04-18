@@ -346,25 +346,24 @@ try:
                     col1, col2, col3, col4, col5 = st.columns(5)
                     with col1:
                         st.metric(
-                            "Total omsetning (ink. MVA)",
+                            t('total_revenue_incl_vat'),
                             f"kr {metrics['total_revenue_incl_vat']:,.2f}",
-                            help="Total revenue including VAT, excluding shipping costs")
+                            help=t('total_revenue_incl_vat_help'))
                     with col2:
-                        st.metric("Total omsetning (eks. MVA)",
+                        st.metric(t('total_revenue_excl_vat'),
                                   f"kr {metrics['total_revenue_excl_vat']:,.2f}",
-                                  help="Total revenue excluding VAT and shipping costs")
+                                  help=t('total_revenue_excl_vat_help'))
                     with col3:
                         st.metric(
-                            "Total fortjeneste",
+                            t('total_profit'),
                             f"kr {metrics['total_profit']:,.2f}",
-                            help=
-                            "Profit calculated using revenue (excl. VAT) minus product costs"
+                            help=t('total_profit_help')
                         )
                     with col4:
                         st.metric(
-                            "Total frakt",
+                            t('total_shipping'),
                             f"kr {metrics['shipping_total']:,.2f}",
-                            help="Total shipping costs including VAT"
+                            help=t('total_shipping_help')
                         )
                     with col5:
                         pass
@@ -372,36 +371,30 @@ try:
                     # Add second row of metrics
                     col5, col6, col7, col8 = st.columns(4)
                     with col5:
-                        st.metric("Total MVA",
+                        st.metric(t('total_tax'),
                                   f"kr {metrics['total_tax']:,.2f}",
-                                  help="Total VAT collected (including shipping VAT)")
+                                  help=t('total_tax_help'))
                     with col6:
-                        st.metric("Fortjenestemargin",
+                        st.metric(t('profit_margin'),
                                   f"{metrics['profit_margin']:.1f}%",
-                                  help="Profit as percentage of revenue (excl. VAT)")
+                                  help=t('profit_margin_help'))
                     with col7:
-                        st.metric("Kostnad for solgte varer",
+                        st.metric(t('cogs'),
                                   f"kr {metrics['total_cogs']:,.2f}",
-                                  help="Total cost of products sold (excl. VAT)")
+                                  help=t('cogs_help'))
                     with col8:
-                        st.metric("Antall ordrer",
+                        st.metric(t('order_count'),
                                   f"{metrics['order_count']}",
-                                  help="Total number of orders in selected period")
+                                  help=t('order_count_help'))
 
                     # Add explanation about calculations
-                    st.info("""
-                    💡 Kalkulasjon av omsetning og profit:
-                    - Total omsetning (ink. MVA): Totalt produktsalg inkludert MVA, eks. frakt
-                    - Total omsetning (eks. MVA): Total omsetning eks. MVA og frakt.
-                    - Fraktkostnader vises ekskl. mva
-                    - Kostnad: Total varekostnad (eks. MVA)
-                    """)
+                    st.info(t('calculation_info'))
 
                     # Display Top 10 Products
-                    st.header("10 mest solgte produkter basert på antall")
-                    st.caption(
-                        f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
-                    )
+                    st.header(t('top_products'))
+                    st.caption(t('period_caption', 
+                             selected_start_date.strftime('%d.%m.%Y'), 
+                             selected_end_date.strftime('%d.%m.%Y')))
 
                     top_products = DataProcessor.get_top_products(df_products)
                     if not top_products.empty:
@@ -409,39 +402,38 @@ try:
                             top_products,
                             column_config={
                                 "name":
-                                    "Produktnavn",
+                                    t('product_name_column'),
                                 "product_id":
                                     st.column_config.NumberColumn(
-                                        "Produkt ID",
-                                        help="Unik identifikator for produktet",
+                                        t('product_id_column'),
+                                        help=t('product_id_help'),
                                         format="%d"  # Format as plain integer without commas
                                     ),
                                 "Total Quantity":
                                     st.column_config.NumberColumn(
-                                        "Antall solgt",
-                                        help=
-                                        "Totalt antall solgt av dette produkter innenfor valg periode"
+                                        t('quantity_sold_column'),
+                                        help=t('quantity_sold_help')
                                     ),
                                 "Stock Quantity":
                                     st.column_config.NumberColumn(
-                                        "På lager", help="Nåværende lagerbeholdning")
+                                        t('stock_column'), help=t('stock_help'))
                             },
                             hide_index=False,
                             use_container_width=True)
                     else:
-                        st.warning("No product data available for the selected date range")
+                        st.warning(t('no_product_data'))
 
                     # Revenue Trends
-                    st.subheader(f"Omsetning ({view_period})")
+                    st.subheader(f"{t('revenue_trends')} ({view_period})")
                     revenue_chart = DataProcessor.create_revenue_chart(df, period)
                     if revenue_chart:
                         st.plotly_chart(revenue_chart, use_container_width=True)
 
                     # Customer List
-                    st.header("Ovesikt over kunder")
-                    st.caption(
-                        f"For perioden: {selected_start_date.strftime('%d.%m.%Y')} til {selected_end_date.strftime('%d.%m.%Y')}"
-                    )
+                    st.header(t('customer_list'))
+                    st.caption(t('period_caption',
+                              selected_start_date.strftime('%d.%m.%Y'),
+                              selected_end_date.strftime('%d.%m.%Y')))
 
                     customers_df = DataProcessor.get_customer_list(df)
                     if not customers_df.empty:
@@ -449,26 +441,25 @@ try:
                             customers_df,
                             column_config={
                                 "Name":
-                                    "Navn på kunde",
+                                    t('customer_name'),
                                 "Email":
-                                    "E-postadresse",
+                                    t('customer_email'),
                                 "Order Date":
-                                    st.column_config.DatetimeColumn("Ordre utført",
+                                    st.column_config.DatetimeColumn(t('order_date'),
                                                                     format="DD.MM.YYYY HH:mm"),
                                 "Payment Method":
-                                    "Betalingsmetode",
+                                    t('payment_method'),
                                 "Shipping Method":
-                                    "Fraktmetode",
+                                    t('shipping_method'),
                                 "Total Orders":
-                                    st.column_config.NumberColumn("Ordretotal",
-                                                                  help="Totalsum for ordren",
+                                    st.column_config.NumberColumn(t('order_total'),
+                                                                  help=t('order_total_help'),
                                                                   format="kr %.2f")
                             },
                             hide_index=True,
                             use_container_width=True)
                     else:
-                        st.warning(
-                            "No customer data available for the selected date range")
+                        st.warning(t('no_customer_data'))
 
                 with tab2:
                     # Render invoice section in the second tab

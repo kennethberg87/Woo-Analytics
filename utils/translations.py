@@ -86,16 +86,28 @@ class Translations:
                 """,
                 
                 # Products section
-                'top_products_header': '10 mest solgte produkter basert på antall',
+                'top_products': '10 mest solgte produkter basert på antall',
                 'period_caption': 'For perioden: {} til {}',
-                'product_name': 'Produktnavn',
-                'product_id': 'Produkt ID',
+                'product_name_column': 'Produktnavn',
+                'product_id_column': 'Produkt ID',
                 'product_id_help': 'Unik identifikator for produktet',
-                'quantity_sold': 'Antall solgt',
+                'quantity_sold_column': 'Antall solgt',
                 'quantity_sold_help': 'Totalt antall solgt av dette produkter innenfor valg periode',
-                'stock_quantity': 'På lager',
-                'stock_quantity_help': 'Nåværende lagerbeholdning',
-                'no_product_data': 'No product data available',
+                'stock_column': 'På lager',
+                'stock_help': 'Nåværende lagerbeholdning',
+                'no_product_data': 'Ingen produktdata tilgjengelig for valgt periode',
+                
+                # Revenue and Customers section
+                'revenue_trends': 'Omsetning',
+                'customer_list': 'Oversikt over kunder',
+                'customer_name': 'Navn på kunde',
+                'customer_email': 'E-postadresse',
+                'order_date': 'Ordre utført',
+                'payment_method': 'Betalingsmetode',
+                'shipping_method': 'Fraktmetode',
+                'order_total': 'Ordretotal',
+                'order_total_help': 'Totalsum for ordren',
+                'no_customer_data': 'Ingen kundedata tilgjengelig for valgt periode',
             },
             'en': {
                 # Page title and headers
