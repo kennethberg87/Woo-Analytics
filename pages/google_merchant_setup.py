@@ -111,12 +111,17 @@ def setup_credentials():
                 
                 if st.button("Authenticate with Google"):
                     st.info("""
-                    You'll see a URL appear in the terminal below. Copy that URL, paste it in your browser, 
-                    and follow the Google authentication process. Then, copy the authorization code provided
-                    by Google and paste it back in the terminal.
+                    ## Authentication Instructions:
                     
-                    Note: The process will appear to freeze here with "Waiting for authentication..." — 
-                    this is normal. The app is waiting for you to complete the console authentication flow.
+                    1. **Watch the terminal below** - you'll see an authentication URL appear
+                    2. **Copy that URL** and open it in a new browser tab
+                    3. **Sign in with your Google account** and authorize the application
+                    4. After authorization, Google will display a code
+                    5. **Copy that code** and paste it back in the terminal when prompted
+                    6. Press Enter to complete the authentication
+                    
+                    ⚠️ **Important:** The page will appear to freeze with "Waiting for authentication..." - 
+                    this is normal. Just follow the steps above in the terminal window.
                     """)
                     try:
                         with st.spinner("Waiting for authentication... Please follow the instructions above."):

@@ -67,10 +67,31 @@ class GoogleMerchantClient:
                             "Please create this file with your OAuth client ID and client secret."
                         )
                     
-                    # Create OAuth flow and use console flow instead of local server
-                    # This works better in Replit environment
-                    flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-                    self.creds = flow.run_console()
+                    # Create OAuth flow for Replit environment
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        CREDENTIALS_FILE, 
+                        SCOPES,
+                        redirect_uri='urn:ietf:wg:oauth:2.0:oob'  # Use out-of-band flow for Replit
+                    )
+                    
+                    # Get the authorization URL
+                    auth_url, _ = flow.authorization_url(prompt='consent')
+                    print("\n")
+                    print("="*80)
+                    print("AUTHENTICATION REQUIRED")
+                    print("="*80)
+                    print(f"1. Go to this URL in your browser:\n\n{auth_url}\n")
+                    print("2. Log in and authorize access if prompted")
+                    print("3. Copy the authorization code from the browser")
+                    print("4. Paste the code here and press Enter:")
+                    print("="*80)
+                    
+                    # Get the authorization code from user
+                    code = input("Enter authorization code: ").strip()
+                    
+                    # Exchange authorization code for credentials
+                    flow.fetch_token(code=code)
+                    self.creds = flow.credentials
                 
                 # Save the credentials for the next run
                 with open(TOKEN_FILE, 'w') as token:
