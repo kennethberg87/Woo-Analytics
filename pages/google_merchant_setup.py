@@ -110,8 +110,16 @@ def setup_credentials():
                 st.info("Click the button below to authenticate with your Google account")
                 
                 if st.button("Authenticate with Google"):
+                    st.info("""
+                    You'll see a URL appear in the terminal below. Copy that URL, paste it in your browser, 
+                    and follow the Google authentication process. Then, copy the authorization code provided
+                    by Google and paste it back in the terminal.
+                    
+                    Note: The process will appear to freeze here with "Waiting for authentication..." — 
+                    this is normal. The app is waiting for you to complete the console authentication flow.
+                    """)
                     try:
-                        with st.spinner("Waiting for authentication..."):
+                        with st.spinner("Waiting for authentication... Please follow the instructions above."):
                             # Initialize the client which will trigger authentication
                             client = GoogleMerchantClient()
                             
