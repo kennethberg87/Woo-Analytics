@@ -682,7 +682,15 @@ try:
                             
                             # Display Google Analytics error if present
                             if use_ga_data and 'ga_error_message' in cac_metrics and cac_metrics['ga_error_message']:
-                                st.warning(f"⚠️ {t('ga_error')}: {cac_metrics['ga_error_message']}")
+                                error_msg = cac_metrics['ga_error_message']
+                                
+                                # Check if it's a "no data" error
+                                if "No advertising cost data found" in error_msg:
+                                    st.info(f"ℹ️ {t('ga_no_data')}")
+                                else:
+                                    # Display general error message
+                                    st.warning(f"⚠️ {t('ga_error')}: {error_msg}")
+                                
                                 st.info(t('ga_fallback_notice', ad_cost_per_order))
                             
                             # Display key metrics

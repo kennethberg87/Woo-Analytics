@@ -177,7 +177,8 @@ class GoogleAnalyticsClient:
                 return df
             else:
                 logger.warning("No ad cost data found for the specified period")
-                return pd.DataFrame()
+                # Return empty DataFrame but raise a specific error
+                raise ValueError("No advertising cost data found in Google Analytics for the selected period")
                 
         except Exception as e:
             logger.error(f"Error fetching ad costs from Google Analytics: {str(e)}", exc_info=True)
@@ -194,15 +195,26 @@ class GoogleAnalyticsClient:
         Returns:
             dict: Dictionary with total ad spend and campaign breakdown
         """
-        df = self.get_ad_costs(start_date, end_date)
-        
-        if df is None or df.empty:
-            logger.warning("No ad cost data available for calculating total spend")
+        try:
+            df = self.get_ad_costs(start_date, end_date)
+            
+            if df is None or df.empty:
+                logger.warning("No ad cost data available for calculating total spend")
+                return {
+                    'total_spend': 0,
+                    'spend_by_campaign': {},
+                    'spend_by_date': {},
+                    'has_data': False
+                }
+        except ValueError as ve:
+            # Specific error for no data found
+            logger.warning(f"No ad cost data found: {str(ve)}")
             return {
                 'total_spend': 0,
                 'spend_by_campaign': {},
                 'spend_by_date': {},
-                'has_data': False
+                'has_data': False,
+                'error_message': str(ve)
             }
         
         # Calculate total spend
@@ -232,11 +244,19 @@ class GoogleAnalyticsClient:
         Returns:
             DataFrame with campaign performance metrics
         """
-        df = self.get_ad_costs(start_date, end_date)
-        
-        if df is None or df.empty:
-            logger.warning("No ad cost data available for calculating campaign performance")
-            return pd.DataFrame()
+        try:
+            df = self.get_ad_costs(start_date, end_date)
+            
+            if df is None or df.empty:
+                logger.warning("No ad cost data available for calculating campaign performance")
+                return pd.DataFrame()
+        except ValueError as ve:
+            # Specific error for no data found
+            logger.warning(f"No ad cost data found for campaign performance: {str(ve)}")
+            # Create empty DataFrame with error info
+            empty_df = pd.DataFrame()
+            empty_df.attrs['error_message'] = str(ve)
+            return empty_df
         
         # Group by campaign
         campaign_data = df.groupby('Campaign').agg({
