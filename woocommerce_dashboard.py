@@ -735,8 +735,8 @@ try:
                             
                             # Show campaign performance data if using GA data and data is available
                             if cac_metrics['using_ga_data'] and not cac_metrics['campaign_data'].empty:
-                                with st.expander("Kampanjeytelse (fra Google Analytics)", expanded=True):
-                                    st.subheader("Ytelse per kampanje")
+                                with st.expander(t('ga_campaign_performance'), expanded=True):
+                                    st.subheader(t('ga_campaign_performance_title'))
                                     # Format the campaign data for display
                                     display_df = cac_metrics['campaign_data'].copy()
                                     # Format currency columns
@@ -761,7 +761,7 @@ try:
                                             raw_df,
                                             x='Campaign',
                                             y='ROI',
-                                            title='ROI per kampanje',
+                                            title=t('ga_roi_per_campaign'),
                                             labels={'Campaign': 'Kampanje', 'ROI': 'ROI (%)'},
                                             color='ROI',
                                             color_continuous_scale='RdYlGn'

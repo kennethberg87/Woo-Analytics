@@ -7,6 +7,7 @@ and retrieving advertising cost data for use in the CAC analysis.
 import os
 import datetime
 import logging
+import json
 import pandas as pd
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import (
@@ -65,10 +66,6 @@ class GoogleAnalyticsClient:
         
         try:
             # Parse the JSON credentials from the environment variable
-            import json
-            import logging
-            logger = logging.getLogger(__name__)
-            
             credentials_json = json.loads(self.credentials_str)
             
             # Try to initialize with service account credentials from env var
