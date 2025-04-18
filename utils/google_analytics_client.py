@@ -134,6 +134,37 @@ class GoogleAnalyticsClient:
             # Log the requested date range for debugging
             logger.info(f"Requesting Google Analytics data from {start_str} to {end_str}")
             
+            # Try diagnostic mode first to identify all available metrics
+            try:
+                # Let's see what metrics are actually available in this GA4 property
+                # Create a metadata request to list all available metrics
+                logger.info("DIAGNOSTIC MODE: Requesting available metrics from Google Analytics")
+                
+                # Create a minimal request just to check what's available in the response structure
+                diagnostic_request = RunReportRequest(
+                    property=f"properties/{self.property_id}",
+                    date_ranges=[DateRange(start_date=start_str, end_date=end_str)],
+                    dimensions=[Dimension(name="date")],
+                    metrics=[
+                        Metric(name="activeUsers")  # Just a basic metric that should exist
+                    ]
+                )
+                
+                # Run diagnostic request
+                diagnostic_response = self.client.run_report(diagnostic_request)
+                
+                # Log metadata from the response
+                metadata_str = str(diagnostic_response)
+                logger.info(f"DIAGNOSTIC: Response structure sample: {metadata_str[:500]}...")
+                
+                # Log which metrics might be available from the metadata
+                if hasattr(diagnostic_response, 'metric_headers'):
+                    metric_headers = [h.name for h in diagnostic_response.metric_headers]
+                    logger.info(f"DIAGNOSTIC: Available metrics in headers: {', '.join(metric_headers)}")
+                    
+            except Exception as diag_error:
+                logger.error(f"Diagnostic mode failed: {str(diag_error)}")
+                
             # First try with the primary metrics for Google Ads integration
             metrics_to_try = [
                 # First attempt with the standard advertiserAdCost
@@ -148,12 +179,33 @@ class GoogleAnalyticsClient:
                     Metric(name="transactions"),
                     Metric(name="totalRevenue")
                 ],
-                # Last attempt with Google Ads cost and clicks
+                # Try with the legacy cost metric
+                [
+                    Metric(name="cost"), 
+                    Metric(name="transactions"),
+                    Metric(name="totalRevenue")
+                ],
+                # Try Google Ads specific metrics with different naming patterns
                 [
                     Metric(name="googleAdsImpressions"),
                     Metric(name="googleAdsClicks"),
                     Metric(name="googleAdsCost"),
                     Metric(name="transactions"),
+                    Metric(name="totalRevenue")
+                ],
+                # Try with GA4 standard ecommerce metrics
+                [
+                    Metric(name="totalAdCost"),
+                    Metric(name="impressions"),
+                    Metric(name="transactions"),
+                    Metric(name="totalRevenue")
+                ],
+                # Last attempt with general campaign metrics
+                [
+                    Metric(name="campaignId"),
+                    Metric(name="impressions"),
+                    Metric(name="clicks"),
+                    Metric(name="transactions"), 
                     Metric(name="totalRevenue")
                 ]
             ]
@@ -193,7 +245,9 @@ class GoogleAnalyticsClient:
                         break
                         
                 except Exception as metric_error:
-                    logger.warning(f"Error with metrics {', '.join(attempt_metric_names)}: {str(metric_error)}")
+                    # Get the metric names we were attempting and log the error
+                    # Make sure we're using the correct variable name here
+                    logger.warning(f"Error with metrics {', '.join([m.name for m in attempt_metrics])}: {str(metric_error)}")
                     # Continue to the next set of metrics
                     continue
             
