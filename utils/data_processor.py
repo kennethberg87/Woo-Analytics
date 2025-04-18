@@ -278,14 +278,15 @@ class DataProcessor:
         }
         
     @staticmethod
-    def calculate_cac_metrics(df, ad_cost_per_order=30, previous_period_data=None):
+    def calculate_cac_metrics(df, ad_cost_per_order=30, previous_period_data=None, google_merchant_data=None):
         """
         Calculate Customer Acquisition Cost (CAC) vs. Revenue metrics
         
         Args:
             df: Order DataFrame with billing information
-            ad_cost_per_order: Advertising cost per order in NOK
+            ad_cost_per_order: Advertising cost per order in NOK (used as fallback if no Google data)
             previous_period_data: Optional data from previous period for comparison
+            google_merchant_data: Optional data from Google Merchant Center for accurate ad costs
             
         Returns:
             Dictionary of CAC metrics and time-series data
@@ -352,8 +353,16 @@ class DataProcessor:
         # Calculate total revenue
         total_revenue = customers_df['Order Total'].sum()
         
-        # Calculate total ad spend (assuming fixed cost per order)
-        total_ad_spend = len(customers_df) * ad_cost_per_order
+        # Calculate total ad spend
+        # Use Google Merchant data if available, otherwise fallback to fixed cost per order
+        if google_merchant_data and 'total_ad_spend' in google_merchant_data and google_merchant_data['total_ad_spend'] > 0:
+            total_ad_spend = google_merchant_data['total_ad_spend']
+            # If we have accurate ad cost per order from Google
+            if 'ad_cost_per_order' in google_merchant_data and google_merchant_data['ad_cost_per_order'] > 0:
+                ad_cost_per_order = google_merchant_data['ad_cost_per_order']
+        else:
+            # Fallback to the estimated cost
+            total_ad_spend = len(customers_df) * ad_cost_per_order
         
         # Calculate CAC (Customer Acquisition Cost)
         # We'll only count acquisition cost for new customers
@@ -392,7 +401,32 @@ class DataProcessor:
             daily_data.columns = ['Date', 'Revenue', 'Unique_Customers', 'Order_Count']
             
             # Calculate daily ad spend and CAC
-            daily_data['Ad_Spend'] = daily_data['Order_Count'] * ad_cost_per_order
+            # Check if we have Google Merchant daily costs data
+            if google_merchant_data and 'daily_costs' in google_merchant_data and not google_merchant_data['daily_costs'].empty:
+                # Convert dates to strings for merging
+                daily_data['Date_Str'] = daily_data['Date'].astype(str)
+                merchant_daily = google_merchant_data['daily_costs'].copy()
+                merchant_daily['Date'] = pd.to_datetime(merchant_daily['Date']).dt.date
+                merchant_daily['Date_Str'] = merchant_daily['Date'].astype(str)
+                
+                # Merge with Google data
+                daily_data = pd.merge(
+                    daily_data, 
+                    merchant_daily[['Date_Str', 'Ad_Cost']], 
+                    on='Date_Str', 
+                    how='left'
+                )
+                
+                # Fill missing values with calculated ad spend
+                daily_data['Ad_Spend'] = daily_data['Ad_Cost'].fillna(daily_data['Order_Count'] * ad_cost_per_order)
+                
+                # Clean up
+                daily_data = daily_data.drop(['Date_Str', 'Ad_Cost'], axis=1)
+            else:
+                # Use estimated ad spend
+                daily_data['Ad_Spend'] = daily_data['Order_Count'] * ad_cost_per_order
+                
+            # Calculate metrics
             daily_data['Daily_CAC'] = daily_data['Ad_Spend'] / daily_data['Unique_Customers']
             daily_data['Daily_ROI'] = ((daily_data['Revenue'] - daily_data['Ad_Spend']) / 
                                      daily_data['Ad_Spend'] * 100)
