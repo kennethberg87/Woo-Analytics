@@ -384,13 +384,32 @@ class DataProcessor:
                 
                 # Create client and get ad cost data
                 ga_client = GoogleAnalyticsClient()
-                ad_spend_data = ga_client.calculate_total_ad_spend(min_date, max_date)
-                campaign_data = ga_client.calculate_campaign_performance(min_date, max_date)
                 
-                # Use GA data if available
-                if ad_spend_data['has_data']:
+                # Get ad spend data - check for no data error
+                ad_spend_data = ga_client.calculate_total_ad_spend(min_date, max_date)
+                
+                # Check for error message from no data case
+                if 'error_message' in ad_spend_data:
+                    ga_error_message = ad_spend_data['error_message']
+                    logger.warning(f"Google Analytics returned an error: {ga_error_message}")
+                    
+                    # Fall back to the fixed cost approach
+                    total_ad_spend = len(customers_df) * ad_cost_per_order
+                    daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
+                    campaign_data = pd.DataFrame()
+                    
+                # Use GA data if available and no error
+                elif ad_spend_data['has_data']:
                     total_ad_spend = ad_spend_data['total_spend']
                     using_ga_data = True
+                    
+                    # Try to get campaign data as well
+                    try:
+                        campaign_data = ga_client.calculate_campaign_performance(min_date, max_date)
+                    except ValueError as ve:
+                        # Just log this - we already have spend data
+                        logger.warning(f"Error getting campaign data: {str(ve)}")
+                        campaign_data = pd.DataFrame()
                     
                     # Create daily spend data for trend analysis
                     daily_spend = pd.DataFrame([
@@ -401,14 +420,14 @@ class DataProcessor:
                     # Log success
                     logger.info(f"Successfully retrieved Google Analytics data: Total spend: {total_ad_spend:.2f} NOK, Daily data points: {len(daily_spend)}")
                 else:
-                    # Log no data found
+                    # Log no data found (should not happen with the new error handling, but keep as fallback)
                     ga_error_message = "No advertising cost data found in Google Analytics for the selected period"
                     logger.warning(ga_error_message)
                     
                     # Fall back to the fixed cost approach
                     total_ad_spend = len(customers_df) * ad_cost_per_order
-                    # Initialize empty daily_spend for later use
                     daily_spend = pd.DataFrame(columns=['Date', 'Ad_Spend'])
+                    campaign_data = pd.DataFrame()
             except ImportError as e:
                 # Handle missing Google Analytics libraries
                 ga_error_message = "Google Analytics API libraries not available. Please check installation."
