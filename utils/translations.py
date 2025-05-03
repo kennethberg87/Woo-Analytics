@@ -285,6 +285,8 @@ class Translations:
                 'cogs_help': 'Total cost of products sold (excl. VAT)',
                 'order_count': 'Order count',
                 'order_count_help': 'Total number of orders in selected period',
+                'total_products_sold': 'Total products sold',
+                'total_products_sold_help': 'Total number of products sold in the period',
                 
                 # Explanations
                 'calculation_info': """

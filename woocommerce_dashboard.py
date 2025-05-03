@@ -375,7 +375,7 @@ try:
                         )
 
                     # Add second row of metrics
-                    col5, col6, col7, col8 = st.columns(4)
+                    col5, col6, col7, col8, col9 = st.columns(5)
                     with col5:
                         st.metric(t('total_tax'),
                                   f"kr {metrics['total_tax']:,.2f}",
@@ -392,6 +392,10 @@ try:
                         st.metric(t('order_count'),
                                   f"{metrics['order_count']}",
                                   help=t('order_count_help'))
+                    with col9:
+                        st.metric(t('total_products_sold'),
+                                  f"{metrics['total_products_sold']}",
+                                  help=t('total_products_sold_help'))
 
                     # Add explanation about calculations
                     st.info(t('calculation_info'))
