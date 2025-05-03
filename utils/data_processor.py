@@ -101,11 +101,20 @@ class DataProcessor:
         if 'date' in df_products.columns:
             df_products['date'] = pd.to_datetime(df_products['date'])
 
-        # Group by product and aggregate data
+        # First, get a separate dataframe with the latest stock quantities
+        # Sort by date in descending order to get the most recent records first
+        df_products_sorted = df_products.sort_values('date', ascending=False)
+        
+        # Get the first (most recent) stock quantity for each product
+        latest_stock = df_products_sorted.drop_duplicates(['product_id'])[['product_id', 'stock_quantity']]
+        
+        # Group by product and aggregate data for quantities sold
         top_products = df_products.groupby(['name', 'product_id', 'sku']).agg({
             'quantity': 'sum',
-            'stock_quantity': 'last'  # Take the most recent stock quantity
         }).reset_index()
+        
+        # Merge with the latest stock quantities
+        top_products = top_products.merge(latest_stock, on='product_id', how='left')
 
         # Sort by quantity sold and get top products
         top_products = top_products.sort_values('quantity', ascending=False).head(limit)

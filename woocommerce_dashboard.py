@@ -406,6 +406,26 @@ try:
                              selected_start_date.strftime('%d.%m.%Y'), 
                              selected_end_date.strftime('%d.%m.%Y')))
 
+                    # Add a stock refresh button above the product table
+                    stock_col1, stock_col2 = st.columns([1, 4])
+                    with stock_col1:
+                        if st.button(t('refresh_stock'), help=t('refresh_stock_help')):
+                            # If refresh button is clicked, force a refresh of stock data
+                            with st.spinner(t('refreshing_stock')):
+                                # Get all product IDs from the current df_products
+                                product_ids = df_products['product_id'].unique()
+                                # Refresh stock quantities with force_refresh=True
+                                stock_quantities = st.session_state.woo_client.get_stock_quantities_batch(
+                                    product_ids, force_refresh=True)
+                                
+                                # Update stock_quantity in df_products
+                                for idx, row in df_products.iterrows():
+                                    pid = row['product_id']
+                                    df_products.at[idx, 'stock_quantity'] = stock_quantities.get(pid, 0)
+                                
+                                st.success(t('stock_refreshed'))
+                    
+                    # Get top products with updated stock quantities
                     top_products = DataProcessor.get_top_products(df_products)
                     if not top_products.empty:
                         st.dataframe(

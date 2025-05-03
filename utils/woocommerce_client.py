@@ -42,12 +42,21 @@ class WooCommerceClient:
             st.sidebar.error(f"Failed to initialize WooCommerce client: {str(e)}")
             raise
 
-    def get_stock_quantities_batch(self, product_ids):
-        """Get stock quantities for multiple products in one API call"""
+    def get_stock_quantities_batch(self, product_ids, force_refresh=False):
+        """
+        Get stock quantities for multiple products in one API call
+        
+        Args:
+            product_ids: List of product IDs to fetch stock quantities for
+            force_refresh: If True, bypass cache and fetch fresh data
+            
+        Returns:
+            Dictionary mapping product IDs to their stock quantities
+        """
         try:
-            # Check cache first
+            # Check cache first if not forcing refresh
             now = datetime.now()
-            if self.cache_timestamp and (now - self.cache_timestamp) < self.cache_duration:
+            if not force_refresh and self.cache_timestamp and (now - self.cache_timestamp) < self.cache_duration:
                 # Return cached values if available
                 return {pid: self.stock_cache.get(pid) for pid in product_ids}
 

@@ -310,6 +310,10 @@ class Translations:
                 'stock_column': 'In stock',
                 'stock_help': 'Current stock quantity',
                 'no_product_data': 'No product data available for the selected date range',
+                'refresh_stock': 'Refresh stock',
+                'refresh_stock_help': 'Get the latest stock quantity data from WooCommerce',
+                'refreshing_stock': 'Refreshing stock quantities...',
+                'stock_refreshed': 'Stock quantities refreshed successfully',
                 
                 # Revenue and Customers section
                 'revenue_trends': 'Revenue',
