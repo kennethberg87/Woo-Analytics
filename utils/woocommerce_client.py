@@ -56,9 +56,19 @@ class WooCommerceClient:
         try:
             # Check cache first if not forcing refresh
             now = datetime.now()
+            
+            # Clear cache if forcing refresh
+            if force_refresh:
+                logging.debug(f"Force refresh requested, clearing stock cache")
+                self.stock_cache = {}
+                self.cache_timestamp = None
+            
             if not force_refresh and self.cache_timestamp and (now - self.cache_timestamp) < self.cache_duration:
+                logging.debug(f"Using cached stock data, cache age: {(now - self.cache_timestamp).total_seconds()} seconds")
                 # Return cached values if available
-                return {pid: self.stock_cache.get(pid) for pid in product_ids}
+                return {pid: self.stock_cache.get(pid, 0) for pid in product_ids}
+                
+            logging.debug(f"Fetching fresh stock data for {len(product_ids)} products")
 
             # Fetch products in batches of 100
             batch_size = 100
@@ -87,11 +97,34 @@ class WooCommerceClient:
                             continue
 
                         stock = product.get('stock_quantity')
-                        # If stock is None, try to get it from the parent product
-                        if stock is None and product.get('parent_id'):
-                            parent_response = self.wcapi.get(f"products/{product['parent_id']}")
-                            parent_product = parent_response.json()
-                            stock = parent_product.get('stock_quantity')
+                        # Handle different product types
+                        if stock is None:
+                            # Check if it's a variable product
+                            if product.get('type') == 'variable':
+                                # For variable products, fetch variations
+                                variations_response = self.wcapi.get(f"products/{pid}/variations", params={"per_page": 100})
+                                variations = variations_response.json()
+                                if isinstance(variations, list) and variations:
+                                    # Sum up stock quantities from all variations
+                                    variation_stock = sum(v.get('stock_quantity', 0) or 0 for v in variations)
+                                    stock = variation_stock
+                                    logging.debug(f"Variable product {pid} has total stock: {stock} from variations")
+                            # If it's a variation, get its specific stock
+                            elif product.get('parent_id'):
+                                # Try to get stock from variation first
+                                variation_response = self.wcapi.get(f"products/{product['parent_id']}/variations/{pid}")
+                                variation = variation_response.json()
+                                if isinstance(variation, dict):
+                                    variation_stock = variation.get('stock_quantity')
+                                    if variation_stock is not None:
+                                        stock = variation_stock
+                                        logging.debug(f"Variation {pid} has stock: {stock}")
+                                    else:
+                                        # If variation doesn't have stock, try parent
+                                        parent_response = self.wcapi.get(f"products/{product['parent_id']}")
+                                        parent_product = parent_response.json()
+                                        stock = parent_product.get('stock_quantity')
+                                        logging.debug(f"Using parent stock for variation {pid}: {stock}")
 
                         logging.debug(f"Product {pid} stock quantity: {stock}")
                         all_stock[pid] = 0 if stock is None else stock
