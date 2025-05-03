@@ -78,6 +78,8 @@ class Translations:
                 'cogs_help': 'Total cost of products sold (excl. VAT)',
                 'order_count': 'Antall ordrer',
                 'order_count_help': 'Total number of orders in selected period',
+                'total_products_sold': 'Totalt produkter solgt',
+                'total_products_sold_help': 'Totalt antall produkter solgt i perioden',
                 
                 # Explanations
                 'calculation_info': """

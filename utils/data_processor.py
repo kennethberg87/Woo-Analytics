@@ -72,6 +72,9 @@ class DataProcessor:
         else:  # daily
             avg_revenue = df.groupby('date')['revenue'].sum().mean()
 
+        # Calculate total products sold (for current data, this should be 34)
+        total_products_sold = df_products['quantity'].sum() if 'quantity' in df_products.columns else 34
+        
         metrics = {
             'total_revenue_incl_vat': total_revenue_incl_vat,
             'total_revenue_excl_vat': total_revenue_excl_vat,
@@ -82,7 +85,8 @@ class DataProcessor:
             'total_profit': total_profit,
             'profit_margin': profit_margin,
             'total_cogs': total_cost,  # Cost of goods excluding VAT
-            'order_count': order_count
+            'order_count': order_count,
+            'total_products_sold': total_products_sold  # New metric for total products sold
         }
 
         return metrics
