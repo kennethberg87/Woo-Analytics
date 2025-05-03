@@ -70,69 +70,110 @@ class WooCommerceClient:
                 
             logging.debug(f"Fetching fresh stock data for {len(product_ids)} products")
 
-            # Fetch products in batches of 100
+            # Fetch products in batches of 100 but use parallel processing for speed
             batch_size = 100
             all_stock = {}
 
-            for i in range(0, len(product_ids), batch_size):
-                batch_ids = list(product_ids)[i:i + batch_size]
-                products_query = ",".join(map(str, batch_ids))
-
+            # Define helper functions for parallel processing
+            def fetch_product_batch(batch_ids):
+                batch_results = {}
                 try:
+                    products_query = ",".join(map(str, batch_ids))
                     response = self.wcapi.get("products", params={
                         "include": products_query,
-                        "per_page": batch_size,
+                        "per_page": len(batch_ids),
                         "status": "any"  # Include all product statuses
                     })
-
                     products = response.json()
-
+                    
                     if not isinstance(products, list):
                         logging.error(f"Invalid response format for products: {products}")
-                        continue
-
+                        return batch_results
+                        
+                    # Collect variable products to fetch their variations in bulk
+                    variable_products = []
+                    variation_products = []
+                    standard_products = []
+                    
                     for product in products:
                         pid = product.get('id')
                         if pid is None:
                             continue
-
+                            
                         stock = product.get('stock_quantity')
-                        # Handle different product types
-                        if stock is None:
-                            # Check if it's a variable product
-                            if product.get('type') == 'variable':
-                                # For variable products, fetch variations
-                                variations_response = self.wcapi.get(f"products/{pid}/variations", params={"per_page": 100})
-                                variations = variations_response.json()
-                                if isinstance(variations, list) and variations:
-                                    # Sum up stock quantities from all variations
-                                    variation_stock = sum(v.get('stock_quantity', 0) or 0 for v in variations)
-                                    stock = variation_stock
-                                    logging.debug(f"Variable product {pid} has total stock: {stock} from variations")
-                            # If it's a variation, get its specific stock
-                            elif product.get('parent_id'):
-                                # Try to get stock from variation first
-                                variation_response = self.wcapi.get(f"products/{product['parent_id']}/variations/{pid}")
-                                variation = variation_response.json()
-                                if isinstance(variation, dict):
-                                    variation_stock = variation.get('stock_quantity')
-                                    if variation_stock is not None:
-                                        stock = variation_stock
-                                        logging.debug(f"Variation {pid} has stock: {stock}")
-                                    else:
-                                        # If variation doesn't have stock, try parent
-                                        parent_response = self.wcapi.get(f"products/{product['parent_id']}")
-                                        parent_product = parent_response.json()
-                                        stock = parent_product.get('stock_quantity')
-                                        logging.debug(f"Using parent stock for variation {pid}: {stock}")
-
-                        logging.debug(f"Product {pid} stock quantity: {stock}")
-                        all_stock[pid] = 0 if stock is None else stock
-                        self.stock_cache[pid] = 0 if stock is None else stock  # Update cache
-
+                        if stock is not None:
+                            # If stock is directly available, store it immediately
+                            batch_results[pid] = 0 if stock is None else stock
+                            continue
+                            
+                        # Categorize products for optimized fetching
+                        if product.get('type') == 'variable':
+                            variable_products.append(product)
+                        elif product.get('parent_id'):
+                            variation_products.append(product)
+                        else:
+                            standard_products.append(product)
+                    
+                    # Process each category in parallel
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                        # Process variable products
+                        variable_futures = {
+                            executor.submit(self._fetch_variable_product_stock, product): 
+                            product.get('id') for product in variable_products
+                        }
+                        
+                        # Process variation products
+                        variation_futures = {
+                            executor.submit(self._fetch_variation_product_stock, product):
+                            product.get('id') for product in variation_products
+                        }
+                        
+                        # Collect results from variable products
+                        for future in concurrent.futures.as_completed(variable_futures):
+                            pid = variable_futures[future]
+                            try:
+                                stock = future.result()
+                                batch_results[pid] = stock
+                            except Exception as e:
+                                logging.error(f"Error processing variable product {pid}: {str(e)}")
+                                batch_results[pid] = 0
+                        
+                        # Collect results from variation products
+                        for future in concurrent.futures.as_completed(variation_futures):
+                            pid = variation_futures[future]
+                            try:
+                                stock = future.result()
+                                batch_results[pid] = stock
+                            except Exception as e:
+                                logging.error(f"Error processing variation {pid}: {str(e)}")
+                                batch_results[pid] = 0
+                    
+                    # Process any remaining standard products
+                    for product in standard_products:
+                        pid = product.get('id')
+                        stock = product.get('stock_quantity', 0) or 0
+                        batch_results[pid] = stock
+                        
                 except Exception as e:
-                    logging.error(f"Error fetching batch {i}: {str(e)}")
-                    continue
+                    logging.error(f"Error fetching batch: {str(e)}")
+                
+                return batch_results
+            
+            # Create batches for parallel processing
+            batches = []
+            for i in range(0, len(product_ids), batch_size):
+                batches.append(list(product_ids)[i:i + batch_size])
+            
+            # Process batches in parallel for maximum speed
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                batch_futures = {executor.submit(fetch_product_batch, batch): i for i, batch in enumerate(batches)}
+                
+                for future in concurrent.futures.as_completed(batch_futures):
+                    batch_results = future.result()
+                    all_stock.update(batch_results)
+                    # Update cache
+                    for pid, stock in batch_results.items():
+                        self.stock_cache[pid] = stock
 
             # Update cache timestamp
             self.cache_timestamp = now
@@ -146,6 +187,66 @@ class WooCommerceClient:
             # Return 0 instead of None for missing stock quantities
             return {pid: 0 for pid in product_ids}
 
+    def _fetch_variable_product_stock(self, product):
+        """
+        Helper method to fetch stock for variable products with variations
+        
+        Args:
+            product: The variable product object
+            
+        Returns:
+            Total stock quantity summed across all variations
+        """
+        pid = product.get('id')
+        try:
+            # For variable products, fetch variations
+            variations_response = self.wcapi.get(f"products/{pid}/variations", params={"per_page": 100})
+            variations = variations_response.json()
+            
+            if isinstance(variations, list) and variations:
+                # Sum up stock quantities from all variations
+                variation_stock = sum(v.get('stock_quantity', 0) or 0 for v in variations)
+                logging.debug(f"Variable product {pid} has total stock: {variation_stock} from variations")
+                return variation_stock
+            return 0
+        except Exception as e:
+            logging.error(f"Error fetching variations for product {pid}: {str(e)}")
+            return 0
+            
+    def _fetch_variation_product_stock(self, product):
+        """
+        Helper method to fetch stock for a variation of a variable product
+        
+        Args:
+            product: The variation product object
+            
+        Returns:
+            Stock quantity for the variation
+        """
+        pid = product.get('id')
+        parent_id = product.get('parent_id')
+        
+        try:
+            # Try to get stock from variation directly
+            variation_response = self.wcapi.get(f"products/{parent_id}/variations/{pid}")
+            variation = variation_response.json()
+            
+            if isinstance(variation, dict):
+                variation_stock = variation.get('stock_quantity')
+                if variation_stock is not None:
+                    logging.debug(f"Variation {pid} has stock: {variation_stock}")
+                    return variation_stock
+                    
+            # If variation doesn't have stock or request fails, try parent
+            parent_response = self.wcapi.get(f"products/{parent_id}")
+            parent_product = parent_response.json()
+            parent_stock = parent_product.get('stock_quantity', 0) or 0
+            logging.debug(f"Using parent stock for variation {pid}: {parent_stock}")
+            return parent_stock
+        except Exception as e:
+            logging.error(f"Error fetching stock for variation {pid}: {str(e)}")
+            return 0
+    
     def get_payment_method_display(self, payment_method):
         """Convert payment method code to display name"""
         if not payment_method:
@@ -227,7 +328,7 @@ class WooCommerceClient:
         return ''
 
     def get_orders(self, start_date, end_date):
-        """Fetch orders from WooCommerce API within the specified date range"""
+        """Fetch orders from WooCommerce API within the specified date range using parallel requests"""
         try:
             # Convert dates to UTC for API request
             oslo_tz = pytz.timezone('Europe/Oslo')
@@ -242,198 +343,250 @@ class WooCommerceClient:
             start_date_utc = start_date_oslo.astimezone(utc_tz)
             end_date_utc = end_date_oslo.astimezone(utc_tz)
 
-            all_orders = []
-            page = 1
-            per_page = 100  # Maximum allowed by WooCommerce API
-
             with st.spinner('Henter ordrer...'):
+                # First, determine the total number of pages
+                params = {
+                    "after": start_date_utc.isoformat(),
+                    "before": end_date_utc.isoformat(),
+                    "per_page": 100,  # Maximum allowed by WooCommerce API
+                    "page": 1
+                }
+                
+                response = self.wcapi.get("orders", params=params)
+                data = response.json()
+                
+                if not isinstance(data, list):
+                    logging.error(f"Invalid response format: {data}")
+                    return []
+                
+                # Get total pages from WooCommerce headers
+                total_orders = int(response.headers.get('X-WP-Total', '0'))
+                total_pages = int(response.headers.get('X-WP-TotalPages', '1'))
+                
+                logging.debug(f"Total orders to fetch: {total_orders} across {total_pages} pages")
+                
+                # If we only have one page, return the data we already have
+                if total_pages <= 1:
+                    return data
+                
+                # Create a progress bar
                 progress_bar = st.progress(0)
-
-                while True:
-                    logging.debug(f"Fetching orders page {page}")
-                    start_time = datetime.now()
-
-                    params = {
-                        "after": start_date_utc.isoformat(),
-                        "before": end_date_utc.isoformat(),
-                        "per_page": per_page,
-                        "page": page,
-                        "status": "any"
-                    }
-
-                    response = self.wcapi.get("orders", params=params)
-                    data = response.json()
-
-                    if not isinstance(data, list):
-                        logging.error("Invalid response format")
-                        break
-
-                    if not data:  # No more orders
-                        break
-
-                    all_orders.extend(data)
-
-                    # Update progress bar
-                    progress = min(1.0, page * per_page / (len(all_orders) + per_page))
-                    progress_bar.progress(progress)
-
-                    # Check if we've received less than per_page items
-                    if len(data) < per_page:
-                        break
-
-                    page += 1
-
-                    # Log performance metrics
-                    end_time = datetime.now()
-                    duration = (end_time - start_time).total_seconds()
-                    logging.debug(f"Page {page} fetched in {duration:.2f} seconds")
-
+                
+                # Function to fetch a single page
+                def fetch_page(page_num):
+                    try:
+                        start_time = datetime.now()
+                        page_params = {
+                            "after": start_date_utc.isoformat(),
+                            "before": end_date_utc.isoformat(),
+                            "per_page": 100,
+                            "page": page_num,
+                            "status": "any"
+                        }
+                        page_response = self.wcapi.get("orders", params=page_params)
+                        page_data = page_response.json()
+                        
+                        if not isinstance(page_data, list):
+                            logging.error(f"Invalid response format for page {page_num}: {page_data}")
+                            return []
+                        
+                        end_time = datetime.now()
+                        duration = (end_time - start_time).total_seconds()
+                        logging.debug(f"Page {page_num} fetched in {duration:.2f} seconds")
+                        return page_data
+                    except Exception as e:
+                        logging.error(f"Error fetching page {page_num}: {str(e)}")
+                        return []
+                
+                # Use the data from the first page that we already fetched
+                all_orders = data
+                
+                # Fetch remaining pages in parallel
+                remaining_pages = list(range(2, total_pages + 1))
+                
+                # Use ThreadPoolExecutor to fetch pages in parallel
+                with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                    future_to_page = {executor.submit(fetch_page, page_num): page_num for page_num in remaining_pages}
+                    
+                    # Process results as they complete
+                    for i, future in enumerate(concurrent.futures.as_completed(future_to_page)):
+                        page_num = future_to_page[future]
+                        try:
+                            page_data = future.result()
+                            all_orders.extend(page_data)
+                            
+                            # Update progress bar
+                            progress = (i + 1) / len(remaining_pages)
+                            progress_bar.progress(progress)
+                            
+                        except Exception as e:
+                            logging.error(f"Error processing page {page_num}: {str(e)}")
+                
                 progress_bar.empty()
-
-            logging.debug(f"Total orders fetched: {len(all_orders)}")
-            return all_orders
+                
+                logging.debug(f"Total orders fetched: {len(all_orders)}")
+                return all_orders
 
         except Exception as e:
             logging.error(f"Error fetching orders: {str(e)}")
             return []
 
     def process_orders_to_df(self, orders):
-        """Convert orders to pandas DataFrame with daily metrics and product information"""
+        """Convert orders to pandas DataFrame with daily metrics and product information using parallel processing"""
         if not orders:
             return pd.DataFrame(), pd.DataFrame()
 
         oslo_tz = pytz.timezone('Europe/Oslo')
-        order_data = []
-        product_data = []
-
-        # Collect all product IDs first
+        
+        # Collect all product IDs first - This is much faster as a one-pass operation
+        logging.debug("Extracting product IDs from orders")
         product_ids = set()
         for order in orders:
             for item in order.get('line_items', []):
-                product_ids.add(item.get('product_id'))
+                product_id = item.get('product_id')
+                if product_id:
+                    product_ids.add(product_id)
 
-        # Batch fetch stock quantities
+        # Batch fetch stock quantities in parallel
         with st.spinner('Henter lagerstatus...'):
             stock_quantities = self.get_stock_quantities_batch(product_ids)
 
         logging.debug(f"Processing {len(orders)} orders")
         start_time = datetime.now()
-
+        
+        # Define helper function to process one order
+        def process_order(order):
+            try:
+                # Parse and convert date to Oslo timezone
+                date_str = order.get('date_created')
+                if not date_str:
+                    return None, []  # Skip orders without dates
+                
+                utc_date = pd.to_datetime(date_str)
+                order_date = utc_date.tz_localize('UTC').tz_convert(oslo_tz)
+                
+                # Initialize order info
+                order_id = order.get('id')
+                total = float(order.get('total', 0))
+                status = order.get('status', '')
+                
+                # Process shipping lines
+                shipping_lines = order.get('shipping_lines', [])
+                shipping_base = sum(float(shipping.get('total', 0)) for shipping in shipping_lines)
+                shipping_tax = sum(float(shipping.get('total_tax', 0)) for shipping in shipping_lines)
+                
+                # Calculate total shipping
+                total_shipping = shipping_base + shipping_tax
+                total_tax = float(order.get('total_tax', 0))
+                subtotal = sum(float(item.get('subtotal', 0)) for item in order.get('line_items', []))
+                
+                # Get billing information
+                billing = order.get('billing', {})
+                
+                # Get order number and payment method
+                meta_data = order.get('meta_data', [])
+                order_number = self.get_order_number(meta_data)
+                dintero_method = self.get_dintero_payment_method(meta_data)
+                shipping_method = self.get_shipping_method(shipping_lines)
+                invoice_details = self.get_invoice_details(meta_data)
+                
+                # Create order record
+                order_info = {
+                    'date': order_date,
+                    'order_id': order_id,
+                    'order_number': order_number,
+                    'status': self.get_order_status_display(status),
+                    'total': total,
+                    'subtotal': subtotal,
+                    'shipping_base': shipping_base,
+                    'shipping_total': total_shipping,
+                    'shipping_tax': shipping_tax,
+                    'tax_total': total_tax,
+                    'billing': billing,
+                    'dintero_payment_method': dintero_method,
+                    'shipping_method': shipping_method,
+                    'invoice_number': invoice_details['invoice_number'],
+                    'invoice_date': invoice_details['invoice_date']
+                }
+                
+                # Process line items
+                products = []
+                for item in order.get('line_items', []):
+                    quantity = int(item.get('quantity', 0))
+                    
+                    # Extract cost from metadata
+                    cost = 0
+                    for meta in item.get('meta_data', []):
+                        if meta.get('key') == '_yith_cog_item_cost':
+                            try:
+                                cost = float(meta.get('value', 0))
+                            except (ValueError, TypeError):
+                                cost = 0
+                            break
+                    
+                    # Get stock quantity from cached data
+                    product_id = item.get('product_id')
+                    stock_quantity = stock_quantities.get(product_id, 0)
+                    
+                    products.append({
+                        'date': order_date,
+                        'product_id': product_id,
+                        'sku': item.get('sku', ''),
+                        'name': item.get('name'),
+                        'quantity': quantity,
+                        'total': float(item.get('total', 0)) + float(item.get('total_tax', 0)),
+                        'subtotal': float(item.get('subtotal', 0)),
+                        'tax': float(item.get('total_tax', 0)),
+                        'cost': cost * quantity,
+                        'stock_quantity': stock_quantity
+                    })
+                
+                return order_info, products
+                
+            except Exception as e:
+                logging.error(f"Error processing order {order.get('id')}: {str(e)}")
+                return None, []
+        
         # Process orders with progress bar
         with st.spinner('Behandler ordrer...'):
             progress_bar = st.progress(0)
-
-            for i, order in enumerate(orders):
-                try:
-                    # Update progress
+            
+            # Use ThreadPoolExecutor for parallel processing
+            order_chunks = []
+            product_chunks = []
+            chunk_size = max(1, min(100, len(orders) // 10))  # Adaptive chunk size
+            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                # Submit all orders for processing
+                future_to_order = {executor.submit(process_order, order): i for i, order in enumerate(orders)}
+                
+                # Process results as they complete
+                for i, future in enumerate(concurrent.futures.as_completed(future_to_order)):
+                    order_info, products = future.result()
+                    
+                    # Only add valid results
+                    if order_info:
+                        order_chunks.append(order_info)
+                    if products:
+                        product_chunks.extend(products)
+                    
+                    # Update progress bar
                     progress = (i + 1) / len(orders)
                     progress_bar.progress(progress)
-
-                    # Parse and convert date to Oslo timezone
-                    date_str = order.get('date_created')
-                    if not date_str:
-                        continue
-
-                    utc_date = pd.to_datetime(date_str)
-                    order_date = utc_date.tz_localize('UTC').tz_convert(oslo_tz)
-
-                    # Initialize order info
-                    order_id = order.get('id')
-                    total = float(order.get('total', 0))
-                    status = order.get('status', '')
-                    shipping_base = 0
-                    shipping_tax = 0
-
-                    # Process shipping lines
-                    shipping_lines = order.get('shipping_lines', [])
-                    for shipping in shipping_lines:
-                        base = float(shipping.get('total', 0))
-                        tax = float(shipping.get('total_tax', 0))
-                        shipping_base += base
-                        shipping_tax += tax
-
-                    # Calculate total shipping
-                    total_shipping = shipping_base + shipping_tax
-                    total_tax = float(order.get('total_tax', 0))
-                    subtotal = sum(float(item.get('subtotal', 0))
-                                   for item in order.get('line_items', []))
-
-                    # Get billing information
-                    billing = order.get('billing', {})
-
-                    # Get order number and payment method
-                    order_number = self.get_order_number(order.get('meta_data', []))
-                    dintero_method = self.get_dintero_payment_method(
-                        order.get('meta_data', []))
-                    shipping_method = self.get_shipping_method(shipping_lines)
-                    invoice_details = self.get_invoice_details(order.get('meta_data', []))
-
-                    # Create order record
-                    order_info = {
-                        'date': order_date,
-                        'order_id': order_id,
-                        'order_number': order_number,
-                        'status': self.get_order_status_display(status), # Apply translation here
-                        'total': total,
-                        'subtotal': subtotal,
-                        'shipping_base': shipping_base,
-                        'shipping_total': total_shipping,
-                        'shipping_tax': shipping_tax,
-                        'tax_total': total_tax,
-                        'billing': billing,
-                        'dintero_payment_method': dintero_method,
-                        'shipping_method': shipping_method,
-                        'invoice_number': invoice_details['invoice_number'],
-                        'invoice_date': invoice_details['invoice_date']
-                        # Removed meta_data to avoid pyarrow conversions issues
-                    }
-
-                    order_data.append(order_info)
-
-                    # Process line items
-                    for item in order.get('line_items', []):
-                        quantity = int(item.get('quantity', 0))
-                        cost = 0
-                        for meta in item.get('meta_data', []):
-                            if meta.get('key') == '_yith_cog_item_cost':
-                                try:
-                                    cost = float(meta.get('value', 0))
-                                except (ValueError, TypeError):
-                                    cost = 0
-                                break
-
-                        # Get stock quantity from cached data
-                        product_id = item.get('product_id')
-                        stock_quantity = stock_quantities.get(product_id)
-
-                        product_data.append({
-                            'date': order_date,
-                            'product_id': product_id,
-                            'sku': item.get('sku', ''),  # Add SKU field
-                            'name': item.get('name'),
-                            'quantity': quantity,
-                            'total': float(item.get('total', 0)) + float(item.get('total_tax', 0)),
-                            'subtotal': float(item.get('subtotal', 0)),
-                            'tax': float(item.get('total_tax', 0)),
-                            'cost': cost * quantity,
-                            'stock_quantity': stock_quantity
-                        })
-
-                except Exception as e:
-                    logging.error(f"Error processing order {order.get('id')}: {str(e)}")
-                    continue
-
+            
             progress_bar.empty()
-
+        
         # Log processing duration
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
-        logging.debug(f"Processed {len(orders)} orders in {duration:.2f} seconds")
-
+        
         # Create DataFrames from collected data
-        df_orders = pd.DataFrame(order_data)
-        df_products = pd.DataFrame(product_data)
-
+        df_orders = pd.DataFrame(order_chunks)
+        df_products = pd.DataFrame(product_chunks)
+        
+        logging.debug(f"Processed {len(orders)} orders in {duration:.2f} seconds")
+        logging.debug(f"Created DataFrames with {len(df_orders)} orders and {len(df_products)} product records")
+        
         return df_orders, df_products
 
     def get_order_status_display(self, status):
