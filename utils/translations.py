@@ -103,6 +103,10 @@ class Translations:
                 'stock_column': 'På lager',
                 'stock_help': 'Nåværende lagerbeholdning',
                 'no_product_data': 'Ingen produktdata tilgjengelig for valgt periode',
+                'refresh_stock': 'Oppdater lager',
+                'refresh_stock_help': 'Hent oppdaterte lagerantall fra WooCommerce',
+                'refreshing_stock': 'Oppdaterer lagerantall...',
+                'stock_refreshed': 'Lagerantall ble oppdatert',
                 
                 # Revenue and Customers section
                 'revenue_trends': 'Omsetning',
