@@ -230,6 +230,25 @@ To improve performance on the Raspberry Pi:
    sudo netstat -tulpn | grep 3000
    ```
 
+### Missing Module Errors
+
+If you see an error about missing modules, especially ReportLab, try reinstalling them:
+
+1. Make sure you have the system dependencies:
+   ```bash
+   sudo apt-get install -y libfreetype6-dev libjpeg-dev zlib1g-dev
+   ```
+
+2. Install the specific package:
+   ```bash
+   pip install reportlab==3.6.12
+   ```
+
+3. Check if it's properly installed:
+   ```bash
+   python -c "import reportlab; print(reportlab.__version__)"
+   ```
+
 ### Slow Performance
 
 1. Monitor system resources:

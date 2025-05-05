@@ -5,12 +5,19 @@ This directory contains the Raspberry Pi setup packages for the WooCommerce Dash
 ## Available Download Formats
 
 1. **ZIP Format** (Recommended for Windows users)
-   - File: `woocommerce-dashboard-raspi-*.zip`
-   - Extract with: `unzip woocommerce-dashboard-raspi-*.zip`
+   - File: `woocommerce-dashboard-raspi-fixed.zip` (Latest version with all fixes)
+   - Extract with: `unzip woocommerce-dashboard-raspi-fixed.zip`
 
 2. **TAR.GZ Format** (Recommended for Linux/Raspberry Pi users)
-   - File: `woocommerce-dashboard-raspi-*.tar.gz`
-   - Extract with: `tar -xzf woocommerce-dashboard-raspi-*.tar.gz`
+   - File: `woocommerce-dashboard-raspi-fixed.tar.gz` (Latest version with all fixes)
+   - Extract with: `tar -xzf woocommerce-dashboard-raspi-fixed.tar.gz`
+
+## Important Notes
+
+- The "fixed" versions include all necessary fixes for common Raspberry Pi installation issues, including:
+  - ReportLab dependency fixes for PDF generation
+  - Additional system library dependencies
+  - Improved troubleshooting guides
 
 ## Quick Setup on Raspberry Pi
 

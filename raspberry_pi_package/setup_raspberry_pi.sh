@@ -32,6 +32,10 @@ sudo apt-get update
 echo "Installing system dependencies..."
 sudo apt-get install -y python3-venv python3-pip python3-dev libatlas-base-dev libopenjp2-7 libtiff5 libxml2-dev libxslt1-dev
 
+# Install additional dependencies for ReportLab (required for PDF generation)
+echo "Installing ReportLab dependencies..."
+sudo apt-get install -y libfreetype6-dev libjpeg-dev zlib1g-dev
+
 # Create installation directory
 echo "Creating installation directory at $INSTALL_DIR..."
 mkdir -p "$INSTALL_DIR"
@@ -56,8 +60,12 @@ echo "Installing Python dependencies (this may take some time)..."
 pip install --upgrade numpy
 pip install --upgrade pandas
 
+# Install ReportLab separately to ensure it's properly built with all dependencies
+echo "Installing ReportLab with proper dependencies..."
+pip install reportlab==3.6.12
+
 # Install the rest of the requirements
-pip install streamlit>=1.22.0 woocommerce plotly reportlab openpyxl google-analytics-data google-api-python-client google-auth-httplib2 google-auth-oauthlib twilio
+pip install streamlit>=1.22.0 woocommerce plotly openpyxl google-analytics-data google-api-python-client google-auth-httplib2 google-auth-oauthlib twilio
 
 # Create the .env.example file
 echo "Creating environment variables template..."
